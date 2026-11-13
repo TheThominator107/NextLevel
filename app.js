@@ -136,7 +136,9 @@ const S = {
   messages:[], chatTeam:null, pmessages:[], meetings:[], teamCoaches:[], pmPlayer:null, pmTab:"chat", meetingId:null
 };
 const APP_URL = location.origin + location.pathname;
-const FIELD_POSITIONS = [["GK","Goalkeeper"],["RB","Right back"],["CB","Center back"],["LB","Left back"],["WB","Wing back"],["CDM","Defensive mid"],["CM","Central mid"],["CAM","Attacking mid"],["RM","Right mid"],["LM","Left mid"],["RW","Right wing"],["LW","Left wing"],["CF","Center forward"],["ST","Striker"]];
+const FIELD_POSITIONS = [["GK","Goalkeeper"],["RB","Right Back"],["LB","Left Back"],["CB","Center Back"],["RWB","Right Wingback"],["LWB","Left Wingback"],["CDM","Center Defensive Mid"],["CM","Center Mid"],["CAM","Attacking Mid"],["LM","Left Mid"],["RM","Right Mid"],["RW","Right Wing"],["LW","Left Wing"],["CF","Center Forward"],["ST","Striker"]];
+const OLD_POSITIONS = {WB:"Wingback"}; /* positions saved before the list changed */
+const positionLabel = k => (FIELD_POSITIONS.find(x => x[0] === k) || [k, OLD_POSITIONS[k] || k])[1];
 const VIS = {
   public:{label:"Public",cls:"good",icon:"🌐",help:"Anyone with your profile link can see your photo, positions, strengths, bio, highlight videos, club history and coach references. Great for scouts and new clubs."},
   private:{label:"Private",cls:"plain",icon:"🔒",help:"Anyone with your profile link only sees your name, club and age. Everything else stays with your family and coaches."}
@@ -835,7 +837,7 @@ function profileHtml(p, opts){
   const history = (pr.history || []).slice().sort((a,b) => (b.to==="Present"?9999:+b.to||0) - (a.to==="Present"?9999:+a.to||0) || (+b.from||0) - (+a.from||0));
   const videos = pr.videos || [];
   const allComments = pub ? opts.pub.refs : S.comments.filter(c => c.playerId === p.id).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  const posLabel = k => (FIELD_POSITIONS.find(x=>x[0]===k)||[k,k])[1];
+  const posLabel = positionLabel;
   const clubName = pub ? (opts.pub.clubName||"") : (S.club ? S.club.name : "");
   const empty = (msg) => `<p class="muted">${msg}</p>`;
 
@@ -1233,7 +1235,7 @@ const MODALS = {
     const custom = str.filter(t => !TAGS.includes(t)).join(", ");
     return `<h2>${esc(p.name)}: about</h2><form data-form="about" data-id="${esc(p.id)}">
       <div class="stack" style="gap:6px"><b>Positions</b><span class="small muted">Tick every position you play. Your main one goes first.</span>
-        <label class="f" for="ab-main" style="max-width:260px">Main position<select id="ab-main" name="main"><option value="">Choose…</option>${FIELD_POSITIONS.map(([k,l])=>`<option value="${k}" ${pos[0]===k?"selected":""}>${l} (${k})</option>`).join("")}</select></label>
+        <label class="f" for="ab-main" style="max-width:340px">Main position<select id="ab-main" name="main"><option value="">Choose…</option>${FIELD_POSITIONS.map(([k,l])=>`<option value="${k}" ${pos[0]===k?"selected":""}>${l} (${k})</option>`).join("")}</select></label>
         <div class="chips">${FIELD_POSITIONS.map(([k,l],i)=>`<label class="chipbox"><input type="checkbox" name="pos" value="${k}" id="ab-pos-${i}" ${pos.includes(k)?"checked":""}><span>${l}</span></label>`).join("")}</div></div>
       <label class="f" for="ab-foot" style="max-width:220px">Stronger foot<select id="ab-foot" name="foot">${["","Right","Left","Both"].map(f=>`<option value="${f}" ${pr.foot===f?"selected":""}>${f||"Not set"}</option>`).join("")}</select></label>
       <div class="stack" style="gap:6px"><b>Strengths</b><div class="chips">${TAGS.map((t,i)=>`<label class="chipbox"><input type="checkbox" name="str" value="${esc(t)}" id="ab-str-${i}" ${str.includes(t)?"checked":""}><span>${esc(t)}</span></label>`).join("")}</div>
@@ -1679,7 +1681,7 @@ function pageRecruiting(){
       <div class="row between"><h3>What a scout sees</h3><span class="pill warn">Example</span></div>
       <div class="pcard"><div class="photo avatar-art" style="width:96px;height:96px">${GRAY_AVATAR}</div>
         <div class="stack" style="gap:6px"><h2>${esc(E.name)}</h2><p class="muted">${esc(E.club)} · ${esc(E.team)}</p>
-          <div class="chips"><span class="chip str">Central mid · main</span><span class="chip">Attacking mid</span></div></div></div>
+          <div class="chips"><span class="chip str">${positionLabel("CM")} · main</span><span class="chip">${positionLabel("CAM")}</span></div></div></div>
       <div class="vid"><div class="vlink" style="aspect-ratio:16/7">▶ Fall 2026 highlights</div></div>
       <div class="ref reference"><blockquote>${esc(E.reference.text)}</blockquote><span class="small"><b>${esc(E.reference.author)}</b>, ${esc(E.reference.title)}</span></div>
       <div class="timeline">${E.history.map(h=>`<div class="titem${h.to==="Present"?" now":""}"><div class="row between"><b>${esc(h.club)}</b><span class="small muted num">${esc(h.from)} – ${esc(h.to)}</span></div><div class="small">${esc(h.team)}</div></div>`).join("")}</div>
@@ -2209,7 +2211,7 @@ const EXAMPLE = {
 function exampleProfile(){
   const E = EXAMPLE, rs = E.reviews, last = rs[rs.length-1], prev = rs[rs.length-2];
   const o = overall(last), po = overall(prev);
-  const posLabel = k => (FIELD_POSITIONS.find(x=>x[0]===k)||[k,k])[1];
+  const posLabel = positionLabel;
   return `<section class="example stack" aria-labelledby="ex-h">
     <div class="row between">
       <div class="stack" style="gap:4px"><h2 id="ex-h">See what a player profile looks like</h2>
