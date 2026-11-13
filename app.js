@@ -138,10 +138,11 @@ const S = {
 const APP_URL = location.origin + location.pathname;
 const FIELD_POSITIONS = [["GK","Goalkeeper"],["RB","Right back"],["CB","Center back"],["LB","Left back"],["WB","Wing back"],["CDM","Defensive mid"],["CM","Central mid"],["CAM","Attacking mid"],["RM","Right mid"],["LM","Left mid"],["RW","Right wing"],["LW","Left wing"],["CF","Center forward"],["ST","Striker"]];
 const VIS = {
-  private:{label:"Private",cls:"plain",help:"Only coaches at your club and your family can see it."},
-  club:{label:"Club",cls:"warn",help:"Anyone in your club can see it, plus your coaches and family."},
-  public:{label:"Public",cls:"good",help:"Anyone with the profile link can see it, such as academy or college scouts. Coach references show; coach comments and skill ratings stay private."}
+  public:{label:"Public",cls:"good",icon:"🌐",help:"Anyone with your profile link can see your photo, positions, strengths, bio, highlight videos, club history and coach references. Great for scouts and new clubs."},
+  private:{label:"Private",cls:"plain",icon:"🔒",help:"Anyone with your profile link only sees your name, club and age. Everything else stays with your family and coaches."}
 };
+const visOf = pr => (pr && pr.visibility === "public") ? "public" : "private";
+const ageOf = by => by ? new Date().getFullYear() - Number(by) : null;
 const profileFor = pid => S.profiles.find(x => x.playerId === pid) || null;
 const blobUrl = id => sb ? sb.storage.from("media").getPublicUrl(id).data.publicUrl : "";
 const canEditProfile = p => !!(S.me && !isStaff() && (S.me.playerIds||[]).includes(p.id));
@@ -460,7 +461,9 @@ function topbar(){
       : [["home","My player"],["chat","Team chat"],["messages","Messages"],["drills","Home drills"],["plans","Plans"],["account","Account"]];
     const pmu = totalPmUnread();
     const un = totalUnread();
-    tabs = `<nav class="tabs" aria-label="Main">${items.map(([v,l]) => `<button data-act="go" data-view="${v}" ${!S.publicPage && (S.view===v || (v==="roster" && S.view==="player")) ? 'aria-current="page"' : ""}>${l}${v==="chat" && un ? `<span class="badge" aria-label="${un} unread">${un>99?"99+":un}</span>` : ""}${v==="messages" && pmu ? `<span class="badge" aria-label="${pmu} unread">${pmu>99?"99+":pmu}</span>` : ""}</button>`).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>`;
+    const allUnread = un + pmu;
+    tabs = `<button type="button" class="menu-btn app-menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="app-nav">${S.menuOpen ? "Close" : "Menu"}${!S.menuOpen && allUnread ? `<span class="badge">${allUnread>99?"99+":allUnread}</span>` : ""}</button>
+    <nav id="app-nav" class="tabs app-tabs${S.menuOpen ? " open" : ""}" aria-label="Main">${items.map(([v,l]) => `<button data-act="go" data-view="${v}" ${!S.publicPage && (S.view===v || (v==="roster" && S.view==="player")) ? 'aria-current="page"' : ""}>${l}${v==="chat" && un ? `<span class="badge" aria-label="${un} unread">${un>99?"99+":un}</span>` : ""}${v==="messages" && pmu ? `<span class="badge" aria-label="${pmu} unread">${pmu>99?"99+":pmu}</span>` : ""}</button>`).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>`;
   }
   return `<header class="top"><div class="top-in">
     <a href="#" class="brand" data-act="home" aria-label="${APP_NAME} home">${logoHtml()}</a>
@@ -827,7 +830,7 @@ function photoHtml(pr, p){
 function profileHtml(p, opts){
   const pr = profileFor(p.id) || (opts.pub ? opts.pub.profile : null) || {};
   const ed = !!opts.editable, staff = !!opts.staff, pub = !!opts.pub;
-  const vis = VIS[pr.visibility] || VIS.private;
+  const vis = VIS[visOf(pr)];
   const positions = pr.positions || [], strengths = pr.strengths || [];
   const history = (pr.history || []).slice().sort((a,b) => (b.to==="Present"?9999:+b.to||0) - (a.to==="Present"?9999:+a.to||0) || (+b.from||0) - (+a.from||0));
   const videos = pr.videos || [];
@@ -843,13 +846,13 @@ function profileHtml(p, opts){
     </div>
     <div class="stack">
       <div class="row between">
-        <div class="stack" style="gap:2px"><h1>${esc(p.name)}</h1><p class="muted">${esc(clubName)}${p.teamId && !pub ? " · " + esc(teamName(p.teamId)) : ""}${p.birthYear?" · Born "+esc(p.birthYear):""}${pr.foot?" · "+esc(pr.foot)+" footed":""}</p></div>
-        ${pub ? "" : `<div class="vis"><span class="pill ${vis.cls}">${vis.label}</span>${ed?`<button class="btn sm" data-act="modal" data-m="visibility" data-player="${esc(p.id)}">Change</button>`:""}</div>`}
+        <div class="stack" style="gap:2px"><h1>${esc(p.name)}</h1><p class="muted">${esc(clubName)}${p.teamId && !pub ? " · " + esc(teamName(p.teamId)) : ""}${p.birthYear?" · Age "+esc(ageOf(p.birthYear)):""}${pr.foot?" · "+esc(pr.foot)+" footed":""}</p></div>
+        ${pub ? "" : ed ? visSwitch(p, pr) : `<div class="vis"><span class="pill ${VIS[visOf(pr)].cls}">${VIS[visOf(pr)].icon} ${VIS[visOf(pr)].label} profile</span></div>`}
       </div>
       <div class="stack" style="gap:6px"><h3>Positions</h3><div class="chips">${positions.length?positions.map((k,i)=>`<span class="chip${i===0?" str":""}">${esc(posLabel(k))}${i===0?" · main":""}</span>`).join(""):'<span class="muted small">Not added yet</span>'}</div></div>
       <div class="stack" style="gap:6px"><h3>Strengths</h3><div class="chips">${strengths.length?strengths.map(t=>`<span class="chip">${esc(t)}</span>`).join(""):'<span class="muted small">Not added yet</span>'}</div></div>
       ${pr.bio ? `<p style="max-width:65ch">${esc(pr.bio)}</p>` : ""}
-      ${ed ? `<div class="row"><button class="btn" data-act="modal" data-m="about" data-player="${esc(p.id)}">Edit positions, strengths & bio</button>${pr.visibility==="public"?`<button class="btn ghost sm" data-act="copy" data-text="${esc(APP_URL + "#profile-" + pr.slug)}">Copy profile link</button>`:""}</div>` : ""}
+      ${ed ? `<div class="row"><button class="btn" data-act="modal" data-m="about" data-player="${esc(p.id)}">Edit positions, strengths & bio</button>${pr.slug?`<button class="btn ghost sm" data-act="copy" data-text="${esc(APP_URL + "#profile-" + pr.slug)}">Copy profile link</button><a class="btn ghost sm" href="#profile-${esc(pr.slug)}" data-act="previewPublic" data-slug="${esc(pr.slug)}">See what others see</a>`:""}</div>` : ""}
       ${staff && !pr.updatedAt ? `<p class="small muted">The family hasn't filled in this profile yet. They can do it from their account.</p>` : ""}
     </div>
   </div>`;
@@ -902,6 +905,16 @@ function profileHtml(p, opts){
     </div>`;
   }
   return `${head}<div class="grid2"><div class="stack" style="gap:20px">${privCard}${vidCard}${histCard}</div><div class="stack" style="gap:20px">${comCard}</div></div>`;
+}
+function visSwitch(p, pr){
+  const v = visOf(pr), on = v === "public";
+  return `<div class="vis-switch stack" style="gap:6px;align-items:flex-end">
+    <div class="seg" role="radiogroup" aria-label="Profile visibility">
+      <button type="button" role="radio" aria-checked="${on}" class="${on?"on":""}" data-act="setVis" data-player="${esc(p.id)}" data-v="public">🌐 Public</button>
+      <button type="button" role="radio" aria-checked="${!on}" class="${!on?"on":""}" data-act="setVis" data-player="${esc(p.id)}" data-v="private">🔒 Private</button>
+    </div>
+    <span class="small muted" style="max-width:34ch;text-align:right">${on ? "Your full profile is visible to anyone with the link." : "Others only see your name, club and age."} <button type="button" class="linkish" data-act="modal" data-m="visibility" data-player="${esc(p.id)}">What's shared?</button></span>
+  </div>`;
 }
 function hostOf(u){ try { return new URL(u).hostname.replace(/^www\./,""); } catch(_){ return "video site"; } }
 
@@ -989,6 +1002,13 @@ function publicView(){
   if(!P || P.loading) return back + `<div class="card"><p>Loading profile…</p></div>`;
   if(P.missing) return back + `<div class="card stack"><h2>Profile not found</h2><p>The link may be wrong, or the profile was removed.</p></div>`;
   if(P.private) return back + `<div class="card stack"><h2>This profile is private</h2><p>The player's family hasn't made it public.</p></div>`;
+  if(P.limited) return back + `<div class="card pcard limited-profile">
+      <div class="photo ph" aria-hidden="true">${esc(initials(P.limited.name))}</div>
+      <div class="stack" style="gap:6px"><h1>${esc(P.limited.name)}</h1>
+        <p class="muted">${esc(P.limited.club||"")}${P.limited.age ? " · Age " + esc(P.limited.age) : ""}</p>
+        <span class="pill plain" style="align-self:flex-start">🔒 Private profile</span>
+        <p class="small muted" style="max-width:52ch">This player keeps their profile private, so only their name, club and age are shown.</p></div>
+    </div>`;
   if(P.error || !P.player) return back + `<div class="card"><p>The profile couldn't load. Try again in a moment.</p></div>`;
   return back + profileHtml(P.player, {pub:{profile:P.profile, refs:P.refs, clubName:P.clubName}});
 }
@@ -999,6 +1019,11 @@ async function loadPublic(slug){
     if(error) throw error;
     if(!data || data.status === "missing"){ S.pub = {missing:true}; render(); return; }
     if(data.status === "private"){ S.pub = {private:true}; render(); return; }
+    if(data.status === "limited" || (S.previewAsOutsider && data.status === "ok" && data.profile && data.profile.visibility !== "public")){
+      S.previewAsOutsider = false;
+      S.pub = {limited:{name:data.player.name, club:data.club_name || "", age: data.player.age != null ? data.player.age : ageOf(data.player.birth_year)}, preview: true}; render(); return;
+    }
+    S.previewAsOutsider = false;
     S.pub = {profile: camel(data.profile), player: {id:data.player.id, name:data.player.name, birthYear:data.player.birth_year},
       clubName: data.club_name || "", refs: (data.refs || []).map(camel)};
   } catch(e){ console.error(e); S.pub = {error:true}; }
@@ -1222,10 +1247,11 @@ const MODALS = {
   },
   visibility: (ds) => {
     const p = S.players.find(x=>x.id===ds.player); if(!p) return "<p>Player not found.</p>";
-    const cur = (profileFor(p.id)||{}).visibility || "private";
-    return `<h2>Who can see ${esc(p.name)}'s profile?</h2><form data-form="visibility" data-id="${esc(p.id)}">
-      ${Object.entries(VIS).map(([k,v])=>`<label class="choice" for="vis-${k}"><input type="radio" id="vis-${k}" name="vis" value="${k}" ${cur===k?"checked":""}><span><b>${v.label}</b><br><span class="small muted">${v.help}</span></span></label>`).join("")}
-      <p class="small muted">Coach reviews, skill ratings and home drills stay private: they never show on a public profile. Change this any time.</p>
+    const cur = visOf(profileFor(p.id));
+    return `<h2>Public or private?</h2><form data-form="visibility" data-id="${esc(p.id)}">
+      ${Object.entries(VIS).map(([k,v])=>`<label class="choice" for="vis-${k}"><input type="radio" id="vis-${k}" name="vis" value="${k}" ${cur===k?"checked":""}><span><b>${v.icon} ${v.label}</b><br><span class="small muted">${v.help}</span></span></label>`).join("")}
+      <div class="note small"><b>Never shared, public or private:</b> coach reviews and ratings, the review timeline, home drills, coach comments, private messages and meetings. Only you, your family and your coaches see those.</div>
+      <p class="small muted">You can switch any time. Your family, your team's coaches and the club admin always see your full profile.</p>
       <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`;
   },
   video: (ds) => `<h2>Add a highlight video</h2><form data-form="video" data-id="${esc(ds.player)}">
@@ -1258,7 +1284,7 @@ const MODALS = {
 
 /* ---------- actions ---------- */
 const ACTS = {
-  go: ds => { S.view = ds.view; S.preview = false; if(S.publicPage){ S.publicPage = null; try { history.replaceState(null, "", location.pathname + location.search); } catch(_){} } window.scrollTo(0,0); render(); },
+  go: ds => { S.view = ds.view; S.preview = false; S.menuOpen = false; if(S.publicPage){ S.publicPage = null; try { history.replaceState(null, "", location.pathname + location.search); } catch(_){} } window.scrollTo(0,0); render(); },
   open: ds => { S.playerId = ds.id; S.view = "player"; S.preview = false; S.chartSkill = "overall"; S.ptab = "dev"; window.scrollTo(0,0); render(); },
   team: ds => { S.teamFilter = ds.id; render(); },
   cat: ds => { S.catFilter = ds.id; render(); },
@@ -1431,7 +1457,7 @@ const FORMS = {
   visibility: async (fd, form) => {
     const p = S.players.find(x=>x.id===form.dataset.id); if(!p) return;
     const v = fd.get("vis"); closeModal();
-    await saveProfile(p, {visibility: VIS[v] ? v : "private"}, v === "public" ? "Profile is public. Use Copy profile link to share it." : "Saved");
+    await saveProfile(p, {visibility: v === "public" ? "public" : "private"}, v === "public" ? "Your profile is public. Use Copy profile link to share it." : "Your profile is private. Others only see your name, club and age.");
   },
   video: async (fd, form) => {
     const p = S.players.find(x=>x.id===form.dataset.id); if(!p) return;
@@ -1985,6 +2011,12 @@ MODALS.meetingNotes = ds => {
 };
 
 /* actions */
+ACTS.setVis = async ds => {
+  const p = S.players.find(x => x.id === ds.player); if(!p) return;
+  if(visOf(profileFor(p.id)) === ds.v) return;
+  await saveProfile(p, {visibility: ds.v === "public" ? "public" : "private"}, ds.v === "public" ? "Your profile is public. Use Copy profile link to share it." : "Your profile is private. Others only see your name, club and age.");
+};
+ACTS.previewPublic = ds => { S.previewAsOutsider = true; location.hash = "profile-" + ds.slug; };
 ACTS.pmPlayer = ds => { S.pmPlayer = ds.id; S.meetingId = null; render(); };
 ACTS.pmTab = ds => { S.pmTab = ds.id; S.meetingId = null; render(); };
 ACTS.openMeeting = ds => { S.meetingId = ds.id; render(); };
