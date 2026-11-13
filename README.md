@@ -1,4 +1,4 @@
-# PitchPath (working name)
+# NextPlay
 
 Player development app for soccer clubs: coach reviews, home drills, player profiles and team chat.
 

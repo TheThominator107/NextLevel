@@ -1,5 +1,5 @@
 -- =====================================================================
--- PitchPath database setup
+-- NextPlay database setup
 -- Paste this whole file into Supabase -> SQL Editor -> New query -> Run.
 -- Safe to run on a new, empty project. Run it once.
 -- =====================================================================

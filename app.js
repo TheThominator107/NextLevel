@@ -1,6 +1,6 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
 "use strict";
-const APP_NAME = "PitchPath";
+const APP_NAME = "NextPlay";
 
 const SKILLS = [
   {k:"control",label:"First touch & control",group:"Technical"},
@@ -295,7 +295,7 @@ function topbar(){
     tabs = `<nav class="tabs" aria-label="Main">${items.map(([v,l]) => `<button data-act="go" data-view="${v}" ${S.view===v || (v==="roster" && S.view==="player") ? 'aria-current="page"' : ""}>${l}${v==="chat" && un ? `<span class="badge" aria-label="${un} unread">${un>99?"99+":un}</span>` : ""}</button>`).join("")}<button class="signout-link" data-act="signOut">Sign out</button></nav>`;
   }
   return `<header class="top"><div class="top-in">
-    <div class="brand">${brandSvg}<span>${APP_NAME}</span><span class="tag" title="Placeholder name until you pick one">Working name</span></div>
+    <div class="brand">${brandSvg}<span>${APP_NAME}</span></div>
     ${S.club ? `<span class="clubname">${esc(S.club.name)}</span>` : ""}
     ${tabs || (S.uid ? `<nav class="tabs"><button class="signout-link" data-act="signOut">Sign out</button></nav>` : "")}
   </div></header>`;
@@ -1278,7 +1278,7 @@ async function onSession(session, event){
 }
 
 (async () => {
-  const cfg = window.PITCHPATH_CONFIG || {};
+  const cfg = window.NEXTPLAY_CONFIG || {};
   const m = /^profile-([a-z0-9]+)$/.exec(location.hash.slice(1));
   if(m) S.publicSlug = m[1];
   if(!cfg.supabaseUrl || !cfg.supabaseKey || /YOUR_/.test(cfg.supabaseUrl + cfg.supabaseKey)){
