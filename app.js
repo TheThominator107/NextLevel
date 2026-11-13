@@ -441,12 +441,12 @@ function topbar(){
       ? [["roster","Players"],["chat","Team chat"],["drills","Drill library"],["plans","Plans"],["club","Club"]]
       : [["home","My player"],["chat","Team chat"],["drills","Home drills"],["plans","Plans"],["account","Account"]];
     const un = totalUnread();
-    tabs = `<nav class="tabs" aria-label="Main">${items.map(([v,l]) => `<button data-act="go" data-view="${v}" ${S.view===v || (v==="roster" && S.view==="player") ? 'aria-current="page"' : ""}>${l}${v==="chat" && un ? `<span class="badge" aria-label="${un} unread">${un>99?"99+":un}</span>` : ""}</button>`).join("")}<button class="signout-link" data-act="signOut">Sign out</button></nav>`;
+    tabs = `<nav class="tabs" aria-label="Main">${items.map(([v,l]) => `<button data-act="go" data-view="${v}" ${!S.publicPage && (S.view===v || (v==="roster" && S.view==="player")) ? 'aria-current="page"' : ""}>${l}${v==="chat" && un ? `<span class="badge" aria-label="${un} unread">${un>99?"99+":un}</span>` : ""}</button>`).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>`;
   }
   return `<header class="top"><div class="top-in">
-    <div class="brand">${brandSvg}<span>${APP_NAME}</span></div>
+    <a href="#" class="brand" data-act="home" aria-label="${APP_NAME} home">${brandSvg}<span>${APP_NAME}</span></a>
     ${S.club ? `<span class="clubname">${esc(S.club.name)}</span>` : ""}
-    ${tabs || (S.uid ? `<nav class="tabs"><button class="signout-link" data-act="signOut">Sign out</button></nav>` : "")}
+    ${!S.uid && !S.noConfig ? publicNav() : (tabs || (S.uid ? `<nav class="tabs"><a href="#contact" class="signout-link">Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>` : ""))}
   </div></header>`;
 }
 
@@ -456,6 +456,7 @@ function render(){
   if(S.loading) body = `<div class="card"><p>Loading your club…</p>${S.notice?`<p class="muted small" style="margin-top:8px">${esc(S.notice)}</p>`:""}</div>`;
   else if(S.noConfig) body = setupView();
   else if(S.publicSlug) body = publicView();
+  else if(S.publicPage && !(S.uid && S.loading)) body = publicPage();
   else if(S.recovery && S.uid) body = newPasswordView();
   else if(!S.uid) body = authView();
   else if(S.me === null) body = onboarding();
@@ -467,7 +468,7 @@ function render(){
   const th = document.getElementById("thread");
   const atBottom = !th || (th.scrollHeight - th.scrollTop - th.clientHeight < 60);
   const prevScroll = th ? th.scrollTop : 0, prevTeam = S._renderedChatTeam;
-  app.innerHTML = topbar() + `<main>${banners}${body}</main>`;
+  app.innerHTML = topbar() + `<main>${banners}${body}</main>` + (!S.uid || S.publicPage ? siteFooter() : "");
   const ci2 = document.getElementById("chat-input");
   if(ci2 && keep && prevTeam === S.chatTeam){ ci2.value = keep.v; const a = document.getElementById("chat-ann"); if(a) a.checked = !!keep.ann; if(keep.f){ ci2.focus(); try{ ci2.setSelectionRange(keep.s, keep.e); }catch(_){} } }
   const th2 = document.getElementById("thread");
@@ -965,6 +966,8 @@ async function loadPublic(slug){
 }
 function readHash(){
   const h = location.hash.slice(1);
+  if(PAGE_IDS.includes(h)){ S.publicPage = h; S.menuOpen = false; S.publicSlug = null; S.pub = null; if(h !== "contact") S.contactSent = null; render(); window.scrollTo(0,0); return; }
+  if(h === "signin" || h === ""){ S.publicPage = null; S.menuOpen = false; if(S.publicSlug){ S.publicSlug = null; S.pub = null; } render(); window.scrollTo(0,0); return; }
   if(h === "coach" || h === "parent"){ savePortal(h === "coach" ? "coach" : "family"); if(S.publicSlug){ S.publicSlug = null; S.pub = null; } if(!S.uid){ S.authMode = "signin"; } render(); return; }
   const m = /^profile-([a-z0-9]+)$/.exec(h);
   const slug = m ? m[1] : null;
@@ -1215,7 +1218,7 @@ const MODALS = {
 
 /* ---------- actions ---------- */
 const ACTS = {
-  go: ds => { S.view = ds.view; S.preview = false; window.scrollTo(0,0); render(); },
+  go: ds => { S.view = ds.view; S.preview = false; if(S.publicPage){ S.publicPage = null; try { history.replaceState(null, "", location.pathname + location.search); } catch(_){} } window.scrollTo(0,0); render(); },
   open: ds => { S.playerId = ds.id; S.view = "player"; S.preview = false; S.chartSkill = "overall"; S.ptab = "dev"; window.scrollTo(0,0); render(); },
   team: ds => { S.teamFilter = ds.id; render(); },
   cat: ds => { S.catFilter = ds.id; render(); },
@@ -1437,7 +1440,7 @@ document.addEventListener("keydown", ev => {
 document.addEventListener("submit", async ev => {
   const form = ev.target.closest("form[data-form]"); if(!form) return;
   ev.preventDefault();
-  if(!S.uid && form.dataset.form !== "auth"){ toast("Sign in to save.", true); return; }
+  if(!S.uid && form.dataset.form !== "auth" && form.dataset.form !== "contact"){ toast("Sign in to save.", true); return; }
   const btn = form.querySelector('button[type="submit"]'); if(btn) btn.disabled = true;
   try { await FORMS[form.dataset.form](new FormData(form), form); } finally { if(btn && document.body.contains(btn)) btn.disabled = false; }
 });
@@ -1493,6 +1496,205 @@ document.addEventListener("change", ev => {
   if(ev.target.dataset && ev.target.dataset.change === "chatTeam"){ S.chatTeam = ev.target.value; render(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "chartSkill"){ S.chartSkill = ev.target.value; render(); const s = document.getElementById("chart-skill"); if(s) s.focus(); }
 });
+
+
+/* ---------- public site pages (menu next to the logo) ---------- */
+const PRICES = {club:"$39", clubPer:"per month, per club", family:"$6.99", familyPer:"per month, per family"};
+const PUBLIC_PAGES = [
+  ["how-it-works","How it works"], ["drills","Drills"], ["clubs","Clubs & Teams"], ["recruiting","Recruiting"],
+  ["for-parents","For Parents"], ["pricing","Pricing"], ["contact","Contact Us"]
+];
+const PAGE_IDS = PUBLIC_PAGES.map(p => p[0]);
+
+function publicNav(){
+  const links = PUBLIC_PAGES.map(([id,label]) => `<a href="#${id}" class="navlink" ${S.publicPage===id?'aria-current="page"':""}>${label}</a>`).join("");
+  return `<button type="button" class="menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="site-nav">${S.menuOpen ? "Close" : "Menu"}</button>
+    <nav id="site-nav" class="site-nav${S.menuOpen ? " open" : ""}" aria-label="Site">${links}<a href="#signin" class="btn primary sm nav-signin">Sign in</a></nav>`;
+}
+function siteFooter(){
+  return `<footer class="site-foot"><div class="foot-in">
+    <span class="brand small-brand">${brandSvg}<span>${APP_NAME}</span></span>
+    <nav aria-label="Footer">${PUBLIC_PAGES.map(([id,label]) => `<a href="#${id}">${label}</a>`).join("")}</nav>
+    <span class="muted small">© ${new Date().getFullYear()} ${APP_NAME}</span>
+  </div></footer>`;
+}
+const cta = (coachLabel = "Start your club", famLabel = "I'm a parent or player") => `<div class="row cta-row">
+  <button type="button" class="btn primary" data-act="pickPortal" data-id="coach">${coachLabel}</button>
+  <button type="button" class="btn" data-act="pickPortal" data-id="family">${famLabel}</button></div>`;
+const feature = (title, text) => `<div class="card stack feature"><h3>${title}</h3><p class="muted">${text}</p></div>`;
+
+function publicPage(){
+  switch(S.publicPage){
+    case "how-it-works": return pageHow();
+    case "drills": return pageDrills();
+    case "clubs": return pageClubs();
+    case "recruiting": return pageRecruiting();
+    case "for-parents": return pageParents();
+    case "pricing": return pagePricing();
+    case "contact": return pageContact();
+  }
+  return "";
+}
+
+function pageHow(){
+  const step = (n, title, text) => `<div class="step"><span class="step-n">${n}</span><div class="stack" style="gap:4px"><b>${title}</b><p class="muted">${text}</p></div></div>`;
+  return `<section class="page-hero stack"><span class="eyebrow">How it works</span>
+    <h1>From the coach's notes to practice at home</h1>
+    <p class="lead">${APP_NAME} connects what coaches see at training with what players work on between sessions.</p></section>
+  <div class="grid2">
+    <div class="card stack"><h2>For coaches and clubs</h2>
+      ${step(1,"Create your club","Sign up as a coach and start your club. You get a club code to share with your other coaches.")}
+      ${step(2,"Add teams and players","Each player gets a 6-letter code to give their family.")}
+      ${step(3,"Review and assign","Rate 13 field-player skills (or 7 for goalkeepers) from 1 to 5, add an update note, and assign home drills.")}
+    </div>
+    <div class="card stack"><h2>For parents and players</h2>
+      ${step(1,"Connect with your code","Sign up as a parent or player and enter the code from your coach.")}
+      ${step(2,"See the feedback","Every review, what changed since last time, and progress since the first review.")}
+      ${step(3,"Train at home","Get drills recommended from the coach's review and tick them off each week.")}
+    </div>
+  </div>
+  <div class="grid3">
+    ${feature("Reviews that show progress","Every update is saved. Families see exactly which skills went up, and why.")}
+    ${feature("Drills picked for each player","Recommendations come from the lowest ratings and the coach's own 'work on' notes.")}
+    ${feature("Team chat","One place for schedule changes, announcements and quick questions, per team.")}
+  </div>
+  ${cta()}`;
+}
+
+function pageDrills(){
+  const list = BUILTIN_DRILLS.filter(d => (S.catFilter === "All" || d.category === S.catFilter) && (!S.skillFilter || (d.skills||[]).includes(S.skillFilter)));
+  return `<section class="page-hero stack"><span class="eyebrow">Drills</span>
+    <h1>${BUILTIN_DRILLS.length} drills players can do at home</h1>
+    <p class="lead">A ball, a wall and a little space. Each drill lists the skills it trains. Signed-in players get the ones that match their coach's latest review.</p></section>
+  <div class="row between">
+    <div class="filters" role="group" aria-label="Filter by category">${["All"].concat(CATS).map(c=>`<button data-act="cat" data-id="${esc(c)}" aria-pressed="${S.catFilter===c}">${esc(c)}</button>`).join("")}</div>
+    <label class="f small" for="skill-filter" style="min-width:220px">Works on<select id="skill-filter" data-change="skillFilter"><option value="">Any skill</option>
+      <optgroup label="Field players">${FIELD_SKILLS.map(sk=>`<option value="${sk.k}" ${S.skillFilter===sk.k?"selected":""}>${sk.label}</option>`).join("")}</optgroup>
+      <optgroup label="Goalkeepers">${GK_SKILLS.map(sk=>`<option value="${sk.k}" ${S.skillFilter===sk.k?"selected":""}>${sk.label}</option>`).join("")}</optgroup></select></label>
+  </div>
+  ${list.length ? `<div class="dgrid">${list.map(d => drillCard(d)).join("")}</div>` : `<p class="muted">No drills match. Try another filter.</p>`}
+  <div class="card stack callout"><h2>Get drills picked for you</h2><p>When your coach reviews you on ${APP_NAME}, we recommend the drills that work on exactly what they flagged.</p>${cta("Start as a coach","Sign up as a parent or player")}</div>`;
+}
+
+function pageClubs(){
+  return `<section class="page-hero stack"><span class="eyebrow">Clubs & Teams</span>
+    <h1>Every player's development, in one place</h1>
+    <p class="lead">Give every coach the same review tools, keep families informed, and see how each team is progressing.</p></section>
+  <div class="grid3">
+    ${feature("Consistent player reviews","13 field-player skills and 7 goalkeeper skills on the same 1 to 5 scale, so every coach in the club reviews the same way.")}
+    ${feature("Progress you can show","Each review needs an update note. The timeline keeps every review and shows what improved.")}
+    ${feature("Home training that sticks",`Assign drills or let ${APP_NAME} suggest them from the review. See who did their drills this week.`)}
+    ${feature("Team chat & announcements","A chat for every team with coaches and families. Pin announcements for schedule changes.")}
+    ${feature("Simple onboarding","Share one club code with coaches and one code per player with families. No spreadsheets.")}
+    ${feature("Private by design","Families only see their own child. Reviews never appear on public profiles.")}
+  </div>
+  <div class="card stack callout"><h2>Set up your club in 5 minutes</h2>
+    <ol class="numbered"><li>Sign up as a coach and choose <b>Start a club</b>.</li><li>Share your club code with your other coaches.</li><li>Add your teams and players, then send each family their player code.</li></ol>
+    <div class="row cta-row"><button type="button" class="btn primary" data-act="pickPortal" data-id="coach">Start your club</button><a class="btn" href="#contact">Talk to us first</a></div></div>`;
+}
+
+function pageRecruiting(){
+  const E = EXAMPLE;
+  return `<section class="page-hero stack"><span class="eyebrow">Recruiting</span>
+    <h1>A player profile you can send to scouts</h1>
+    <p class="lead">Players build a profile with highlight videos, club history and coach references, then share one link with college programmes, academies or a new club.</p></section>
+  <div class="grid2">
+    <div class="stack" style="gap:16px">
+      ${feature("Highlight videos","Upload clips or link YouTube, Hudl or Veo.")}
+      ${feature("Coach references","Coaches write references that show on the public profile, in their own words.")}
+      ${feature("Club history","Every club and team, with years and highlights.")}
+      ${feature("You choose who sees it","Private, club only or public. Coach reviews and ratings always stay private.")}
+    </div>
+    <div class="card stack">
+      <div class="row between"><h3>What a scout sees</h3><span class="pill warn">Example</span></div>
+      <div class="pcard"><div class="photo ph" aria-hidden="true" style="width:96px;height:96px;font-size:2.2rem">GP</div>
+        <div class="stack" style="gap:6px"><h2>${esc(E.name)}</h2><p class="muted">${esc(E.club)} · ${esc(E.team)}</p>
+          <div class="chips"><span class="chip str">Central mid · main</span><span class="chip">Attacking mid</span></div></div></div>
+      <div class="vid"><div class="vlink" style="aspect-ratio:16/7">▶ Fall 2026 highlights</div></div>
+      <div class="ref reference"><blockquote>${esc(E.reference.text)}</blockquote><span class="small"><b>${esc(E.reference.author)}</b>, ${esc(E.reference.title)}</span></div>
+      <div class="timeline">${E.history.map(h=>`<div class="titem${h.to==="Present"?" now":""}"><div class="row between"><b>${esc(h.club)}</b><span class="small muted num">${esc(h.from)} – ${esc(h.to)}</span></div><div class="small">${esc(h.team)}</div></div>`).join("")}</div>
+    </div>
+  </div>
+  ${cta("I'm a coach","Build my player profile")}`;
+}
+
+function pageParents(){
+  return `<section class="page-hero stack"><span class="eyebrow">For Parents</span>
+    <h1>Know what your child is working on</h1>
+    <p class="lead">See your coach's feedback as it happens, help with the right drills at home, and keep up with the team without digging through group texts.</p></section>
+  <div class="grid3">
+    ${feature("Real feedback","Ratings from 1 to 5, strengths, what to work on and a note from the coach after every review.")}
+    ${feature("Progress over the season","Every review is saved, so you can see what's improving and what's next.")}
+    ${feature("15 minutes at home","Drills picked from the coach's review, with step-by-step instructions. Tick them off each week.")}
+    ${feature("Team chat","Schedule changes and announcements from the coach, in one place.")}
+    ${feature("A profile to be proud of","Photos, highlight videos and coach references. You decide if it's private or public.")}
+    ${feature("Private and safe","Only your child's coaches and your family can see reviews. Other families can't.")}
+  </div>
+  <div class="card stack callout"><h2>How to join</h2>
+    <ol class="numbered"><li>Get your child's 6-letter player code from their coach.</li><li>Sign up as a parent or player.</li><li>Enter the code. Older players can use the same code to make their own login.</li></ol>
+    <div class="row cta-row"><button type="button" class="btn primary" data-act="pickPortal" data-id="family">Sign up as a parent or player</button></div></div>`;
+}
+
+function pagePricing(){
+  return `<section class="page-hero stack"><span class="eyebrow">Pricing</span>
+    <h1>Simple plans for clubs and families</h1>
+    <p class="lead">Clubs choose whether Home Training is included for every family, or whether families add it themselves.</p></section>
+  <div class="grid2">
+    <div class="card plan">
+      <span class="pill plain" style="align-self:flex-start">For clubs & coaches</span>
+      <h2>Club plan</h2>
+      <div><span class="price">${PRICES.club}</span> <span class="muted">${PRICES.clubPer}</span></div>
+      <ul><li>Unlimited players, teams and coaches</li><li>Field player and goalkeeper reviews with update notes</li><li>Progress timeline for every player</li><li>Drill library, recommendations and your own club drills</li><li>Team chat with announcements</li><li>Option to include Home Training for every family</li></ul>
+      <button type="button" class="btn primary" data-act="pickPortal" data-id="coach" style="align-self:flex-start">Start your club</button>
+    </div>
+    <div class="card plan featured">
+      <span class="pill good" style="align-self:flex-start">For parents & players</span>
+      <h2>Home Training</h2>
+      <div><span class="price">${PRICES.family}</span> <span class="muted">${PRICES.familyPer}</span></div>
+      <ul><li>Drills recommended from the coach's review</li><li>Full home drill library</li><li>Progress charts and full review timeline</li><li>Weekly drill tracking your coach can see</li></ul>
+      <p class="small muted">Free with every club: the coach's latest review, skill ratings, player profile and team chat.</p>
+      <button type="button" class="btn" data-act="pickPortal" data-id="family" style="align-self:flex-start">Sign up as a family</button>
+    </div>
+  </div>
+  <div class="card stack"><h2>Questions</h2>
+    <div class="faq"><b>Is Home Training free if my club includes it?</b><p class="muted">Yes. If your club includes Home Training, every connected family gets it at no extra cost.</p></div>
+    <div class="faq"><b>Do players need their own account?</b><p class="muted">No. Parents can use one account; older players can make their own login with the same player code.</p></div>
+    <div class="faq"><b>Something else?</b><p class="muted"><a href="#contact">Contact us</a> and we'll get back to you.</p></div>
+  </div>`;
+}
+
+function pageContact(){
+  if(S.contactSent) return `<section class="page-hero stack"><span class="eyebrow">Contact Us</span><h1>Thanks, we got your message</h1>
+    <p class="lead">We'll reply to ${esc(S.contactSent)} as soon as we can.</p><div><a class="btn" href="#how-it-works">See how ${APP_NAME} works</a></div></section>`;
+  return `<section class="page-hero stack"><span class="eyebrow">Contact Us</span>
+    <h1>Talk to us</h1>
+    <p class="lead">Want a walkthrough for your club, have a question about pricing, or need help with your account? Send us a message.</p></section>
+  <form class="card stack contact-form" data-form="contact" style="max-width:720px">
+    <div class="grid2" style="gap:14px">
+      <label class="f" for="ct-name">Your name<input type="text" id="ct-name" name="name" required maxlength="80" autocomplete="name"></label>
+      <label class="f" for="ct-email">Email<input type="email" id="ct-email" name="email" required maxlength="120" autocomplete="email"></label>
+      <label class="f" for="ct-role">I am a<select id="ct-role" name="role"><option>Club director</option><option>Coach</option><option>Parent</option><option>Player</option><option>Other</option></select></label>
+      <label class="f" for="ct-topic">Topic<select id="ct-topic" name="topic"><option>Club demo</option><option>Pricing</option><option>Help with my account</option><option>Feedback</option><option>Other</option></select></label>
+    </div>
+    <label class="f" for="ct-club">Club or team (optional)<input type="text" id="ct-club" name="club" maxlength="120"></label>
+    <label class="f" for="ct-msg">Message<textarea id="ct-msg" name="message" required maxlength="2000" style="min-height:140px"></textarea></label>
+    <div class="hp" aria-hidden="true"><label for="ct-web">Leave this empty<input type="text" id="ct-web" name="website" tabindex="-1" autocomplete="off"></label></div>
+    <p class="small" id="ct-msg-status" role="status" style="color:var(--accent);font-weight:600"></p>
+    <div><button class="btn primary" type="submit">Send message</button></div>
+  </form>`;
+}
+
+FORMS.contact = async (fd, form) => {
+  const status = form.querySelector("#ct-msg-status");
+  if(String(fd.get("website") || "")){ S.contactSent = "you"; render(); return; }
+  const row = {name:String(fd.get("name")).trim(), email:String(fd.get("email")).trim(), role:String(fd.get("role")||""), topic:String(fd.get("topic")||""),
+    club:String(fd.get("club")||"").trim(), message:String(fd.get("message")).trim()};
+  const {error} = await sb.from("contact_messages").insert(row);
+  if(error){ console.error(error); status.textContent = "Your message couldn't be sent right now. Please try again in a moment."; return; }
+  S.contactSent = row.email; render(); window.scrollTo(0,0);
+};
+ACTS.menu = () => { S.menuOpen = !S.menuOpen; render(); };
+ACTS.home = () => { S.publicPage = null; S.menuOpen = false; try { history.replaceState(null, "", location.pathname + location.search); } catch(_){} render(); window.scrollTo(0,0); };
 
 /* ---------- sign-in screens ---------- */
 function setupView(){
@@ -1622,7 +1824,7 @@ function exampleProfile(){
 }
 function savePortal(p){ S.portal = p || null; try { if(p) localStorage.setItem("np.portal", p); else localStorage.removeItem("np.portal"); } catch(_){} }
 ACTS.pickPortal = ds => {
-  savePortal(ds.id);
+  savePortal(ds.id); S.publicPage = null; S.menuOpen = false;
   S.authMode = "signin";
   try { history.replaceState(null, "", location.pathname + location.search + (ds.id ? "#" + (ds.id === "coach" ? "coach" : "parent") : "")); } catch(_){}
   render(); const e = document.getElementById("au-email"); if(e) e.focus();
@@ -1666,6 +1868,7 @@ async function onSession(session, event){
   const m = /^profile-([a-z0-9]+)$/.exec(location.hash.slice(1));
   if(m) S.publicSlug = m[1];
   try { S.portal = localStorage.getItem("np.portal") || null; } catch(_){}
+  if(PAGE_IDS.includes(location.hash.slice(1))) S.publicPage = location.hash.slice(1);
   if(location.hash === "#coach") savePortal("coach");
   if(location.hash === "#parent") savePortal("family");
   if(!cfg.supabaseUrl || !cfg.supabaseKey || /YOUR_/.test(cfg.supabaseUrl + cfg.supabaseKey)){
