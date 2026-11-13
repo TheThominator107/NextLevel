@@ -30,6 +30,43 @@ const SCALE = {1:"Needs a lot of work", 2:"Developing", 3:"Solid for their level
 const reviewForm = r => (r && r.ratings && Object.keys(r.ratings).some(k => k.startsWith("gk_"))) ? "gk" : "field";
 const skillsFor = form => form === "gk" ? GK_SKILLS : FIELD_SKILLS;
 const formLabel = form => form === "gk" ? "Goalkeeper review" : "Field player review";
+const validRating = v => { const n = Number(v); return n >= 1 && n <= 5 ? n : null; };
+function changesBetween(prev, cur){
+  if(!prev || !cur || reviewForm(prev) !== reviewForm(cur)) return [];
+  return skillsFor(reviewForm(cur)).map(s => ({label:s.label, from:validRating(prev.ratings[s.k]), to:validRating(cur.ratings[s.k])}))
+    .filter(c => c.from != null && c.to != null && c.from !== c.to);
+}
+const changeChip = c => `<span class="chip ${c.to>c.from?"str":"imp"}">${esc(c.label)} ${c.from} → ${c.to} ${c.to>c.from?"▲":"▼"}</span>`;
+function progressSummary(rs){
+  if(rs.length < 2) return "";
+  const first = rs[0], last = rs[rs.length-1];
+  const o1 = overall(first), o2 = overall(last);
+  const ch = changesBetween(first, last).sort((a,b) => (b.to-b.from) - (a.to-a.from));
+  const gains = ch.filter(c => c.to > c.from).slice(0,3), drops = ch.filter(c => c.to < c.from).slice(-2);
+  const days = Math.max(0, daysSince(first.date) - daysSince(last.date));
+  const span = days === 0 ? "on the same day" : days >= 60 ? "over " + Math.round(days/30) + " months" : "over " + days + (days === 1 ? " day" : " days");
+  return `<div class="progress-sum stack" style="gap:8px">
+    <div class="row between"><b>Since the first review</b><span class="small muted">${rs.length} reviews ${span}</span></div>
+    ${o1!=null&&o2!=null ? `<div class="overall"><span class="score num" style="font-size:1.6rem">${fix1(o1)} → ${fix1(o2)}</span><span class="muted">overall</span>${deltaHtml(o2-o1)}</div>` : ""}
+    ${gains.length ? `<div class="stack" style="gap:4px"><span class="small muted">Biggest improvements</span><div class="chips">${gains.map(changeChip).join("")}</div></div>` : ""}
+    ${drops.length ? `<div class="stack" style="gap:4px"><span class="small muted">Dipped since the first review</span><div class="chips">${drops.map(changeChip).join("")}</div></div>` : ""}
+    ${reviewForm(first) !== reviewForm(last) ? `<p class="small muted">The first and latest reviews use different forms (field player and goalkeeper), so only the overall score is compared.</p>` : ""}
+  </div>`;
+}
+function timelineHtml(rs, opts={}){
+  if(!rs.length) return '<p class="muted">No reviews yet.</p>';
+  const admin = S.me && S.me.role === "admin" && opts.staff;
+  return `<div class="tl">${rs.map((r,i) => ({r, prev: rs[i-1]})).reverse().map(({r, prev}) => {
+    const o = overall(r), po = overall(prev), ch = changesBetween(prev, r);
+    return `<div class="tl-item">
+      <div class="row between"><div><b>${fmtDate(r.date)}</b> <span class="small muted">${esc(r.coachName||"Coach")}${prev?"":" · first review"}${reviewForm(r)==="gk"?" · goalkeeper":""}</span></div>
+        <div class="row"><span class="score num">${o!=null?fix1(o):"–"}</span>${o!=null&&po!=null?deltaHtml(o-po):""}</div></div>
+      ${r.summary ? `<p class="tl-sum">“${esc(r.summary)}”</p>` : ""}
+      ${ch.length ? `<div class="chips">${ch.map(changeChip).join("")}</div>` : (prev && reviewForm(prev)===reviewForm(r) ? `<span class="small muted">No rating changes</span>` : "")}
+      ${r.note ? `<details><summary class="small">Coach's full note</summary><p class="small" style="margin-top:4px;white-space:pre-wrap">${esc(r.note)}</p></details>` : ""}
+      ${admin ? `<div><button class="btn ghost sm" data-act="delReview" data-id="${esc(r.id)}" aria-label="Delete review from ${esc(fmtDate(r.date))}">Delete (admin)</button></div>` : ""}
+    </div>`; }).join("")}</div>`;
+}
 const TAGS = ["First touch","Weak foot","Passing range","Scanning","1v1 attacking","1v1 defending","Finishing","Crossing","Heading","Shielding","Positioning","Decision making","Speed","Work rate","Communication","Confidence on the ball","Leadership","Composure"];
 const POSITIONS = ["Goalkeeper","Defender","Midfielder","Forward","Not set"];
 const CATS = ["Ball mastery","Passing","Dribbling","Shooting","Defending","Awareness","Speed & agility","Goalkeeping"];
@@ -566,7 +603,9 @@ function playerDetail(p, mode){
 
   const reviewCard = `<div class="card stack">
     <div class="row between"><h2>${fam?"Coach's latest review":"Latest review"}</h2>${last?`<span class="muted small">${fmtDate(last.date)}${last.coachName?" · "+esc(last.coachName):""}</span>`:""}</div>
-    ${last ? `<div class="overall"><span class="big num">${fix1(o)}</span><span class="muted">/ 5 overall</span>${po!=null?deltaHtml(o-po):""}</div>
+    ${last ? `<div class="overall"><span class="big num">${o!=null?fix1(o):"–"}</span><span class="muted">/ 5 overall</span>${o!=null&&po!=null?deltaHtml(o-po):""}</div>
+      ${last.summary ? `<p class="tl-sum">“${esc(last.summary)}”</p>` : ""}
+      ${changesBetween(prev, last).length ? `<div class="chips">${changesBetween(prev, last).map(changeChip).join("")}</div>` : ""}
       <div class="stack" style="gap:6px"><h3>Strengths</h3><div class="chips">${strengths.length?strengths.map(t=>`<span class="chip str">${esc(t)}</span>`).join(""):'<span class="muted small">None noted</span>'}</div></div>
       <div class="stack" style="gap:6px"><h3>Work on</h3><div class="chips">${improve.length?improve.map(t=>`<span class="chip imp">${esc(t)}</span>`).join(""):'<span class="muted small">None noted</span>'}</div></div>
       ${last.note?`<div class="note">${esc(last.note)}</div>`:""}`
@@ -587,7 +626,7 @@ function playerDetail(p, mode){
   }
 
   const progressCard = home ? `<div class="card stack"><h2>Progress over time</h2>${chartHtml(rs)}</div>` : "";
-  const historyCard = (home || !fam) ? `<div class="card stack"><h2>Review history</h2>${rs.length?`<div class="list">${rs.slice().reverse().map(r=>`<div class="row between"><div><b>${fmtDate(r.date)}</b> <span class="muted small">${esc(r.coachName||"")}</span>${r.note?`<p class="small muted" style="margin-top:2px">${esc(String(r.note).slice(0,140))}${String(r.note).length>140?"…":""}</p>`:""}</div><div class="row"><span class="score num">${fix1(overall(r))}</span>${!fam?`<button class="btn ghost sm" data-act="delReview" data-id="${esc(r.id)}" aria-label="Delete review from ${esc(fmtDate(r.date))}">Delete</button>`:""}</div></div>`).join("")}</div>`:'<p class="muted">No reviews yet.</p>'}</div>` : "";
+  const historyCard = (home || !fam) ? `<div class="card stack"><h2>Progress & review timeline</h2>${progressSummary(rs)}${timelineHtml(rs, {staff:!fam})}</div>` : `<div class="locked"><h2>Review timeline</h2><p>Every past review is saved. See each update, what changed and progress since the first review with Home Training.</p><button class="btn primary" data-act="go" data-view="plans">See Home Training plan</button></div>`;
 
   return `<div class="grid2">
     <div class="stack" style="gap:20px">${reviewCard}${drillsCard}</div>
@@ -607,7 +646,7 @@ function playerView(){
     <div class="row">
       <button class="btn" data-act="preview">${S.preview?"Back to coach view":"See what the family sees"}</button>
       <button class="btn" data-act="modal" data-m="editPlayer" data-player="${esc(p.id)}">Edit</button>
-      <button class="btn primary" data-act="modal" data-m="review" data-player="${esc(p.id)}">New review</button>
+      <button class="btn primary" data-act="modal" data-m="review" data-player="${esc(p.id)}">${reviewsFor(p.id).length ? "Update review" : "First review"}</button>
     </div>
   </div></div>
   ${subtabs()}
@@ -710,13 +749,14 @@ function profileHtml(p, opts){
       <div class="row between"><h2>Coach review</h2><span class="pill plain" title="Never shown on a public profile">🔒 Private</span></div>
       <p class="small muted">Only ${esc(p.name)}, their family and the club's coaches can see this. It never appears on the public profile.</p>
       ${last ? `<div class="row between"><div class="overall"><span class="big num">${o!=null?fix1(o):"–"}</span><span class="muted">/ 5 overall</span>${o!=null&&po!=null?deltaHtml(o-po):""}</div><span class="small muted">${fmtDate(last.date)}${last.coachName?" · "+esc(last.coachName):""}</span></div>
+        ${last.summary ? `<p class="tl-sum">“${esc(last.summary)}”</p>` : ""}
         ${(last.strengths||[]).length?`<div class="chips">${last.strengths.map(t=>`<span class="chip str">${esc(t)}</span>`).join("")}</div>`:""}
         ${(last.improve||[]).length?`<div class="chips">${last.improve.map(t=>`<span class="chip imp">Work on: ${esc(t)}</span>`).join("")}</div>`:""}
         ${ratingsHtml(last, prev)}
         ${last.note?`<div class="note">${esc(last.note)}</div>`:""}
         ${rs.length>1?`<p class="small muted">${rs.length} reviews so far. See progress over time on the Development tab.</p>`:""}`
       : `<p class="muted">${staff ? "No review yet." : "Your coach hasn't posted a review yet."}</p>`}
-      ${staff ? `<div><button class="btn primary sm" data-act="modal" data-m="review" data-player="${esc(p.id)}">New review</button></div>` : ""}
+      ${staff ? `<div><button class="btn primary sm" data-act="modal" data-m="review" data-player="${esc(p.id)}">${rs.length ? "Update review" : "First review"}</button></div>` : ""}
     </div>`;
   }
   return `${head}<div class="grid2"><div class="stack" style="gap:20px">${privCard}${vidCard}${histCard}</div><div class="stack" style="gap:20px">${comCard}</div></div>`;
@@ -958,9 +998,9 @@ const MODALS = {
         out += `<div class="slider"><label for="r-${s.k}">${s.label}</label><input type="range" min="1" max="5" step="1" id="r-${s.k}" name="r-${s.k}" value="${v}" data-out="o-${s.k}" data-scale="1" ${f!==form?"disabled":""}><output id="o-${s.k}" title="${esc(SCALE[v])}">${v}</output></div>`;
       }
       return out; };
-    return `<h2>Review: ${esc(p.name)}</h2>
-    <p class="small muted">${last?"Sliders start at the last review's ratings.":"First review sets the baseline."} 1 Needs a lot of work · 2 Developing · 3 Solid for their level · 4 Strong · 5 Excellent</p>
-    <form data-form="review" data-id="${esc(p.id)}">
+    return `<h2>${last ? "Update review" : "First review"}: ${esc(p.name)}</h2>
+    <p class="small muted">${last?`Sliders start at the last review's ratings (${fmtDate(last.date)}). Move only what has changed. The previous review stays saved in the timeline.`:"This first review sets the baseline that future progress is measured from."} 1 Needs a lot of work · 2 Developing · 3 Solid for their level · 4 Strong · 5 Excellent</p>
+    <form data-form="review" data-id="${esc(p.id)}" data-last="${last ? esc(JSON.stringify({form:lastForm, ratings:last.ratings})) : ""}">
       <label class="f" for="r-date" style="max-width:200px">Date<input type="date" id="r-date" name="date" value="${today()}" required></label>
       <fieldset class="seg" style="border:0;padding:0;margin:0"><legend class="small" style="font-weight:600;margin-bottom:6px">Review type</legend>
         <label class="chipbox" for="rf-field"><input type="radio" id="rf-field" name="form" value="field" data-reviewform="1" ${form==="field"?"checked":""}><span>Field player</span></label>
@@ -968,6 +1008,11 @@ const MODALS = {
       </fieldset>
       <div class="stack rset" data-set="field" style="gap:8px" ${form==="field"?"":"hidden"}>${sliderSet("field")}</div>
       <div class="stack rset" data-set="gk" style="gap:8px" ${form==="gk"?"":"hidden"}>${sliderSet("gk")}</div>
+      <div class="update-box stack" style="gap:8px">
+        ${last ? `<div class="small"><b>Changes since last review:</b> <span id="r-changes" class="muted">None yet. Move a slider to record a change.</span></div>` : ""}
+        <label class="f" for="r-summary">${last ? "What changed since the last review?" : "One-line summary"} <span class="small muted">(required, shown in the progress timeline)</span>
+          <input type="text" id="r-summary" name="summary" required maxlength="280" placeholder="${last ? "e.g. First touch much sharper since the winter clinic; still working on weak foot." : "e.g. Strong passer, needs to get more involved defensively."}"></label>
+      </div>
       <div class="stack" style="gap:6px"><b>Strengths</b>${chips("str", [])}<input type="text" name="strOther" id="r-str-other" placeholder="Other strengths, separated by commas" aria-label="Other strengths"></div>
       <div class="stack" style="gap:6px"><b>Work on</b>${chips("imp", [])}<input type="text" name="impOther" id="r-imp-other" placeholder="Other areas, separated by commas" aria-label="Other areas to work on"></div>
       <label class="f" for="r-note">Note to player & family<textarea id="r-note" name="note" maxlength="1500" placeholder="What went well, and one thing to focus on before the next review."></textarea></label>
@@ -1077,7 +1122,10 @@ const ACTS = {
   unassign: async ds => { await save(() => S.db.doc("assignments/" + ds.id).delete(), "Drill removed"); },
   delDrill: async ds => { await save(() => S.db.doc("drills/" + ds.id).delete(), "Drill deleted"); },
   delTeam: async ds => { if(S.teamFilter === ds.id) S.teamFilter = "all"; await save(() => S.db.doc("teams/" + ds.id).delete(), "Team deleted"); },
-  delReview: async ds => { await save(() => S.db.doc("reviews/" + ds.id).delete(), "Review deleted"); },
+  delReview: async (ds, el) => {
+    if(!el.dataset.armed){ el.dataset.armed = "1"; el.textContent = "Click again to permanently delete"; return; }
+    await save(() => S.db.doc("reviews/" + ds.id).delete(), "Review deleted");
+  },
   delPlayer: async ds => {
     const el = document.querySelector('[data-act="delPlayer"]');
     if(el && !el.dataset.armed){ el.dataset.armed = "1"; el.textContent = "Click again to remove"; return; }
@@ -1176,7 +1224,16 @@ const FORMS = {
     const strengths = Array.from(new Set(fd.getAll("str").concat(split(fd.get("strOther")))));
     const improve = Array.from(new Set(fd.getAll("imp").concat(split(fd.get("impOther")))));
     closeModal();
-    await save(() => S.db.collection("reviews").doc().set({clubId:S.me.clubId, playerId:form.dataset.id, coachId:S.uid, coachName:S.me.name||"", date:fd.get("date")||today(), ratings, strengths, improve, note:fd.get("note").trim(), createdAt:Date.now()}), "Review saved");
+    const row = {clubId:S.me.clubId, playerId:form.dataset.id, coachId:S.uid, coachName:S.me.name||"", date:fd.get("date")||today(), ratings, strengths, improve, note:fd.get("note").trim(), summary:String(fd.get("summary")||"").trim().slice(0,280), createdAt:Date.now()};
+    await save(async () => {
+      try { await S.db.collection("reviews").doc().set(row); }
+      catch(e){
+        if(!/summary/i.test(e.message||"")) throw e;
+        const {summary, ...rest} = row;
+        await S.db.collection("reviews").doc().set({...rest, note: (summary ? "Update: " + summary + (rest.note ? "\n\n" + rest.note : "") : rest.note)});
+        toast("Saved. Ask your admin to run database update 002 so update notes get their own field.", true);
+      }
+    }, "Review saved. The previous one stays in the timeline.");
   },
   assign: async fd => {
     const d = drillById(fd.get("drillId"));
@@ -1269,6 +1326,7 @@ document.addEventListener("submit", async ev => {
 document.addEventListener("input", ev => {
   const o = ev.target.dataset && ev.target.dataset.out;
   if(o){ const out = document.getElementById(o); if(out){ out.textContent = ev.target.value; if(ev.target.dataset.scale) out.title = SCALE[ev.target.value] || ""; } }
+  if(ev.target.dataset && ev.target.dataset.scale) updateChangeHint(ev.target.form);
 });
 document.addEventListener("error", ev => {
   const t = ev.target;
@@ -1294,6 +1352,15 @@ document.addEventListener("change", async ev => {
     return;
   }
 });
+function updateChangeHint(form){
+  const box = form && form.querySelector("#r-changes"); if(!box || !form.dataset.last) return;
+  let last; try { last = JSON.parse(form.dataset.last); } catch(_){ return; }
+  const f = (form.querySelector('input[name="form"]:checked') || {}).value || "field";
+  if(f !== last.form){ box.textContent = "Different review type from last time, so ratings start fresh."; return; }
+  const ch = skillsFor(f).map(s => ({label:s.label, from:validRating(last.ratings[s.k]), to:validRating((form.querySelector("#r-" + s.k) || {}).value)}))
+    .filter(c => c.from != null && c.to != null && c.from !== c.to);
+  box.innerHTML = ch.length ? ch.map(changeChip).join(" ") : "None yet. Move a slider to record a change.";
+}
 document.addEventListener("change", ev => {
   if(ev.target.dataset && ev.target.dataset.reviewform){
     const f = ev.target.value, form = ev.target.form;
@@ -1301,6 +1368,7 @@ document.addEventListener("change", ev => {
       const on = el.dataset.set === f; el.hidden = !on;
       el.querySelectorAll("input").forEach(i => i.disabled = !on);
     });
+    updateChangeHint(form);
     return;
   }
   if(ev.target.dataset && ev.target.dataset.change === "chatTeam"){ S.chatTeam = ev.target.value; render(); return; }

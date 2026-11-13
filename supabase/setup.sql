@@ -64,6 +64,7 @@ create table public.reviews (
   strengths  text[] not null default '{}',
   improve    text[] not null default '{}',
   note       text not null default '' check (char_length(note) <= 1500),
+  summary    text not null default '' check (char_length(summary) <= 280),
   created_at timestamptz not null default now()
 );
 
@@ -255,7 +256,7 @@ create policy links_del on public.family_links for delete to authenticated using
 create policy reviews_read  on public.reviews for select to authenticated using (can_see_player(player_id));
 create policy reviews_write on public.reviews for insert to authenticated
   with check (club_id = my_club() and is_staff() and coach_id = auth.uid() and player_in_my_club(player_id));
-create policy reviews_del   on public.reviews for delete to authenticated using (club_id = my_club() and is_staff());
+create policy reviews_del   on public.reviews for delete to authenticated using (club_id = my_club() and is_admin());
 
 -- drills (club's own drills; built-in drills live in the app)
 create policy drills_read  on public.drills for select to authenticated using (club_id = my_club());

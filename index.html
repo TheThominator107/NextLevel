@@ -263,6 +263,16 @@ nav.tabs button[aria-current="page"] .badge{background:var(--paper);color:var(--
 form.auth-family{border-top:5px solid var(--pitch)}
 form.auth-family .btn.primary{background:var(--pitch);border-color:var(--pitch);color:#fff}
 form.auth-coach{border-top:5px solid var(--accent)}
+
+/* review timeline */
+.tl{display:flex;flex-direction:column;border-left:3px solid var(--line);margin-left:6px}
+.tl-item{position:relative;padding:4px 0 18px 18px;display:flex;flex-direction:column;gap:6px}
+.tl-item::before{content:"";position:absolute;left:-8.5px;top:8px;width:14px;height:14px;border-radius:50%;background:var(--surface);border:3px solid var(--accent)}
+.tl-item:first-child::before{background:var(--accent)}
+.tl-sum{font-weight:600;margin:0}
+.progress-sum{background:var(--chip);border-radius:10px;padding:14px}
+.update-box{background:var(--chip);border-radius:10px;padding:12px}
+details summary{cursor:pointer;color:var(--pitch);font-weight:600}
 </style>
 </head>
 <body>
