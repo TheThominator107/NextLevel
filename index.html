@@ -394,6 +394,25 @@ nav.tabs .signout-link{padding:8px 8px}
   nav.app-tabs button,nav.app-tabs a.signout-link{text-align:left;padding:12px 6px;border-radius:0;border-bottom:1px solid rgba(255,255,255,.08)}
   nav.app-tabs button[aria-current="page"]{background:transparent;color:inherit;box-shadow:inset 3px 0 0 var(--accent);padding-left:12px}
 }
+
+/* drill library dropdowns */
+.lib-tools{align-items:flex-end;gap:12px}
+.search-f{flex:1;min-width:240px;max-width:560px}
+input[type=search]{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;font-weight:400;width:100%}
+.lib-note{margin-top:-6px}
+.skill-group{display:flex;flex-direction:column;gap:8px}
+.sg-title{font-size:1.15rem;margin-top:6px}
+.skill-dd{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);--muted:var(--card-muted)}
+.skill-dd > summary{list-style:none;display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;color:var(--ink);font-weight:700}
+.skill-dd > summary::-webkit-details-marker{display:none}
+.skill-dd > summary:hover{background:var(--chip);border-radius:12px}
+.skill-dd[open] > summary{border-bottom:1px solid var(--line);border-radius:12px 12px 0 0}
+.sk-name{font-family:var(--display);font-size:1.15rem}
+.sk-count{margin-left:auto;font-size:.85rem;font-weight:600;color:var(--card-muted);background:var(--chip);padding:3px 10px;border-radius:999px}
+.chev{width:10px;height:10px;border-right:2.5px solid var(--card-muted);border-bottom:2.5px solid var(--card-muted);transform:rotate(45deg);margin:0 4px 4px 2px;flex:none}
+.skill-dd[open] .chev{transform:rotate(-135deg);margin-bottom:-4px}
+@media (prefers-reduced-motion:no-preference){.chev{transition:transform .15s}}
+.skill-dd .dgrid{padding:14px}
 </style>
 </head>
 <body>

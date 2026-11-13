@@ -1042,7 +1042,7 @@ function readHash(){
 function drillsView(){
   const staff = isStaff();
   const locked = !staff && !familyHasHome();
-  const list = allDrills().filter(d => (S.catFilter === "All" || d.category === S.catFilter) && (!S.skillFilter || (d.skills||[]).includes(S.skillFilter)));
+  const list = allDrills();
   let recs = locked ? paywallBanner() : "";
   if(!staff && !locked){
     const kids = S.players.filter(p => (S.me.playerIds||[]).includes(p.id));
@@ -1051,12 +1051,8 @@ function drillsView(){
   return `<div class="row between"><div class="stack" style="gap:4px"><h1>${staff?"Drill library":"Home drills"}</h1><p class="muted small">${staff?"Built-in drills plus any your club adds. Assign them to players for home practice.":"Drills you can do at home with a ball and a little space."}</p></div>
     ${staff?`<button class="btn primary" data-act="modal" data-m="drill">Add club drill</button>`:""}</div>
   ${recs}
-  <div class="row between"><h2>${staff ? "All drills" : "All home drills"}</h2>
-    <label class="f small" for="skill-filter" style="min-width:220px">Works on<select id="skill-filter" data-change="skillFilter"><option value="">Any skill</option>
-      <optgroup label="Field players">${FIELD_SKILLS.map(sk=>`<option value="${sk.k}" ${S.skillFilter===sk.k?"selected":""}>${sk.label}</option>`).join("")}</optgroup>
-      <optgroup label="Goalkeepers">${GK_SKILLS.map(sk=>`<option value="${sk.k}" ${S.skillFilter===sk.k?"selected":""}>${sk.label}</option>`).join("")}</optgroup></select></label></div>
-  <div class="filters" role="group" aria-label="Filter by category">${["All"].concat(CATS).map(c=>`<button data-act="cat" data-id="${esc(c)}" aria-pressed="${S.catFilter===c}">${esc(c)}</button>`).join("")}</div>
-  ${list.length ? `<div class="dgrid">${list.map(d=>drillCard(d,{assignable:staff})).join("")}</div>` : `<p class="muted">No drills in this category yet.</p>`}`;
+  <h2>${staff ? "All drills by skill" : "All home drills by skill"}</h2>
+  ${drillLibraryHtml(list, {assignable:staff})}`;
 }
 
 function plansView(){
@@ -1641,19 +1637,12 @@ function paywallBanner(){
   </div>`;
 }
 function pageDrills(){
-  const list = BUILTIN_DRILLS.filter(d => (S.catFilter === "All" || d.category === S.catFilter) && (!S.skillFilter || (d.skills||[]).includes(S.skillFilter)))
-    .sort((a,b) => (b.free?1:0) - (a.free?1:0));
+  const list = BUILTIN_DRILLS;
   return `<section class="page-hero stack"><span class="eyebrow">Drills</span>
     <h1>${BUILTIN_DRILLS.length} drills players can do at home</h1>
     <p class="lead">A ball, a wall and a little space. Each drill lists the skills it trains. Signed-in players get the ones that match their coach's latest review.</p></section>
   ${paywallBanner()}
-  <div class="row between">
-    <div class="filters" role="group" aria-label="Filter by category">${["All"].concat(CATS).map(c=>`<button data-act="cat" data-id="${esc(c)}" aria-pressed="${S.catFilter===c}">${esc(c)}</button>`).join("")}</div>
-    <label class="f small" for="skill-filter" style="min-width:220px">Works on<select id="skill-filter" data-change="skillFilter"><option value="">Any skill</option>
-      <optgroup label="Field players">${FIELD_SKILLS.map(sk=>`<option value="${sk.k}" ${S.skillFilter===sk.k?"selected":""}>${sk.label}</option>`).join("")}</optgroup>
-      <optgroup label="Goalkeepers">${GK_SKILLS.map(sk=>`<option value="${sk.k}" ${S.skillFilter===sk.k?"selected":""}>${sk.label}</option>`).join("")}</optgroup></select></label>
-  </div>
-  ${list.length ? `<div class="dgrid">${list.map(d => drillCard(d)).join("")}</div>` : `<p class="muted">No drills match. Try another filter.</p>`}
+  ${drillLibraryHtml(list)}
   <div class="card stack callout"><h2>Get drills picked for you</h2><p>When your coach reviews you on ${APP_NAME}, we recommend the drills that work on exactly what they flagged.</p>${cta("Start as a coach","Sign up as a parent or player")}</div>`;
 }
 
@@ -2060,6 +2049,63 @@ FORMS.meetingNotes = async (fd, form) => {
   closeModal();
   await save(() => S.db.doc("meetings/" + form.dataset.id).update({status:"done", notes:String(fd.get("notes")||"").trim(), updatedAt:Date.now()}), "Notes saved");
 };
+
+
+/* ---------- drill library organised by skill (dropdowns) ---------- */
+const SKILL_GROUPS = (() => {
+  const groups = [];
+  for(const sk of FIELD_SKILLS){ let g = groups.find(x => x.name === sk.group && !x.gk); if(!g){ g = {name:sk.group, gk:false, skills:[]}; groups.push(g); } g.skills.push(sk); }
+  groups.push({name:"Goalkeepers", gk:true, skills:GK_SKILLS});
+  return groups;
+})();
+if(!S.openSkills) S.openSkills = new Set();
+function drillMatches(d, q){
+  if(!q) return true;
+  const hay = (d.title + " " + d.category + " " + (d.equipment||"") + " " + (d.skills||[]).map(k => SKILL_LABEL[k] || "").join(" ")).toLowerCase();
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w));
+}
+function drillLibraryHtml(list, opts = {}){
+  const q = (S.drillSearch || "").trim();
+  const shown = list.filter(d => drillMatches(d, q));
+  const section = (key, label, drills, sub) => {
+    const n = drills.length; if(!n) return "";
+    const free = drills.filter(d => d.free && stepsLocked()).length;
+    const open = q ? true : S.openSkills.has(key);
+    return `<details class="skill-dd" data-skill="${esc(key)}" ${open ? "open" : ""}>
+      <summary><span class="sk-name">${esc(label)}</span>${sub ? `<span class="small muted">${esc(sub)}</span>` : ""}<span class="sk-count">${n} drill${n===1?"":"s"}${free ? ` · ${free} free` : ""}</span><span class="chev" aria-hidden="true"></span></summary>
+      <div class="dgrid">${drills.slice().sort((a,b) => (b.free?1:0) - (a.free?1:0) || a.title.localeCompare(b.title)).map(d => drillCard(d, {assignable:opts.assignable})).join("")}</div>
+    </details>`;
+  };
+  const custom = shown.filter(d => d.custom);
+  let html = custom.length ? `<div class="skill-group"><h3 class="sg-title">Your club's drills</h3>${section("club", "Club drills", custom, "Added by your coaches")}</div>` : "";
+  for(const g of SKILL_GROUPS){
+    const parts = g.skills.map(sk => section(sk.k, sk.label, shown.filter(d => !d.custom && (!!d.gk === g.gk) && (d.skills||[]).includes(sk.k)))).join("");
+    if(parts) html += `<div class="skill-group"><h3 class="sg-title">${g.gk ? "🧤 Goalkeepers" : esc(g.name)}${g.gk ? "" : ` <span class="small muted">· field players</span>`}</h3>${parts}</div>`;
+  }
+  const total = shown.length;
+  return `<div class="lib-tools row between">
+      <label class="f small search-f" for="drill-search">Find a drill<input type="search" id="drill-search" data-input="drillSearch" value="${esc(S.drillSearch || "")}" placeholder="Search by name, skill or equipment, e.g. wall, shooting, cones"></label>
+      <div class="row" style="gap:6px"><button type="button" class="btn sm" data-act="skillsAll" data-open="1">Open all</button><button type="button" class="btn sm" data-act="skillsAll" data-open="0">Close all</button></div>
+    </div>
+    <p class="small muted lib-note">${q ? `${total} drill${total===1?"":"s"} match “${esc(q)}”.` : `Pick a skill to see the drills that train it. Some drills train more than one skill, so they appear under each.`}</p>
+    ${html || `<p class="muted">No drills match “${esc(q)}”. Try another word.</p>`}`;
+}
+ACTS.skillsAll = ds => {
+  const keys = ["club"].concat(FIELD_SKILLS.map(s => s.k), GK_SKILLS.map(s => s.k));
+  S.openSkills = ds.open === "1" ? new Set(keys) : new Set();
+  render();
+};
+document.addEventListener("toggle", ev => {
+  const d = ev.target; if(!d.classList || !d.classList.contains("skill-dd") || (S.drillSearch||"").trim()) return;
+  if(d.open) S.openSkills.add(d.dataset.skill); else S.openSkills.delete(d.dataset.skill);
+}, true);
+document.addEventListener("input", ev => {
+  if(!ev.target.dataset || ev.target.dataset.input !== "drillSearch") return;
+  S.drillSearch = ev.target.value;
+  const pos = ev.target.selectionStart;
+  render();
+  const el = document.getElementById("drill-search"); if(el){ el.focus(); try{ el.setSelectionRange(pos, pos); }catch(_){} }
+});
 
 /* ---------- sign-in screens ---------- */
 function setupView(){
