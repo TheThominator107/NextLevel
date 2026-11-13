@@ -2,16 +2,34 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 "use strict";
 const APP_NAME = "NextPlay";
 
-const SKILLS = [
-  {k:"control",label:"First touch & control",group:"Technical"},
+const FIELD_SKILLS = [
+  {k:"first_touch",label:"First Touch",group:"Technical"},
   {k:"passing",label:"Passing",group:"Technical"},
-  {k:"dribbling",label:"Dribbling & 1v1",group:"Technical"},
-  {k:"shooting",label:"Shooting & finishing",group:"Technical"},
+  {k:"shooting",label:"Shooting",group:"Technical"},
+  {k:"dribbling",label:"Dribbling",group:"Technical"},
+  {k:"physicality",label:"Physicality",group:"Speed & physical"},
+  {k:"handling_speed",label:"Handling Speed",group:"Speed & physical"},
+  {k:"separation_speed",label:"Separation Speed",group:"Speed & physical"},
+  {k:"positional_awareness",label:"Positional Awareness",group:"Tactical"},
+  {k:"decision_making",label:"Decision Making",group:"Tactical"},
   {k:"defending",label:"Defending",group:"Tactical"},
-  {k:"awareness",label:"Positioning & awareness",group:"Tactical"},
-  {k:"athleticism",label:"Speed & agility",group:"Physical"},
-  {k:"mindset",label:"Effort & coachability",group:"Mental"}
+  {k:"tactical_understanding",label:"Tactical Understanding",group:"Tactical"},
+  {k:"communication",label:"Communication",group:"Mindset"},
+  {k:"coachability",label:"Coachability",group:"Mindset"}
 ];
+const GK_SKILLS = [
+  {k:"gk_shot_stopping",label:"Shot Stopping",group:"Shot stopping"},
+  {k:"gk_diving",label:"Diving",group:"Shot stopping"},
+  {k:"gk_positioning",label:"Positioning",group:"Shot stopping"},
+  {k:"gk_ball_handling",label:"Ball Handling",group:"With the ball"},
+  {k:"gk_distribution",label:"Distribution",group:"With the ball"},
+  {k:"gk_decision_making",label:"Decision Making",group:"Mindset"},
+  {k:"gk_communication",label:"Communication",group:"Mindset"}
+];
+const SCALE = {1:"Needs a lot of work", 2:"Developing", 3:"Solid for their level", 4:"Strong", 5:"Excellent"};
+const reviewForm = r => (r && r.ratings && Object.keys(r.ratings).some(k => k.startsWith("gk_"))) ? "gk" : "field";
+const skillsFor = form => form === "gk" ? GK_SKILLS : FIELD_SKILLS;
+const formLabel = form => form === "gk" ? "Goalkeeper review" : "Field player review";
 const TAGS = ["First touch","Weak foot","Passing range","Scanning","1v1 attacking","1v1 defending","Finishing","Crossing","Heading","Shielding","Positioning","Decision making","Speed","Work rate","Communication","Confidence on the ball","Leadership","Composure"];
 const POSITIONS = ["Goalkeeper","Defender","Midfielder","Forward","Not set"];
 const CATS = ["Ball mastery","Passing","Dribbling","Shooting","Defending","Awareness","Speed & agility","Goalkeeping"];
@@ -92,7 +110,7 @@ function reviewsFor(pid){
 }
 function overall(r){
   if(!r || !r.ratings) return null;
-  const v = SKILLS.map(s => Number(r.ratings[s.k])).filter(x => x > 0);
+  const v = skillsFor(reviewForm(r)).map(s => Number(r.ratings[s.k])).filter(x => x >= 1 && x <= 5);
   return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null;
 }
 const allDrills = () => BUILTIN_DRILLS.concat(S.drills.map(d => ({...d, custom:true, steps:Array.isArray(d.steps)?d.steps:[]})));
@@ -478,32 +496,39 @@ function deltaHtml(d){
 
 function ratingsHtml(last, prev){
   if(!last) return `<p class="muted">No review yet.</p>`;
-  let html = "", g = "";
-  for(const s of SKILLS){
+  const form = reviewForm(last);
+  let html = `<span class="pill ${form==="gk"?"warn":"plain"}" style="align-self:flex-start">${formLabel(form)}</span>`, g = "";
+  for(const s of skillsFor(form)){
     if(s.group !== g){ g = s.group; html += `<div class="rgroup">${g}</div>`; }
-    const v = Number(last.ratings[s.k]) || 0, pv = prev ? Number(prev.ratings[s.k]) || 0 : null;
-    html += `<div class="rate"><span>${s.label}</span><div class="bar" role="img" aria-label="${v} out of 10"><i style="width:${v*10}%"></i></div><span class="num"><span class="score">${v}</span>${pv!=null && pv>0 ? " "+deltaHtml(v-pv) : ""}</span></div>`;
+    const v = Number(last.ratings[s.k]) || 0, pvRaw = prev && prev.ratings ? Number(prev.ratings[s.k]) : NaN;
+    const pv = pvRaw >= 1 && pvRaw <= 5 ? pvRaw : null;
+    html += `<div class="rate"><span>${s.label}</span><div class="bar" role="img" aria-label="${v} out of 5, ${esc(SCALE[v]||"not rated")}"><i style="width:${v*20}%"></i></div><span class="num" title="${esc(SCALE[v]||"")}"><span class="score">${v||"–"}</span>${pv!=null && v ? " "+deltaHtml(v-pv) : ""}</span></div>`;
   }
+  html += `<p class="small muted" style="margin-top:6px">1 Needs a lot of work · 2 Developing · 3 Solid for their level · 4 Strong · 5 Excellent</p>`;
   return `<div class="stack" style="gap:8px">${html}</div>`;
 }
 
 function chartHtml(rs){
   if(rs.length < 2) return `<p class="muted small">The progress chart appears after the second review.</p>`;
   const key = S.chartSkill;
-  const pts = rs.map(r => ({d:r.date, v: key==="overall" ? overall(r) : Number(r.ratings[key])||0}));
+  const latestForm = reviewForm(rs[rs.length-1]);
+  const validKey = key === "overall" || skillsFor(latestForm).some(s => s.k === key);
+  const k2 = validKey ? key : "overall";
+  const pts = rs.map(r => ({d:r.date, v: k2==="overall" ? overall(r) : Number(r.ratings[k2])})).filter(p => p.v >= 1 && p.v <= 5);
+  if(pts.length < 2) return `<p class="muted small">Not enough reviews with this rating yet to draw a chart.</p>`;
   const W=560,H=210,L=34,R=16,T=16,B=30, iw=W-L-R, ih=H-T-B;
   const x = i => L + (pts.length===1 ? iw/2 : i*iw/(pts.length-1));
-  const y = v => T + ih - (v/10)*ih;
-  const grid = [0,2,4,6,8,10].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}</text>`).join("");
+  const y = v => T + ih - (v/5)*ih;
+  const grid = [0,1,2,3,4,5].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}</text>`).join("");
   const line = pts.map((p,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
   const area = `${line} L${x(pts.length-1).toFixed(1)},${y(0)} L${x(0).toFixed(1)},${y(0)} Z`;
   const last = pts[pts.length-1];
   const labels = pts.map((p,i)=> (i===0 || i===pts.length-1 || pts.length<=6) ? `<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(shortDate(p.d))}</text>` : "").join("");
   const dots = pts.map((p,i)=>`<circle cx="${x(i)}" cy="${y(p.v)}" r="${i===pts.length-1?5.5:3.5}" fill="${i===pts.length-1?"var(--accent)":"var(--pitch)"}" stroke="var(--surface)" stroke-width="2"><title>${esc(fmtDate(p.d))}: ${fix1(p.v)}</title></circle>`).join("");
-  const opts = [["overall","Overall"]].concat(SKILLS.map(s=>[s.k,s.label]));
+  const opts = [["overall","Overall"]].concat(skillsFor(latestForm).map(s=>[s.k,s.label]));
   return `<div class="stack" style="gap:8px">
-    <label class="f small" for="chart-skill" style="max-width:260px">Show<select id="chart-skill" data-change="chartSkill">${opts.map(([k,l])=>`<option value="${k}" ${k===key?"selected":""}>${l}</option>`).join("")}</select></label>
-    <div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Progress over ${pts.length} reviews, latest ${fix1(last.v)} out of 10">
+    <label class="f small" for="chart-skill" style="max-width:260px">Show<select id="chart-skill" data-change="chartSkill">${opts.map(([k,l])=>`<option value="${k}" ${k===k2?"selected":""}>${l}</option>`).join("")}</select></label>
+    <div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Progress over ${pts.length} reviews, latest ${fix1(last.v)} out of 5">
       ${grid}<path d="${area}" fill="var(--pitch)" opacity=".12"/><path d="${line}" fill="none" stroke="var(--pitch)" stroke-width="2.5" stroke-linejoin="round"/>${dots}${labels}
       <text x="${Math.min(x(pts.length-1), W-R-4)}" y="${y(last.v)-11}" text-anchor="end" font-size="13" font-weight="700" fill="var(--ink)">${fix1(last.v)}</text>
     </svg></div></div>`;
@@ -541,7 +566,7 @@ function playerDetail(p, mode){
 
   const reviewCard = `<div class="card stack">
     <div class="row between"><h2>${fam?"Coach's latest review":"Latest review"}</h2>${last?`<span class="muted small">${fmtDate(last.date)}${last.coachName?" · "+esc(last.coachName):""}</span>`:""}</div>
-    ${last ? `<div class="overall"><span class="big num">${fix1(o)}</span><span class="muted">/ 10 overall</span>${po!=null?deltaHtml(o-po):""}</div>
+    ${last ? `<div class="overall"><span class="big num">${fix1(o)}</span><span class="muted">/ 5 overall</span>${po!=null?deltaHtml(o-po):""}</div>
       <div class="stack" style="gap:6px"><h3>Strengths</h3><div class="chips">${strengths.length?strengths.map(t=>`<span class="chip str">${esc(t)}</span>`).join(""):'<span class="muted small">None noted</span>'}</div></div>
       <div class="stack" style="gap:6px"><h3>Work on</h3><div class="chips">${improve.length?improve.map(t=>`<span class="chip imp">${esc(t)}</span>`).join(""):'<span class="muted small">None noted</span>'}</div></div>
       ${last.note?`<div class="note">${esc(last.note)}</div>`:""}`
@@ -677,7 +702,24 @@ function profileHtml(p, opts){
     </div>`).join("") : empty(staff ? "No comments yet. A reference is what a scout or new coach would read." : "No coach comments yet.")}
   </div>`;
 
-  return `${head}<div class="grid2"><div class="stack" style="gap:20px">${vidCard}${histCard}</div><div class="stack" style="gap:20px">${comCard}</div></div>`;
+  let privCard = "";
+  if(!pub){
+    const rs = reviewsFor(p.id), last = rs[rs.length-1], prev = rs[rs.length-2];
+    const o = overall(last), po = overall(prev);
+    privCard = `<div class="card stack private-card">
+      <div class="row between"><h2>Coach review</h2><span class="pill plain" title="Never shown on a public profile">🔒 Private</span></div>
+      <p class="small muted">Only ${esc(p.name)}, their family and the club's coaches can see this. It never appears on the public profile.</p>
+      ${last ? `<div class="row between"><div class="overall"><span class="big num">${o!=null?fix1(o):"–"}</span><span class="muted">/ 5 overall</span>${o!=null&&po!=null?deltaHtml(o-po):""}</div><span class="small muted">${fmtDate(last.date)}${last.coachName?" · "+esc(last.coachName):""}</span></div>
+        ${(last.strengths||[]).length?`<div class="chips">${last.strengths.map(t=>`<span class="chip str">${esc(t)}</span>`).join("")}</div>`:""}
+        ${(last.improve||[]).length?`<div class="chips">${last.improve.map(t=>`<span class="chip imp">Work on: ${esc(t)}</span>`).join("")}</div>`:""}
+        ${ratingsHtml(last, prev)}
+        ${last.note?`<div class="note">${esc(last.note)}</div>`:""}
+        ${rs.length>1?`<p class="small muted">${rs.length} reviews so far. See progress over time on the Development tab.</p>`:""}`
+      : `<p class="muted">${staff ? "No review yet." : "Your coach hasn't posted a review yet."}</p>`}
+      ${staff ? `<div><button class="btn primary sm" data-act="modal" data-m="review" data-player="${esc(p.id)}">New review</button></div>` : ""}
+    </div>`;
+  }
+  return `${head}<div class="grid2"><div class="stack" style="gap:20px">${privCard}${vidCard}${histCard}</div><div class="stack" style="gap:20px">${comCard}</div></div>`;
 }
 function hostOf(u){ try { return new URL(u).hostname.replace(/^www\./,""); } catch(_){ return "video site"; } }
 
@@ -889,7 +931,7 @@ const MODALS = {
     <label class="f" for="p-name">Player name<input type="text" id="p-name" name="name" required maxlength="60"></label>
     <div class="grid2" style="gap:14px">
       <label class="f" for="p-team">Team<select id="p-team" name="teamId">${teamOptions(S.teamFilter)}</select></label>
-      <label class="f" for="p-pos">Position<select id="p-pos" name="position">${POSITIONS.map(x=>`<option>${x}</option>`).join("")}</select></label>
+      <label class="f" for="p-pos">Position<select id="p-pos" name="position">${POSITIONS.map(x=>`<option ${x==="Not set"?"selected":""}>${x}</option>`).join("")}</select></label>
     </div>
     <label class="f" for="p-year">Birth year (optional)<input type="number" id="p-year" name="birthYear" min="1990" max="2030"></label>
     <div class="row"><button class="btn primary" type="submit">Add player</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`
@@ -906,21 +948,30 @@ const MODALS = {
     const p = S.players.find(x=>x.id===ds.player); if(!p) return "<p>Player not found.</p>";
     const rs = reviewsFor(p.id), last = rs[rs.length-1];
     const chips = (name, sel) => `<div class="chips">${TAGS.map((t,i)=>`<label class="chipbox"><input type="checkbox" name="${name}" value="${esc(t)}" id="${name}-${i}" ${sel.includes(t)?"checked":""}><span>${esc(t)}</span></label>`).join("")}</div>`;
-    let g = "", sliders = "";
-    for(const s of SKILLS){
-      if(s.group!==g){ g=s.group; sliders += `<div class="rgroup">${g}</div>`; }
-      const v = last ? (Number(last.ratings[s.k])||5) : 5;
-      sliders += `<div class="slider"><label for="r-${s.k}">${s.label}</label><input type="range" min="1" max="10" step="1" id="r-${s.k}" name="r-${s.k}" value="${v}" data-out="o-${s.k}"><output id="o-${s.k}">${v}</output></div>`;
-    }
+    const lastForm = last ? reviewForm(last) : null;
+    const form = lastForm || (p.position === "Goalkeeper" ? "gk" : "field");
+    const sliderSet = f => { let g = "", out = "";
+      for(const s of skillsFor(f)){
+        if(s.group!==g){ g=s.group; out += `<div class="rgroup">${g}</div>`; }
+        const lv = last && lastForm === f ? Number(last.ratings[s.k]) : NaN;
+        const v = lv >= 1 && lv <= 5 ? lv : 3;
+        out += `<div class="slider"><label for="r-${s.k}">${s.label}</label><input type="range" min="1" max="5" step="1" id="r-${s.k}" name="r-${s.k}" value="${v}" data-out="o-${s.k}" data-scale="1" ${f!==form?"disabled":""}><output id="o-${s.k}" title="${esc(SCALE[v])}">${v}</output></div>`;
+      }
+      return out; };
     return `<h2>Review: ${esc(p.name)}</h2>
-    <p class="small muted">${last?"Sliders start at the last review's ratings.":"First review sets the baseline."} 1 = just starting, 5 = right for their level, 10 = well ahead.</p>
+    <p class="small muted">${last?"Sliders start at the last review's ratings.":"First review sets the baseline."} 1 Needs a lot of work · 2 Developing · 3 Solid for their level · 4 Strong · 5 Excellent</p>
     <form data-form="review" data-id="${esc(p.id)}">
       <label class="f" for="r-date" style="max-width:200px">Date<input type="date" id="r-date" name="date" value="${today()}" required></label>
-      <div class="stack" style="gap:8px">${sliders}</div>
+      <fieldset class="seg" style="border:0;padding:0;margin:0"><legend class="small" style="font-weight:600;margin-bottom:6px">Review type</legend>
+        <label class="chipbox" for="rf-field"><input type="radio" id="rf-field" name="form" value="field" data-reviewform="1" ${form==="field"?"checked":""}><span>Field player</span></label>
+        <label class="chipbox" for="rf-gk"><input type="radio" id="rf-gk" name="form" value="gk" data-reviewform="1" ${form==="gk"?"checked":""}><span>Goalkeeper</span></label>
+      </fieldset>
+      <div class="stack rset" data-set="field" style="gap:8px" ${form==="field"?"":"hidden"}>${sliderSet("field")}</div>
+      <div class="stack rset" data-set="gk" style="gap:8px" ${form==="gk"?"":"hidden"}>${sliderSet("gk")}</div>
       <div class="stack" style="gap:6px"><b>Strengths</b>${chips("str", [])}<input type="text" name="strOther" id="r-str-other" placeholder="Other strengths, separated by commas" aria-label="Other strengths"></div>
       <div class="stack" style="gap:6px"><b>Work on</b>${chips("imp", [])}<input type="text" name="impOther" id="r-imp-other" placeholder="Other areas, separated by commas" aria-label="Other areas to work on"></div>
       <label class="f" for="r-note">Note to player & family<textarea id="r-note" name="note" maxlength="1500" placeholder="What went well, and one thing to focus on before the next review."></textarea></label>
-      <p class="small muted">Everything in a review is visible to the player's family.</p>
+      <p class="small muted">Only coaches at your club and this player's own family accounts can see reviews. They never appear on a public profile.</p>
       <div class="row"><button class="btn primary" type="submit">Save review</button><button class="btn" type="button" data-act="close">Cancel</button></div>
     </form>`;
   },
@@ -975,7 +1026,7 @@ const MODALS = {
     const cur = (profileFor(p.id)||{}).visibility || "private";
     return `<h2>Who can see ${esc(p.name)}'s profile?</h2><form data-form="visibility" data-id="${esc(p.id)}">
       ${Object.entries(VIS).map(([k,v])=>`<label class="choice" for="vis-${k}"><input type="radio" id="vis-${k}" name="vis" value="${k}" ${cur===k?"checked":""}><span><b>${v.label}</b><br><span class="small muted">${v.help}</span></span></label>`).join("")}
-      <p class="small muted">Skill ratings, reviews and home drills are never shown on the profile. Change this any time.</p>
+      <p class="small muted">Coach reviews, skill ratings and home drills stay private: they never show on a public profile. Change this any time.</p>
       <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`;
   },
   video: (ds) => `<h2>Add a highlight video</h2><form data-form="video" data-id="${esc(ds.player)}">
@@ -1119,7 +1170,8 @@ const FORMS = {
     await save(() => S.db.doc("players/" + form.dataset.id).update({name:fd.get("name").trim(), teamId:fd.get("teamId"), position:fd.get("position"), birthYear: isNaN(y)?null:y}), "Saved");
   },
   review: async (fd, form) => {
-    const ratings = {}; SKILLS.forEach(s => ratings[s.k] = Number(fd.get("r-" + s.k)) || 5);
+    const f = fd.get("form") === "gk" ? "gk" : "field";
+    const ratings = {}; skillsFor(f).forEach(s => { const v = Number(fd.get("r-" + s.k)); ratings[s.k] = v >= 1 && v <= 5 ? v : 3; });
     const split = v => String(v||"").split(",").map(x=>x.trim()).filter(Boolean).slice(0,8);
     const strengths = Array.from(new Set(fd.getAll("str").concat(split(fd.get("strOther")))));
     const improve = Array.from(new Set(fd.getAll("imp").concat(split(fd.get("impOther")))));
@@ -1216,7 +1268,7 @@ document.addEventListener("submit", async ev => {
 });
 document.addEventListener("input", ev => {
   const o = ev.target.dataset && ev.target.dataset.out;
-  if(o){ const out = document.getElementById(o); if(out) out.textContent = ev.target.value; }
+  if(o){ const out = document.getElementById(o); if(out){ out.textContent = ev.target.value; if(ev.target.dataset.scale) out.title = SCALE[ev.target.value] || ""; } }
 });
 document.addEventListener("error", ev => {
   const t = ev.target;
@@ -1243,6 +1295,14 @@ document.addEventListener("change", async ev => {
   }
 });
 document.addEventListener("change", ev => {
+  if(ev.target.dataset && ev.target.dataset.reviewform){
+    const f = ev.target.value, form = ev.target.form;
+    form.querySelectorAll(".rset").forEach(el => {
+      const on = el.dataset.set === f; el.hidden = !on;
+      el.querySelectorAll("input").forEach(i => i.disabled = !on);
+    });
+    return;
+  }
   if(ev.target.dataset && ev.target.dataset.change === "chatTeam"){ S.chatTeam = ev.target.value; render(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "chartSkill"){ S.chartSkill = ev.target.value; render(); const s = document.getElementById("chart-skill"); if(s) s.focus(); }
 });
