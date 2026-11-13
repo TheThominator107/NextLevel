@@ -64,7 +64,7 @@ function timelineHtml(rs, opts={}){
       ${r.summary ? `<p class="tl-sum">“${esc(r.summary)}”</p>` : ""}
       ${ch.length ? `<div class="chips">${ch.map(changeChip).join("")}</div>` : (prev && reviewForm(prev)===reviewForm(r) ? `<span class="small muted">No rating changes</span>` : "")}
       ${r.note ? `<details><summary class="small">Coach's full note</summary><p class="small" style="margin-top:4px;white-space:pre-wrap">${esc(r.note)}</p></details>` : ""}
-      ${opts.discuss && S.me ? `<div><button class="btn sm" data-act="discussReview" data-player="${esc(r.playerId)}" data-review="${esc(r.id)}">💬 Discuss this review</button></div>` : ""}
+      ${opts.discuss && S.me && canMessage(S.players.find(x => x.id === r.playerId)) ? `<div><button class="btn sm" data-act="discussReview" data-player="${esc(r.playerId)}" data-review="${esc(r.id)}">💬 Discuss this review</button></div>` : ""}
       ${admin ? `<div><button class="btn ghost sm" data-act="delReview" data-id="${esc(r.id)}" aria-label="Delete review from ${esc(fmtDate(r.date))}">Delete (admin)</button></div>` : ""}
     </div>`; }).join("")}</div>`;
 }
@@ -133,7 +133,7 @@ const S = {
   view:null, playerId:null, childId:null, teamFilter:"all", catFilter:"All",
   chartSkill:"overall", preview:false, loading:true, noDb:false, notice:null, subClubId:undefined,
   profiles:[], comments:[], ptab:"dev", assets:null, publicSlug:null, pub:null,
-  messages:[], chatTeam:null, pmessages:[], meetings:[], pmPlayer:null, pmTab:"chat", meetingId:null
+  messages:[], chatTeam:null, pmessages:[], meetings:[], teamCoaches:[], pmPlayer:null, pmTab:"chat", meetingId:null
 };
 const APP_URL = location.origin + location.pathname;
 const FIELD_POSITIONS = [["GK","Goalkeeper"],["RB","Right back"],["CB","Center back"],["LB","Left back"],["WB","Wing back"],["CDM","Defensive mid"],["CM","Central mid"],["CAM","Attacking mid"],["RM","Right mid"],["LM","Left mid"],["RW","Right wing"],["LW","Left wing"],["CF","Center forward"],["ST","Striker"]];
@@ -298,7 +298,7 @@ const TABLE = {clubs:"clubs", teams:"teams", players:"players", reviews:"reviews
   pmessages:"private_messages", meetings:"meetings"};
 const PK = {profiles:"player_id"};
 const TABLE_TO_KEY = Object.fromEntries(Object.entries(TABLE).map(([k,v]) => [v,k]));
-TABLE_TO_KEY.clubs = "club"; TABLE_TO_KEY.family_links = "links";
+TABLE_TO_KEY.clubs = "club"; TABLE_TO_KEY.family_links = "links"; TABLE_TO_KEY.team_coaches = "teamCoaches";
 
 const toCamel = k => k.replace(/_([a-z])/g, (_,c) => c.toUpperCase());
 const toSnake = k => k.replace(/[A-Z]/g, c => "_" + c.toLowerCase());
@@ -407,6 +407,7 @@ async function loadKey(key){
   else if(key === "messages") q = sb.from("messages").select("*").eq("club_id", cid).order("created_at", {ascending:false}).limit(600);
   else if(key === "pmessages") q = sb.from("private_messages").select("*").eq("club_id", cid).order("created_at", {ascending:false}).limit(1500);
   else if(key === "links") q = sb.from("family_links").select("*");
+  else if(key === "teamCoaches") q = sb.from("team_coaches").select("*");
   else if(TABLE[key]) q = sb.from(TABLE[key]).select("*").eq("club_id", cid);
   else return;
   const {data, error} = await q;
@@ -415,6 +416,7 @@ async function loadKey(key){
   if(key === "club"){ const before = S.club && S.club.familyAccess; S.club = data ? camel(data) : null; S.clubLoaded = true; if(S.club && before !== undefined && before !== S.club.familyAccess) loadSteps(); }
   else if(key === "messages" || key === "pmessages") S[key] = data.map(camel).reverse();
   else if(key === "links") S.links = data;
+  else if(key === "teamCoaches") S.teamCoaches = data || [];
   else S[key] = data.map(camel);
   if(key === "members" || key === "links"){
     const links = S.links || [];
@@ -426,9 +428,9 @@ function subscribeClub(cid){
   if(channel){ sb.removeChannel(channel); channel = null; }
   S.subClubId = cid; S.clubLoaded = false;
   S.club = null; S.teams = []; S.players = []; S.reviews = []; S.assignments = []; S.drills = []; S.members = []; S.links = [];
-  S.profiles = []; S.comments = []; S.messages = []; S.pmessages = []; S.meetings = [];
+  S.profiles = []; S.comments = []; S.messages = []; S.pmessages = []; S.meetings = []; S.teamCoaches = [];
   if(!cid) return;
-  ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","meetings"].forEach(k => loadKey(k));
+  ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","meetings","teamCoaches"].forEach(k => loadKey(k));
   channel = sb.channel("club-" + cid)
     .on("postgres_changes", {event:"*", schema:"public"}, payload => {
       const key = TABLE_TO_KEY[payload.table];
@@ -784,7 +786,7 @@ function playerView(){
       <p class="small">Family code: <span class="code">${esc(p.inviteCode)}</span> <button class="btn ghost sm" data-act="copy" data-text="${esc(p.inviteCode)}">Copy</button> <span class="pill ${st.cls}">${st.txt}</span></p></div></div>
     <div class="row">
       <button class="btn" data-act="preview">${S.preview?"Back to coach view":"See what the family sees"}</button>
-      <button class="btn" data-act="messageFamily" data-id="${esc(p.id)}">Message family</button>
+      ${canMessage(p) ? `<button class="btn" data-act="messageFamily" data-id="${esc(p.id)}">Message family</button>` : ""}
       <button class="btn" data-act="modal" data-m="editPlayer" data-player="${esc(p.id)}">Edit</button>
       <button class="btn primary" data-act="modal" data-m="review" data-player="${esc(p.id)}">${reviewsFor(p.id).length ? "Update review" : "First review"}</button>
     </div>
@@ -1075,11 +1077,13 @@ function clubView(){
     </div>
     <div class="card stack">
       <h2>Coaches</h2>
-      <div class="list">${coaches.map(m=>`<div class="row between"><span>${esc(m.name||"Coach")}</span><span class="pill plain">${m.role==="admin"?"Club admin":"Coach"}</span></div>`).join("") || '<p class="muted">No coaches yet.</p>'}</div>
+      <div class="list">${coaches.map(m=>{ const ts = teamsOfCoach(m.id); return `<div class="row between"><span><b>${esc(m.name||"Coach")}</b><br><span class="small muted">${ts.length ? esc(ts.map(t=>t.name).join(", ")) : m.role==="admin" ? "Sees all players" : "Not on a team yet"}</span></span><span class="pill ${m.role==="admin"?"warn":"plain"}">${m.role==="admin"?"Club admin":"Coach"}</span></div>`; }).join("") || '<p class="muted">No coaches yet.</p>'}</div>
+      <p class="small muted">Private conversations and meetings are only open to each player's team coaches and the club admin.</p>
     </div>
     <div class="card stack">
       <div class="row between"><h2>Teams</h2><button class="btn sm" data-act="modal" data-m="team">Add team</button></div>
-      <div class="list">${S.teams.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(t=>{const n=S.players.filter(p=>p.teamId===t.id).length;return `<div class="row between"><span><b>${esc(t.name)}</b> <span class="muted small">${esc(t.ageGroup||"")}</span></span><span class="row"><span class="muted small num">${n} player${n===1?"":"s"}</span>${n===0?`<button class="btn ghost sm" data-act="delTeam" data-id="${esc(t.id)}">Delete</button>`:""}</span></div>`;}).join("") || '<p class="muted">No teams yet.</p>'}</div>
+      <div class="list">${S.teams.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(t=>{const n=S.players.filter(p=>p.teamId===t.id).length;const tcs = coachesOfTeam(t.id), mine = tcs.some(m => m.id === S.uid);
+return `<div class="row between"><span><b>${esc(t.name)}</b> <span class="muted small">${esc(t.ageGroup||"")}</span><br><span class="small muted">Coaches: ${tcs.length ? esc(tcs.map(m=>m.name||"Coach").join(", ")) : "none yet"}</span></span><span class="row">${isAdmin() ? `<button class="btn ghost sm" data-act="modal" data-m="teamCoaches" data-id="${esc(t.id)}">Assign coaches</button>` : `<button class="btn ghost sm" data-act="selfCoach" data-id="${esc(t.id)}" data-on="${mine?"0":"1"}">${mine ? "Leave team" : "I coach this team"}</button>`}<span class="muted small num">${n} player${n===1?"":"s"}</span>${n===0?`<button class="btn ghost sm" data-act="delTeam" data-id="${esc(t.id)}">Delete</button>`:""}</span></div>`;}).join("") || '<p class="muted">No teams yet.</p>'}</div>
     </div>
     <div class="card stack">
       <h2>Your account</h2>
@@ -1362,7 +1366,11 @@ const FORMS = {
     if(error){ form.querySelector("#auth-msg").textContent = error.message; return; }
     S.recovery = false; toast("Password updated"); render();
   },
-  team: async fd => { closeModal(); await save(() => S.db.collection("teams").doc().set({clubId:S.me.clubId, name:fd.get("name").trim(), ageGroup:fd.get("age").trim(), createdAt:Date.now()}), "Team added"); },
+  team: async fd => {
+    closeModal(); const id = crypto.randomUUID();
+    const ok = await save(() => S.db.collection("teams").doc(id).set({clubId:S.me.clubId, name:fd.get("name").trim(), ageGroup:fd.get("age").trim(), createdAt:Date.now()}), "Team added. You're its coach.");
+    if(ok){ await loadKey("teams"); await setTeamCoach(id, S.uid, true); }
+  },
   player: async fd => {
     closeModal();
     let code = makeCode(6);
@@ -1748,8 +1756,27 @@ ACTS.home = () => { S.publicPage = null; S.menuOpen = false; try { history.repla
 const MEETING_TOPICS = ["Discuss a review","Progress and goals","Playing time","Position","Training at home","Something else"];
 const MEETING_STATUS = {requested:{label:"Requested",cls:"warn"}, scheduled:{label:"Scheduled",cls:"good"}, done:{label:"Done",cls:"plain"}, cancelled:{label:"Cancelled",cls:"plain"}};
 
+const isAdmin = () => !!(S.me && S.me.role === "admin");
+const coachesOfTeam = tid => S.teamCoaches.filter(tc => tc.team_id === tid).map(tc => S.members.find(m => m.id === tc.member_id)).filter(Boolean);
+const teamsOfCoach = mid => S.teamCoaches.filter(tc => tc.member_id === mid).map(tc => S.teams.find(t => t.id === tc.team_id)).filter(Boolean);
+const myCoachTeamIds = () => S.teamCoaches.filter(tc => tc.member_id === S.uid).map(tc => tc.team_id);
+/* private chat & meetings: the player's own team coaches, the club admin, and the player's family */
+function canMessage(p){
+  if(!p || !S.me) return false;
+  if(isAdmin()) return true;
+  if(isStaff()) return !!p.teamId && myCoachTeamIds().includes(p.teamId);
+  return (S.me.playerIds||[]).includes(p.id);
+}
+async function setTeamCoach(tid, mid, on){
+  return save(async () => {
+    const {error} = on ? await sb.from("team_coaches").insert({team_id:tid, member_id:mid})
+                       : await sb.from("team_coaches").delete().eq("team_id", tid).eq("member_id", mid);
+    if(error && !(on && /duplicate|unique/i.test(error.message||""))) throw dbErr(error);
+    await loadKey("teamCoaches");
+  });
+}
 function pmPlayers(){
-  const list = isStaff() ? S.players.slice() : S.players.filter(p => (S.me.playerIds||[]).includes(p.id));
+  const list = S.players.filter(canMessage);
   const last = pid => { const m = S.pmessages.filter(x => x.playerId === pid); return m.length ? m[m.length-1].createdAt : 0; };
   return list.sort((a,b) => (last(b.id) - last(a.id)) || String(a.name).localeCompare(String(b.name)));
 }
@@ -1797,7 +1824,7 @@ function composerHtml(placeholder, form, extra = ""){
   return `<form class="composer" data-form="${form}">
     <label for="pm-input" class="small muted">${placeholder}</label>
     <textarea id="pm-input" name="text" maxlength="2000" rows="2" placeholder="Write a message. Enter sends, Shift+Enter adds a line."></textarea>
-    <div class="row"><span class="small muted">🔒 Private: only this player's family and the club's coaches can read this.</span>${extra}<button class="btn primary" type="submit">Send</button></div>
+    <div class="row"><span class="small muted">🔒 Private: only this player's family, their team's coaches and the club admin can read this.</span>${extra}<button class="btn primary" type="submit">Send</button></div>
   </form>`;
 }
 function fmtWhen(ts){
@@ -1823,7 +1850,10 @@ function reviewMini(r){
 
 function messagesView(){
   const players = pmPlayers();
-  if(!players.length) return `<h1>Messages</h1><div class="locked"><h2>No players yet</h2><p>${isStaff() ? "Add players first. Each player gets a private chat with their family." : "Connect to your player first, using the code from your coach."}</p></div>`;
+  if(!players.length){
+    if(isStaff() && !isAdmin() && !myCoachTeamIds().length) return `<h1>Messages</h1><div class="locked"><h2>You're not assigned to a team yet</h2><p>Private conversations are only open to each player's own team coaches. Ask your club admin to add you to your teams on the Club page, or add yourself there.</p><button class="btn primary" data-act="go" data-view="club">Go to Club</button></div>`;
+    return `<h1>Messages</h1><div class="locked"><h2>No players yet</h2><p>${isStaff() ? "Add players to your teams first. Each player gets a private chat with their family." : "Connect to your player first, using the code from your coach."}</p></div>`;
+  }
   if(!players.find(p => p.id === S.pmPlayer)) S.pmPlayer = players[0].id;
   const p = players.find(x => x.id === S.pmPlayer);
   const fams = S.members.filter(m => m.role === "family" && (m.playerIds||[]).includes(p.id));
@@ -1834,7 +1864,7 @@ function messagesView(){
       return `<button data-act="pmPlayer" data-id="${esc(pl.id)}" aria-current="${pl.id===p.id}"><span class="tn"><span>${esc(pl.name)}${om?` <span class="pill warn" style="font-size:.68rem">${om} meeting${om>1?"s":""}</span>`:""}</span><span class="tp">${last ? esc((last.authorName||"") + ": " + last.text) : isStaff() ? esc(teamName(pl.teamId)) : "No messages yet"}</span></span>${u?`<span class="badge">${u}</span>`:""}</button>`; }).join("")}
   </aside>`;
   const head = `<div class="chat-head">
-    <div class="stack" style="gap:0"><h2>${esc(p.name)}</h2><span class="small muted">🔒 Coaches · ${famNames.length ? esc(famNames.join(", ")) : "family (not connected yet)"}</span></div>
+    <div class="stack" style="gap:0"><h2>${esc(p.name)}</h2><span class="small muted">🔒 ${(() => { const cs = coachesOfTeam(p.teamId).map(m => m.name).filter(Boolean); return cs.length ? esc(cs.join(", ")) + " (" + esc(teamName(p.teamId)) + " coaches)" : esc(teamName(p.teamId)) + " coaches"; })()} · club admin · ${famNames.length ? esc(famNames.join(", ")) : "family (not connected yet)"}</span></div>
     <select class="chat-pick" aria-label="Choose player" data-change="pmPlayer">${players.map(pl=>`<option value="${esc(pl.id)}" ${pl.id===p.id?"selected":""}>${esc(pl.name)}</option>`).join("")}</select>
   </div>
   <div class="subtabs pm-tabs" role="tablist">
@@ -1843,7 +1873,7 @@ function messagesView(){
   </div>`;
   let main;
   if(S.pmTab !== "meetings"){
-    main = `<div class="thread" id="pm-thread" data-key="${esc(readKey(p.id,null))}" aria-live="polite">${bubblesHtml(pmThread(p.id), isStaff() ? `Start a private conversation with ${esc(p.name)}'s family. Only they and the club's coaches can see it.` : `Message your coaches privately. Only your family and the club's coaches can see this.`)}</div>
+    main = `<div class="thread" id="pm-thread" data-key="${esc(readKey(p.id,null))}" aria-live="polite">${bubblesHtml(pmThread(p.id), isStaff() ? `Start a private conversation with ${esc(p.name)}'s family. Only they, ${esc(p.name)}'s team coaches and the club admin can see it.` : `Message your coaches privately. Only your family, your team's coaches and the club admin can see this.`)}</div>
       ${composerHtml("Message about " + esc(p.name), "pm")}`;
   } else if(S.meetingId && meetingsFor(p.id).some(m => m.id === S.meetingId)){
     main = meetingRoom(p, S.meetings.find(m => m.id === S.meetingId));
@@ -1898,6 +1928,25 @@ function meetingRoom(p, m){
 }
 
 /* modals */
+MODALS.teamCoaches = ds => {
+  const t = S.teams.find(x => x.id === ds.id); if(!t) return "<p>Team not found.</p>";
+  const staff = S.members.filter(m => m.role === "coach" || m.role === "admin");
+  const on = new Set(coachesOfTeam(t.id).map(m => m.id));
+  return `<h2>Coaches for ${esc(t.name)}</h2>
+  <p class="small muted">Assigned coaches can see the private conversations and meetings of players on this team. You (club admin) see every team's.</p>
+  <form data-form="teamCoaches" data-id="${esc(t.id)}">
+    <div class="stack" style="gap:8px">${staff.map(m => `<label class="choice" for="tc-${esc(m.id)}"><input type="checkbox" id="tc-${esc(m.id)}" name="coach" value="${esc(m.id)}" ${on.has(m.id)?"checked":""}><span><b>${esc(m.name||"Coach")}</b> <span class="small muted">${m.role==="admin"?"Club admin":"Coach"}</span></span></label>`).join("") || '<p class="muted">No coaches have joined yet. Share your club code.</p>'}</div>
+    <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div>
+  </form>`;
+};
+FORMS.teamCoaches = async (fd, form) => {
+  const tid = form.dataset.id, want = new Set(fd.getAll("coach")), have = new Set(coachesOfTeam(tid).map(m => m.id));
+  closeModal();
+  for(const mid of want) if(!have.has(mid)) await setTeamCoach(tid, mid, true);
+  for(const mid of have) if(!want.has(mid)) await setTeamCoach(tid, mid, false);
+  toast("Team coaches updated");
+};
+ACTS.selfCoach = async ds => { const ok = await setTeamCoach(ds.id, S.uid, ds.on === "1"); if(ok) toast(ds.on === "1" ? "You're now a coach on this team" : "You left this team"); };
 MODALS.meetingNew = ds => {
   const p = S.players.find(x => x.id === ds.player); if(!p) return "<p>Player not found.</p>";
   const rs = reviewsFor(p.id).slice().reverse(), pre = ds.review || "";
