@@ -473,6 +473,22 @@ details summary{color:var(--blue)}
 
 input[type=range]:focus{box-shadow:none;background:none;border:0}
 input[type=range]:focus-visible{outline:3px solid var(--accent);outline-offset:4px;border-radius:4px}
+/* join requests & team search */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+.requests{border-top:4px solid var(--accent)}
+.req{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line)}
+.req:last-child{border-bottom:0}
+.req select{max-width:220px}
+.team-status{border-left:4px solid var(--accent)}
+.req-line{gap:10px;flex-wrap:wrap}
+button.team-pick{border:1px solid var(--input-line);cursor:pointer;font:inherit;font-size:.875rem}
+button.team-pick:hover:not(:disabled),button.team-pick:focus-visible{background:var(--blue);color:#fff;border-color:var(--blue)}
+button.team-pick:hover:not(:disabled) .muted{color:#e4ecfb}
+button.team-pick:disabled{opacity:.6;cursor:default}
+.club-results{max-height:46vh;overflow:auto}
+p.composer{padding:12px 0}
+.modal form.search-row,.search-row{display:flex;flex-direction:row;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.search-row .f{flex:1 1 240px;max-width:none}
 </style>
 </head>
 <body>

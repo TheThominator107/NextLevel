@@ -152,7 +152,7 @@ const canEditProfile = p => !!(S.me && !isStaff() && (S.me.playerIds||[]).includ
 async function saveProfile(p, changes, ok){
   const cur = profileFor(p.id);
   const base = cur ? Object.fromEntries(Object.entries(cur).filter(([k]) => k !== "id"))
-    : {clubId:p.clubId, playerId:p.id, visibility:"private", slug:"p" + makeCode(9).toLowerCase(), positions:[], strengths:[], history:[], videos:[], createdAt:Date.now()};
+    : {playerId:p.id, visibility:"private", slug:"p" + makeCode(9).toLowerCase(), positions:[], strengths:[], history:[], videos:[], createdAt:Date.now()};
   return save(() => S.db.doc("profiles/" + p.id).set({...base, ...changes, updatedAt:Date.now()}), ok);
 }
 function assetErr(e){
@@ -256,11 +256,14 @@ const teamName = id => (S.teams.find(t => t.id === id) || {}).name || "No team";
 const assignmentsFor = pid => S.assignments.filter(a => a.playerId === pid && a.active !== false);
 const doneThisWeek = a => (Array.isArray(a.done) ? a.done : []).filter(x => x >= weekStart()).length;
 function familyHasHome(){
-  if(!S.club) return false;
-  if(S.club.familyAccess !== "subscribe") return true;
-  if(isStaff()) return false;
-  return !!(S.me && S.me.familyPlan);
+  if(isStaff()) return !!S.club && S.club.familyAccess !== "subscribe";
+  return !!(S.me && S.me.familyPlan) || (S.clubs || []).some(c => c.familyAccess !== "subscribe");
 }
+/* the club a player is on right now (families can have players at different clubs) */
+const clubOf = p => !p || !p.clubId ? null : isStaff() ? (S.club && S.club.id === p.clubId ? S.club : null) : (S.clubs || []).find(c => c.id === p.clubId) || null;
+const clubNameOf = p => (clubOf(p) || {}).name || "";
+const pendingFor = pid => (S.requests || []).find(r => r.playerId === pid && r.status === "pending");
+const pendingRequests = () => (S.requests || []).filter(r => r.status === "pending");
 function reviewStatus(pid){
   const rs = reviewsFor(pid);
   if(!rs.length) return {cls:"bad",txt:"Not reviewed"};
@@ -299,7 +302,7 @@ async function save(fn, ok){
 let sb = null, channel = null, loadTimer;
 const TABLE = {clubs:"clubs", teams:"teams", players:"players", reviews:"reviews", assignments:"assignments", drills:"drills",
   members:"members", profiles:"player_profiles", comments:"comments", messages:"messages",
-  pmessages:"private_messages", meetings:"meetings"};
+  pmessages:"private_messages", meetings:"meetings", requests:"join_requests"};
 const PK = {profiles:"player_id"};
 const TABLE_TO_KEY = Object.fromEntries(Object.entries(TABLE).map(([k,v]) => [v,k]));
 TABLE_TO_KEY.clubs = "club"; TABLE_TO_KEY.family_links = "links"; TABLE_TO_KEY.team_coaches = "teamCoaches";
@@ -392,7 +395,8 @@ async function loadMe(){
   if(error){ S.notice = "Your account couldn't load. Reload the page to try again."; S.loading = false; render(); return; }
   S.me = m ? {...camel(m), playerIds:(links||[]).map(l => l.player_id)} : null;
   S.loading = false; clearTimeout(loadTimer); S.notice = null;
-  const cid = S.me ? S.me.clubId : null;
+  /* coaches load their club; parent / player accounts load whatever their own players can see */
+  const cid = S.me ? (S.me.role === "family" ? "fam:" + S.uid : S.me.clubId) : null;
   if(cid !== S.subClubId) subscribeClub(cid);
   fixView(); render();
   loadSteps();
@@ -406,18 +410,24 @@ function schedule(key){
 }
 async function loadKey(key){
   const cid = S.subClubId; if(!cid) return;
+  const fam = cid.startsWith("fam:");
+  const byClub = t => fam ? sb.from(t).select("*") : sb.from(t).select("*").eq("club_id", cid);
   let q;
-  if(key === "club") q = sb.from("clubs").select("*").eq("id", cid).maybeSingle();
-  else if(key === "messages") q = sb.from("messages").select("*").eq("club_id", cid).order("created_at", {ascending:false}).limit(600);
-  else if(key === "pmessages") q = sb.from("private_messages").select("*").eq("club_id", cid).order("created_at", {ascending:false}).limit(1500);
+  if(key === "club") q = fam ? sb.rpc("family_clubs") : sb.from("clubs").select("*").eq("id", cid).maybeSingle();
+  else if(key === "messages") q = byClub("messages").order("created_at", {ascending:false}).limit(600);
+  else if(key === "pmessages") q = byClub("private_messages").order("created_at", {ascending:false}).limit(1500);
+  else if(key === "requests") q = byClub("join_requests").order("created_at", {ascending:false}).limit(300);
   else if(key === "links") q = sb.from("family_links").select("*");
   else if(key === "teamCoaches") q = sb.from("team_coaches").select("*");
-  else if(TABLE[key]) q = sb.from(TABLE[key]).select("*").eq("club_id", cid);
+  /* the database's privacy rules pick the rows: profiles and family drills follow the player, not a club */
+  else if(TABLE[key] && (fam || key === "members" || key === "profiles" || key === "assignments")) q = sb.from(TABLE[key]).select("*");
+  else if(TABLE[key]) q = byClub(TABLE[key]);
   else return;
   const {data, error} = await q;
   if(cid !== S.subClubId) return;
   if(error){ console.error(key, error); S.notice = "Some data couldn't load. Reload the page to try again."; render(); return; }
-  if(key === "club"){ const before = S.club && S.club.familyAccess; S.club = data ? camel(data) : null; S.clubLoaded = true; if(S.club && before !== undefined && before !== S.club.familyAccess) loadSteps(); }
+  if(key === "club" && fam){ const before = JSON.stringify(S.clubs); S.clubs = (Array.isArray(data) ? data : []).map(camel); S.club = null; S.clubLoaded = true; if(before !== JSON.stringify(S.clubs)) loadSteps(); }
+  else if(key === "club"){ const before = S.club && S.club.familyAccess; S.club = data ? camel(data) : null; S.clubLoaded = true; if(S.club && before !== undefined && before !== S.club.familyAccess) loadSteps(); }
   else if(key === "messages" || key === "pmessages") S[key] = data.map(camel).reverse();
   else if(key === "links") S.links = data;
   else if(key === "teamCoaches") S.teamCoaches = data || [];
@@ -432,18 +442,22 @@ function subscribeClub(cid){
   if(channel){ sb.removeChannel(channel); channel = null; }
   S.subClubId = cid; S.clubLoaded = false;
   S.club = null; S.teams = []; S.players = []; S.reviews = []; S.assignments = []; S.drills = []; S.members = []; S.links = [];
-  S.profiles = []; S.comments = []; S.messages = []; S.pmessages = []; S.meetings = []; S.teamCoaches = [];
+  S.profiles = []; S.comments = []; S.messages = []; S.pmessages = []; S.meetings = []; S.teamCoaches = []; S.clubs = []; S.requests = [];
   if(!cid) return;
-  ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","meetings","teamCoaches"].forEach(k => loadKey(k));
+  ALL_KEYS.forEach(k => loadKey(k));
   channel = sb.channel("club-" + cid)
     .on("postgres_changes", {event:"*", schema:"public"}, payload => {
       const key = TABLE_TO_KEY[payload.table];
       if(payload.table === "members" || payload.table === "family_links") loadMe();
       if(payload.table === "family_links") schedule("members");
+      /* a player joining or leaving a club changes what else is visible */
+      if(payload.table === "players" || payload.table === "join_requests") ["club","teams","players","messages","members","drills","profiles","assignments","reviews","comments","requests"].forEach(schedule);
       schedule(key);
     })
     .subscribe();
 }
+const ALL_KEYS = ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","meetings","teamCoaches","requests"];
+function refreshAll(){ ALL_KEYS.forEach(schedule); }
 function fixView(){
   const staffViews = ["roster","player","chat","messages","drills","plans","club"], famViews = ["home","chat","messages","drills","plans","account"];
   if(!S.me) { S.view = null; return; }
@@ -458,7 +472,7 @@ const brandSvg = "";
 
 function topbar(){
   let tabs = "";
-  if(S.me && S.club){
+  if(S.me && (S.club || !isStaff())){
     const items = isStaff()
       ? [["roster","Players"],["chat","Team chat"],["messages","Messages"],["drills","Drill library"],["plans","Plans"],["club","Club"]]
       : [["home","My player"],["chat","Team chat"],["messages","Messages"],["drills","Home drills"],["plans","Plans"],["account","Account"]];
@@ -466,7 +480,7 @@ function topbar(){
     const un = totalUnread();
     const allUnread = un + pmu;
     tabs = `<button type="button" class="menu-btn app-menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="app-nav">${S.menuOpen ? "Close" : "Menu"}${!S.menuOpen && allUnread ? `<span class="badge">${allUnread>99?"99+":allUnread}</span>` : ""}</button>
-    <nav id="app-nav" class="tabs app-tabs${S.menuOpen ? " open" : ""}" aria-label="Main">${items.map(([v,l]) => `<button data-act="go" data-view="${v}" ${!S.publicPage && (S.view===v || (v==="roster" && S.view==="player")) ? 'aria-current="page"' : ""}>${l}${v==="chat" && un ? `<span class="badge" aria-label="${un} unread">${un>99?"99+":un}</span>` : ""}${v==="messages" && pmu ? `<span class="badge" aria-label="${pmu} unread">${pmu>99?"99+":pmu}</span>` : ""}</button>`).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>`;
+    <nav id="app-nav" class="tabs app-tabs${S.menuOpen ? " open" : ""}" aria-label="Main">${items.map(([v,l]) => `<button data-act="go" data-view="${v}" ${!S.publicPage && (S.view===v || (v==="roster" && S.view==="player")) ? 'aria-current="page"' : ""}>${l}${v==="roster" && pendingRequests().length ? `<span class="badge" aria-label="${pendingRequests().length} join requests">${pendingRequests().length}</span>` : ""}${v==="chat" && un ? `<span class="badge" aria-label="${un} unread">${un>99?"99+":un}</span>` : ""}${v==="messages" && pmu ? `<span class="badge" aria-label="${pmu} unread">${pmu>99?"99+":pmu}</span>` : ""}</button>`).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>`;
   }
   return `<header class="top"><div class="top-in">
     <a href="#" class="brand" data-act="home" aria-label="${APP_NAME} home">${logoHtml()}</a>
@@ -485,7 +499,7 @@ function render(){
   else if(S.recovery && S.uid) body = newPasswordView();
   else if(!S.uid) body = authView();
   else if(S.me === null) body = onboarding();
-  else if(S.me && !S.club) body = S.clubLoaded ? clubMissing() : `<div class="card"><p>Loading your club…</p></div>`;
+  else if(S.me && isStaff() && !S.club) body = S.clubLoaded ? clubMissing() : `<div class="card"><p>Loading your club…</p></div>`;
   else body = viewBody();
   const banners = (S.notice && !S.loading ? `<div class="banner">${esc(S.notice)}</div>` : "");
   const ci = document.getElementById("chat-input");
@@ -554,16 +568,17 @@ function onboarding(){
   if(portal === "family") return `<section class="hero">
     <div class="stack">
       <span class="pill good" style="align-self:flex-start">Parent / Player</span>
-      <h1>Connect to your player</h1>
-      <p style="max-width:52ch">Your coach gives every player a 6-letter code. Enter it once and you'll see their reviews, home drills, profile and team chat.</p>
-      <p class="small muted">Have more than one child at the club? Add the others later under Account.</p>
+      <h1>Set up your player</h1>
+      <p style="max-width:52ch">Create your player's profile, then find your club and ask to join your team. Your coach approves the request, and then you'll see their reviews, home drills and team chat.</p>
+      <p class="small muted">The profile belongs to your family. It stays with you if you change teams or clubs. Have more than one child? Add the others later under Account.</p>
     </div>
     <div class="stack">
-      <form class="card stack auth-family" data-form="joinFamily">
-        <h2>Enter your player code</h2>
+      <form class="card stack auth-family" data-form="familyStart">
+        <h2>About you and your player</h2>
         <label class="f" for="jf-name">Your name<input type="text" id="jf-name" name="name" required maxlength="60" autocomplete="name" placeholder="e.g. Sarah Brandt (Leo's mom)"></label>
-        <label class="f" for="jf-code">Player code<input type="text" id="jf-code" name="code" required maxlength="12" placeholder="6-letter code" autocapitalize="characters"></label>
-        <div><button class="btn primary" type="submit">Connect to my player</button></div>
+        <label class="f" for="jf-player">Player's name<input type="text" id="jf-player" name="player" required maxlength="60" placeholder="e.g. Leo Brandt"></label>
+        <label class="f" for="jf-year">Birth year (optional)<input type="number" id="jf-year" name="birthYear" min="1990" max="${new Date().getFullYear()}" placeholder="e.g. 2014"></label>
+        <div><button class="btn primary" type="submit">Create profile</button></div>
       </form>
       <div>${switcher}</div>
     </div>
@@ -625,7 +640,7 @@ function rosterView(){
     const wk = as.reduce((s,a)=>s+Math.min(doneThisWeek(a),a.perWeek||3),0), wt = as.reduce((s,a)=>s+(a.perWeek||3),0);
     const d = (o!=null && po!=null) ? o - po : null;
     return `<tr data-act="open" data-id="${esc(p.id)}" tabindex="0">
-      <td><div class="pname">${esc(p.name)}</div><div class="small muted">${esc(p.position||"")}</div></td>
+      <td><div class="pname">${esc(p.name)}</div><div class="small muted">${esc(p.position && p.position !== "Not set" ? p.position : (((profileFor(p.id) || {}).positions || [])[0] ? positionLabel(profileFor(p.id).positions[0]) : ""))}</div></td>
       <td>${esc(teamName(p.teamId))}</td>
       <td class="num"><span class="score">${o!=null?fix1(o):"–"}</span> ${d!=null?deltaHtml(d):""}</td>
       <td>${last ? relDays(last.date) : '<span class="muted">Never</span>'}</td>
@@ -636,8 +651,9 @@ function rosterView(){
   return `
   <div class="row between">
     <div class="stack" style="gap:4px"><h1>Players</h1><p class="muted small">Club code for your coaches: <span class="code">${esc(S.club.code)}</span></p></div>
-    <div class="row"><button class="btn" data-act="modal" data-m="team">Add team</button><button class="btn primary" data-act="modal" data-m="player">Add player</button></div>
+    <div class="row"><button class="btn" data-act="modal" data-m="team">Add team</button></div>
   </div>
+  ${requestsCard()}
   <div class="grid3">
     <div class="card tile"><div class="big num">${S.players.length}</div><div class="lbl">Players in ${esc(S.club.name)}</div></div>
     <div class="card tile"><div class="big num" style="color:${due?"var(--warn)":"var(--good)"}">${due}</div><div class="lbl">Need a review (none in 30 days)</div></div>
@@ -651,7 +667,7 @@ function rosterView(){
     ${players.length ? `<div class="tbl-wrap"><table>
       <thead><tr><th>Player</th><th>Team</th><th>Overall</th><th>Last review</th><th>Home drills this week</th><th>Status</th></tr></thead>
       <tbody>${rows}</tbody></table></div>`
-      : `<div class="locked"><h3>No players yet</h3><p class="muted">Add a team, then add your players. Each player gets a code you can give their family.</p><button class="btn primary" data-act="modal" data-m="player">Add player</button></div>`}
+      : `<div class="locked"><h3>No players yet</h3><p class="muted">${S.teams.length ? `Families find ${esc(S.club.name)} by name in ${APP_NAME} and ask to join a team. Their requests show up here for you to approve.` : `Add your teams first. Families then find ${esc(S.club.name)} by name and ask to join one.`}</p>${S.teams.length ? "" : `<button class="btn primary" data-act="modal" data-m="team">Add team</button>`}</div>`}
   </div>`;
 }
 
@@ -789,7 +805,7 @@ function playerView(){
   <div class="card"><div class="row between">
     <div class="phead"><div class="avatar">${esc(initials(p.name))}</div>
       <div class="stack" style="gap:2px"><h1>${esc(p.name)}</h1><p class="muted">${esc(p.position||"")} · ${esc(teamName(p.teamId))}${p.birthYear?" · Born "+esc(p.birthYear):""}</p>
-      <p class="small">Family code: <span class="code">${esc(p.inviteCode)}</span> <button class="btn ghost sm" data-act="copy" data-text="${esc(p.inviteCode)}">Copy</button> <span class="pill ${st.cls}">${st.txt}</span></p></div></div>
+      <p class="small"><span class="pill ${st.cls}">${st.txt}</span></p></div></div>
     <div class="row">
       <button class="btn" data-act="preview">${S.preview?"Back to coach view":"See what the family sees"}</button>
       ${canMessage(p) ? `<button class="btn" data-act="messageFamily" data-id="${esc(p.id)}">Message family</button>` : ""}
@@ -805,15 +821,78 @@ function playerView(){
 function familyHome(){
   const ids = (S.me.playerIds || []);
   const kids = S.players.filter(p => ids.includes(p.id));
-  if(!kids.length) return `<div class="card stack"><h2>No player connected</h2><p>Ask your coach for your player's code, then add it under Account.</p><div><button class="btn primary" data-act="modal" data-m="addChild">Add player code</button></div></div>`;
+  if(!kids.length) return `<div class="card stack"><h2>Add your player</h2><p>Create your player's profile first. Then you can find your club and ask to join your team.</p><div><button class="btn primary" data-act="modal" data-m="addChild">Add player</button></div></div>`;
   if(!kids.find(k => k.id === S.childId)) S.childId = kids[0].id;
   const p = kids.find(k => k.id === S.childId);
+  const main = ((profileFor(p.id) || {}).positions || [])[0];
+  const line = [main ? positionLabel(main) : "", p.clubId ? teamName(p.teamId) : "", clubNameOf(p)].filter(Boolean).join(" · ");
   return `<div class="card"><div class="row between">
-    <div class="phead"><div class="avatar">${esc(initials(p.name))}</div><div class="stack" style="gap:2px"><h1>${esc(p.name)}</h1><p class="muted">${esc(p.position||"")} · ${esc(teamName(p.teamId))} · ${esc(S.club.name)}</p></div></div>
+    <div class="phead"><div class="avatar">${esc(initials(p.name))}</div><div class="stack" style="gap:2px"><h1>${esc(p.name)}</h1><p class="muted">${esc(line || "Not on a team yet")}</p></div></div>
     ${kids.length>1 ? `<div class="filters" role="group" aria-label="Choose player">${kids.map(k=>`<button data-act="child" data-id="${esc(k.id)}" aria-pressed="${k.id===p.id}">${esc(k.name)}</button>`).join("")}</div>` : ""}
   </div></div>
+  ${teamStatusHtml(p)}
   ${subtabs()}
   ${S.ptab === "profile" ? profileHtml(p, {editable:canEditProfile(p)}) : playerDetail(p, "family")}`;
+}
+
+/* family: which team the player is on, or the request waiting for a coach */
+function teamStatusHtml(p){
+  const pend = pendingFor(p.id);
+  const last = (S.requests || []).filter(r => r.playerId === p.id && r.status === "declined").sort((a,b) => (b.decidedAt||0) - (a.decidedAt||0))[0];
+  const pendLine = pend ? `<div class="row between req-line"><span>⏳ Request sent to <b>${esc(pend.teamName)}</b> at <b>${esc(pend.clubName)}</b> ${esc(relDays(new Date(pend.createdAt).toLocaleDateString("en-CA")).toLowerCase())}. A coach there will approve it.</span><button class="btn ghost sm" data-act="cancelRequest" data-id="${esc(pend.id)}">Cancel request</button></div>` : "";
+  if(p.clubId) return pendLine ? `<div class="card stack team-status">${pendLine}</div>` : "";
+  if(pend) return `<div class="card stack team-status">${pendLine}</div>`;
+  const declined = last && (!p.clubId) ? `<p class="small muted">${esc(last.clubName)} didn't approve the request for ${esc(last.teamName)}. You can ask again or try another team.</p>` : "";
+  return `<div class="card stack team-status"><div class="row between"><div class="stack" style="gap:2px"><h2>Join your team</h2><p class="muted">Find your club, pick ${esc(p.name)}'s team and send a request. Once a coach approves, you'll see their reviews, team chat and messages here.</p>${declined}</div>
+    <button class="btn primary" data-act="findTeam" data-player="${esc(p.id)}">Find your team</button></div></div>`;
+}
+
+/* family: search clubs by name, pick a team, send the request */
+function findTeamModal(){
+  const f = S.find || {}; const p = S.players.find(x => x.id === f.pid);
+  if(!p) return `<p>Player not found.</p>`;
+  if(f.pick) return `<h2>Ask to join ${esc(f.pick.teamName)}</h2>
+    <p>${esc(p.name)} → <b>${esc(f.pick.teamName)}</b> at <b>${esc(f.pick.clubName)}</b></p>
+    <form data-form="requestTeam" class="stack">
+      <label class="f" for="rq-note">Note for the coach (optional)<textarea id="rq-note" name="note" maxlength="500" rows="3" placeholder="e.g. Leo trialed with you in August and plays center mid."></textarea></label>
+      <p class="small muted">The coach sees ${esc(p.name)}'s name, age and positions, your name and this note. Reviews and messages stay private until they approve.</p>
+      <div class="row"><button class="btn primary" type="submit">Send request</button><button class="btn" type="button" data-act="unpickTeam">Back</button></div>
+    </form>`;
+  const res = f.results;
+  const list = res == null ? "" : f.short ? `<p class="small muted">Type at least 2 letters of the club's name.</p>`
+    : !res.length ? `<p class="muted">No clubs match “${esc(f.q)}”. Check the spelling, or ask your coach what the club is called in ${APP_NAME}.</p>`
+    : `<div class="stack club-results">${res.map(c => `<div class="card stack" style="padding:14px"><b>${esc(c.name)}</b>
+        ${(c.teams||[]).length ? `<div class="chips">${c.teams.map(t => `<button type="button" class="chip team-pick" data-act="pickTeam" data-club="${esc(c.id)}" data-club-name="${esc(c.name)}" data-team="${esc(t.id)}" data-team-name="${esc(t.name)}"${p.teamId===t.id?" disabled":""}>${esc(t.name)}${t.age_group?` <span class="muted">${esc(t.age_group)}</span>`:""}${p.teamId===t.id?" · current":""}</button>`).join("")}</div>`
+          : `<p class="small muted">This club hasn't added its teams yet.</p>`}</div>`).join("")}</div>`;
+  return `<h2>Find ${esc(p.name)}'s team</h2>
+    <form data-form="findClub" class="search-row">
+      <label class="f" for="fc-q">Club name<input type="search" id="fc-q" name="q" maxlength="80" value="${esc(f.q||"")}" placeholder="e.g. Quality Sports Training" autocomplete="off"></label>
+      <button class="btn primary" type="submit">Search</button>
+    </form>
+    ${list}
+    <div class="row"><button class="btn" type="button" data-act="close">Close</button></div>`;
+}
+
+/* coaches: families asking to join */
+function requestsCard(){
+  const reqs = pendingRequests();
+  if(!reqs.length) return "";
+  return `<div class="card stack requests"><h2>Join requests <span class="badge">${reqs.length}</span></h2>
+    <p class="small muted">Families found ${esc(S.club.name)} and asked to join a team. Approve to add the player to your roster, or pick a different team first.</p>
+    <div class="list">${reqs.map(r => { const age = r.birthYear ? ageOf(r.birthYear) : null;
+      return `<div class="req">
+        <div class="stack" style="gap:4px">
+          <span><b>${esc(r.playerName)}</b>${age != null ? ` <span class="muted small">age ${esc(age)}</span>` : ""} ${(r.positions||[]).slice(0,3).map((k,i) => posChip(k, i===0)).join("")}</span>
+          <span class="small muted">Asked for <b>${esc(r.teamName || "a team")}</b> · from ${esc(r.requestedByName || "a parent")} · ${esc(relDays(new Date(r.createdAt).toLocaleDateString("en-CA")))}${r.profileSlug ? ` · <a href="#profile-${esc(r.profileSlug)}">Profile</a>` : ""}</span>
+          ${r.note ? `<span class="small">“${esc(r.note)}”</span>` : ""}
+        </div>
+        <form class="row" data-form="approveReq" data-id="${esc(r.id)}">
+          <label class="sr-only" for="rq-team-${esc(r.id)}">Team</label>
+          <select id="rq-team-${esc(r.id)}" name="teamId">${teamOptions(r.teamId)}</select>
+          <button class="btn primary sm" type="submit">Approve</button>
+          <button class="btn ghost sm" type="button" data-act="declineReq" data-id="${esc(r.id)}">Decline</button>
+        </form>
+      </div>`; }).join("")}</div></div>`;
 }
 
 function subtabs(){
@@ -838,7 +917,7 @@ function profileHtml(p, opts){
   const history = (pr.history || []).slice().sort((a,b) => (b.to==="Present"?9999:+b.to||0) - (a.to==="Present"?9999:+a.to||0) || (+b.from||0) - (+a.from||0));
   const videos = pr.videos || [];
   const allComments = pub ? opts.pub.refs : S.comments.filter(c => c.playerId === p.id).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  const clubName = pub ? (opts.pub.clubName||"") : (S.club ? S.club.name : "");
+  const clubName = pub ? (opts.pub.clubName||"") : clubNameOf(p);
   const empty = (msg) => `<p class="muted">${msg}</p>`;
 
   const head = `<div class="card pcard">
@@ -848,7 +927,7 @@ function profileHtml(p, opts){
     </div>
     <div class="stack">
       <div class="row between">
-        <div class="stack" style="gap:2px"><h1>${esc(p.name)}</h1><p class="muted">${esc(clubName)}${p.teamId && !pub ? " · " + esc(teamName(p.teamId)) : ""}${p.birthYear?" · Age "+esc(ageOf(p.birthYear)):""}${pr.foot?" · "+esc(pr.foot)+" footed":""}</p></div>
+        <div class="stack" style="gap:2px"><h1>${esc(p.name)}</h1><p class="muted">${[clubName, p.teamId && p.clubId && !pub ? teamName(p.teamId) : "", p.birthYear ? "Age " + ageOf(p.birthYear) : "", pr.foot ? pr.foot + " footed" : ""].filter(Boolean).map(esc).join(" · ")}</p></div>
         ${pub ? "" : ed ? visSwitch(p, pr) : `<div class="vis"><span class="pill ${VIS[visOf(pr)].cls}">${VIS[visOf(pr)].icon} ${VIS[visOf(pr)].label} profile</span></div>`}
       </div>
       <div class="stack" style="gap:6px"><h3>Positions</h3><div class="chips">${positions.length?positions.map((k,i)=>posChip(k,i===0)).join(""):'<span class="muted small">Not added yet</span>'}</div></div>
@@ -955,7 +1034,7 @@ function dayLabel(ts){
 }
 function chatView(){
   const teams = myTeams();
-  if(!teams.length) return `<h1>Team chat</h1><div class="locked"><h2>No team chats yet</h2><p class="muted">${isStaff() ? "Add a team and its chat appears here for the coaches and every family on that team." : "Your player isn't on a team yet. Ask your coach to add them to one."}</p>${isStaff()?`<button class="btn primary" data-act="modal" data-m="team">Add team</button>`:""}</div>`;
+  if(!teams.length) return `<h1>Team chat</h1><div class="locked"><h2>No team chats yet</h2><p class="muted">${isStaff() ? "Add a team and its chat appears here for the coaches and every family on that team." : "Your player isn't on a team yet. Find your club under My player and ask to join a team. The chat opens once a coach approves."}</p>${isStaff()?`<button class="btn primary" data-act="modal" data-m="team">Add team</button>`:""}</div>`;
   if(!teams.find(t => t.id === S.chatTeam)) S.chatTeam = teams[0].id;
   const team = teams.find(t => t.id === S.chatTeam);
   const ms = teamMsgs(team.id);
@@ -1059,12 +1138,12 @@ function drillsView(){
 
 function plansView(){
   const staff = isStaff();
-  const included = S.club.familyAccess !== "subscribe";
+  const included = staff ? S.club.familyAccess !== "subscribe" : (S.clubs || []).some(c => c.familyAccess !== "subscribe");
   const fp = S.me.familyPlan;
   let status;
   if(staff) status = included ? "Your club includes Home Training for every family." : "Families in your club subscribe to Home Training on their own.";
   else if(included) status = "Your club includes Home Training, so you already have it.";
-  else status = fp ? "You're on a Home Training trial." : "Your club doesn't include Home Training. You can add it for your family.";
+  else status = fp ? "You're on a Home Training trial." : (S.clubs || []).length ? "Your club doesn't include Home Training. You can add it for your family." : "You can add Home Training for your family. Some clubs include it once you join their team.";
   return `<div class="stack" style="gap:4px"><h1>Plans</h1><p class="muted">${status}</p></div>
   <div class="grid2">
     <div class="card plan">
@@ -1121,11 +1200,14 @@ function accountView(){
   return `<h1>Account</h1>
   <div class="grid2">
     <div class="card stack"><h2>Your players</h2>
-      <div class="list">${kids.map(k=>`<div class="row between"><span><b>${esc(k.name)}</b> <span class="muted small">${esc(teamName(k.teamId))}</span></span></div>`).join("") || '<p class="muted">None yet.</p>'}</div>
+      <div class="list">${kids.map(k=>{ const pend = pendingFor(k.id);
+        const where = k.clubId ? `${esc(teamName(k.teamId))} · ${esc(clubNameOf(k))}` : pend ? `Waiting to join ${esc(pend.teamName)} · ${esc(pend.clubName)}` : "Not on a team yet";
+        return `<div class="row between"><span><b>${esc(k.name)}</b>${k.birthYear?` <span class="muted small">born ${esc(k.birthYear)}</span>`:""}<br><span class="small muted">${where}</span></span>
+        <span class="row"><button class="btn ghost sm" data-act="modal" data-m="editMine" data-player="${esc(k.id)}">Edit</button>${k.clubId ? `<button class="btn ghost sm" data-act="modal" data-m="leaveTeam" data-player="${esc(k.id)}">Leave team</button>` : pend ? "" : `<button class="btn sm" data-act="findTeam" data-player="${esc(k.id)}">Find team</button>`}</span></div>`; }).join("") || '<p class="muted">None yet.</p>'}</div>
       <div><button class="btn" data-act="modal" data-m="addChild">Add another player</button></div>
     </div>
-    <div class="card stack"><h2>You</h2><p>${esc(S.me.name||"")} · Parent or player at ${esc(S.club.name)}</p>
-      <div><button class="btn danger" data-act="modal" data-m="leave">Disconnect from this club</button></div></div>
+    <div class="card stack"><h2>You</h2><p>${esc(S.me.name||"")} · Parent / player account</p>
+      <p class="small muted">Your players' profiles, reviews and messages belong to your account. If a player leaves a club, you keep everything; that club's coaches lose access.</p></div>
   </div>`;
 }
 
@@ -1144,23 +1226,14 @@ const MODALS = {
     <label class="f" for="t-name">Team name<input type="text" id="t-name" name="name" required maxlength="60" placeholder="e.g. U12 Boys Premier"></label>
     <label class="f" for="t-age">Age group<input type="text" id="t-age" name="age" maxlength="20" placeholder="e.g. U12"></label>
     <div class="row"><button class="btn primary" type="submit">Add team</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
-  player: () => S.teams.length ? `<h2>Add player</h2><form data-form="player">
-    <label class="f" for="p-name">Player name<input type="text" id="p-name" name="name" required maxlength="60"></label>
-    <div class="grid2" style="gap:14px">
-      <label class="f" for="p-team">Team<select id="p-team" name="teamId">${teamOptions(S.teamFilter)}</select></label>
-      <label class="f" for="p-pos">Position<select id="p-pos" name="position">${POSITIONS.map(x=>`<option ${x==="Not set"?"selected":""}>${x}</option>`).join("")}</select></label>
-    </div>
-    <label class="f" for="p-year">Birth year (optional)<input type="number" id="p-year" name="birthYear" min="1990" max="2030"></label>
-    <div class="row"><button class="btn primary" type="submit">Add player</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`
-    : `<h2>Add a team first</h2><p>Players belong to a team.</p><div class="row"><button class="btn primary" data-act="modal" data-m="team">Add team</button><button class="btn" data-act="close">Cancel</button></div>`,
   editPlayer: (ds) => { const p = S.players.find(x=>x.id===ds.player); if(!p) return "<p>Player not found.</p>"; return `<h2>Edit ${esc(p.name)}</h2><form data-form="editPlayer" data-id="${esc(p.id)}">
-    <label class="f" for="e-name">Player name<input type="text" id="e-name" name="name" required maxlength="60" value="${esc(p.name)}"></label>
+    <p class="small muted">${p.birthYear ? "Born " + esc(p.birthYear) + ". " : ""}The family manages the name and profile.</p>
     <div class="grid2" style="gap:14px">
       <label class="f" for="e-team">Team<select id="e-team" name="teamId">${teamOptions(p.teamId)}</select></label>
       <label class="f" for="e-pos">Position<select id="e-pos" name="position">${POSITIONS.map(x=>`<option ${x===p.position?"selected":""}>${x}</option>`).join("")}</select></label>
     </div>
-    <label class="f" for="e-year">Birth year (optional)<input type="number" id="e-year" name="birthYear" min="1990" max="2030" value="${esc(p.birthYear||"")}"></label>
-    <div class="row between"><div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div><button class="btn danger" type="button" data-act="delPlayer" data-id="${esc(p.id)}">Remove player</button></div></form>`; },
+    <div class="row between"><div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div><button class="btn danger" type="button" data-act="removeFromClub" data-id="${esc(p.id)}">Remove from club</button></div>
+    <p class="small muted">Removing takes ${esc(p.name)} off your roster. The family keeps the profile and past reviews; your club loses access.</p></form>`; },
   review: (ds) => {
     const p = S.players.find(x=>x.id===ds.player); if(!p) return "<p>Player not found.</p>";
     const rs = reviewsFor(p.id), last = rs[rs.length-1];
@@ -1227,8 +1300,17 @@ const MODALS = {
     </fieldset>
     <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
   addChild: () => `<h2>Add a player</h2><form data-form="addChild">
-    <label class="f" for="ac-code">Player code<input type="text" id="ac-code" name="code" required maxlength="12" autocapitalize="characters"></label>
-    <div class="row"><button class="btn primary" type="submit">Connect</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
+    <label class="f" for="ac-name">Player's name<input type="text" id="ac-name" name="player" required maxlength="60"></label>
+    <label class="f" for="ac-year">Birth year (optional)<input type="number" id="ac-year" name="birthYear" min="1990" max="${new Date().getFullYear()}"></label>
+    <div class="row"><button class="btn primary" type="submit">Add player</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
+  editMine: ds => { const p = S.players.find(x => x.id === ds.player); if(!p) return "<p>Player not found.</p>"; return `<h2>Edit ${esc(p.name)}</h2><form data-form="editMine" data-id="${esc(p.id)}">
+    <label class="f" for="em-name">Player's name<input type="text" id="em-name" name="player" required maxlength="60" value="${esc(p.name)}"></label>
+    <label class="f" for="em-year">Birth year (optional)<input type="number" id="em-year" name="birthYear" min="1990" max="${new Date().getFullYear()}" value="${esc(p.birthYear||"")}"></label>
+    <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`; },
+  findTeam: () => findTeamModal(),
+  leaveTeam: ds => { const p = S.players.find(x => x.id === ds.player); if(!p) return "<p>Player not found.</p>"; const club = clubNameOf(p) || "the club";
+    return `<h2>Leave ${esc(teamName(p.teamId))}?</h2><p>${esc(p.name)} will come off the team at ${esc(club)}. You keep the profile, past reviews, references, home drills and messages. ${esc(club)}'s coaches won't see ${esc(p.name)} any more, and team chat closes.</p><p class="small muted">You can ask to join a team again any time.</p>
+    <div class="row"><button class="btn danger" data-act="leaveTeam" data-id="${esc(p.id)}">Leave team</button><button class="btn" data-act="close">Cancel</button></div>`; },
   about: (ds) => {
     const p = S.players.find(x=>x.id===ds.player); if(!p) return "<p>Player not found.</p>";
     const pr = profileFor(p.id) || {}, pos = pr.positions || [], str = pr.strengths || [];
@@ -1276,7 +1358,7 @@ const MODALS = {
     <label class="f" for="c-title">Your title (optional)<input type="text" id="c-title" name="title" maxlength="60" placeholder="e.g. Head Coach, U12 Boys"></label>
     <label class="f" for="c-text">What would you like to say?<textarea id="c-text" name="text" required maxlength="2000" style="min-height:140px"></textarea></label>
     <div class="row"><button class="btn primary" type="submit">Post</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`; },
-  leave: () => `<h2>Leave ${esc(S.club.name)}?</h2><p>${isStaff()?"Players and reviews stay with the club. You can rejoin with the club code.":"Your coach's reviews stay with the club. You can reconnect with the player code."}</p>
+  leave: () => `<h2>Leave ${esc(S.club.name)}?</h2><p>Players and reviews stay with the club. You can rejoin with the club code.</p>
     <div class="row"><button class="btn danger" data-act="leave">Leave</button><button class="btn" data-act="close">Cancel</button></div>`
 };
 
@@ -1304,14 +1386,22 @@ const ACTS = {
     if(!el.dataset.armed){ el.dataset.armed = "1"; el.textContent = "Click again to permanently delete"; return; }
     await save(() => S.db.doc("reviews/" + ds.id).delete(), "Review deleted");
   },
-  delPlayer: async ds => {
-    const el = document.querySelector('[data-act="delPlayer"]');
+  removeFromClub: async ds => {
+    const el = document.querySelector('[data-act="removeFromClub"]');
     if(el && !el.dataset.armed){ el.dataset.armed = "1"; el.textContent = "Click again to remove"; return; }
     closeModal();
-    const ok = await save(() => S.db.doc("players/" + ds.id).delete(), "Player removed");
-    if(ok){
-      S.view = "roster"; render();
-    }
+    const ok = await save(() => rpc("remove_from_club", {pid:ds.id}), "Removed from your club");
+    if(ok){ S.view = "roster"; refreshAll(); render(); }
+  },
+  leaveTeam: async ds => { closeModal(); const ok = await save(() => rpc("leave_team", {pid:ds.id}), "Left the team"); if(ok) refreshAll(); },
+  findTeam: ds => { S.find = {pid: ds.player || S.childId, q: "", results: null, pick: null}; openModal(findTeamModal()); },
+  pickTeam: ds => { if(!S.find) return; S.find.pick = {clubId:ds.club, clubName:ds.clubName, teamId:ds.team, teamName:ds.teamName}; openModal(findTeamModal()); },
+  unpickTeam: () => { if(!S.find) return; S.find.pick = null; openModal(findTeamModal()); },
+  cancelRequest: async ds => { const ok = await save(() => rpc("cancel_request", {rid:ds.id}), "Request cancelled"); if(ok) refreshAll(); },
+  declineReq: async (ds, el) => {
+    if(!el.dataset.armed){ el.dataset.armed = "1"; el.textContent = "Click again to decline"; return; }
+    const ok = await save(() => rpc("decide_request", {rid:ds.id, approve:false, tid:null}), "Request declined");
+    if(ok) refreshAll();
   },
   startPlan: async () => { await save(() => S.db.doc("members/" + S.uid).update({familyPlan:"trial", planStarted:today()}), "Home Training trial started"); },
   cancelPlan: async () => { await save(() => S.db.doc("members/" + S.uid).update({familyPlan:null}), "Trial cancelled"); },
@@ -1319,7 +1409,7 @@ const ACTS = {
   selfAssign: async ds => {
     const d = drillById(ds.drill); if(!d) return;
     await save(async () => {
-      try { await S.db.collection("assignments").doc().set({clubId:S.me.clubId, playerId:ds.player, drillId:d.id, drillTitle:d.title, perWeek:3, note:"", assignedBy:S.uid, done:[], active:true, createdAt:Date.now()}); }
+      try { await S.db.collection("assignments").doc().set({clubId:(S.players.find(x => x.id === ds.player) || {}).clubId || null, playerId:ds.player, drillId:d.id, drillTitle:d.title, perWeek:3, note:"", assignedBy:S.uid, done:[], active:true, createdAt:Date.now()}); }
       catch(e){ if(e.code === "invalid_argument"){ const x = new Error("x"); x.userMessage = "Adding drills yourself needs a quick database update (003). Ask your club admin, or ask your coach to assign it."; throw x; } throw e; }
     }, "Added to this week's drills. Your coach can see it too.");
   },
@@ -1359,15 +1449,18 @@ const FORMS = {
     const ok = await save(async () => { name = await rpc("join_club", {club_code:fd.get("code").trim(), my_name:fd.get("name").trim()}); });
     if(ok){ toast("Welcome to " + name); await loadMe(); }
   },
-  joinFamily: async fd => {
-    let name = "";
-    const ok = await save(async () => { name = await rpc("join_family", {player_code:fd.get("code").trim(), my_name:fd.get("name").trim()}); });
-    if(ok){ toast("Connected to " + name); await loadMe(); }
+  familyStart: async fd => {
+    const y = parseInt(fd.get("birthYear"), 10);
+    const ok = await save(async () => {
+      await rpc("start_family", {my_name:String(fd.get("name")).trim()});
+      await rpc("add_player", {p_name:String(fd.get("player")).trim(), p_birth_year: isNaN(y) ? null : y});
+    });
+    if(ok){ toast("Profile created. Next, find your team."); await loadMe(); refreshAll(); }
   },
   addChild: async fd => {
-    let name = "";
-    const ok = await save(async () => { name = await rpc("join_family", {player_code:fd.get("code").trim(), my_name:S.me.name||""}); });
-    if(ok){ closeModal(); toast("Added " + name); await loadMe(); schedule("players"); }
+    closeModal(); const y = parseInt(fd.get("birthYear"), 10); let pid;
+    const ok = await save(async () => { pid = await rpc("add_player", {p_name:String(fd.get("player")).trim(), p_birth_year: isNaN(y) ? null : y}); });
+    if(ok){ toast("Player added"); S.childId = pid; S.view = "home"; await loadMe(); refreshAll(); }
   },
   auth: async (fd, form) => {
     const email = String(fd.get("email")||"").trim(), password = String(fd.get("password")||"");
@@ -1395,16 +1488,9 @@ const FORMS = {
     const ok = await save(() => S.db.collection("teams").doc(id).set({clubId:S.me.clubId, name:fd.get("name").trim(), ageGroup:fd.get("age").trim(), createdAt:Date.now()}), "Team added. You're its coach.");
     if(ok){ await loadKey("teams"); await setTeamCoach(id, S.uid, true); }
   },
-  player: async fd => {
-    closeModal();
-    let code = makeCode(6);
-    const y = parseInt(fd.get("birthYear"),10);
-    await save(() => S.db.collection("players").doc().set({clubId:S.me.clubId, name:fd.get("name").trim(), teamId:fd.get("teamId"), position:fd.get("position"), birthYear: isNaN(y)?null:y, inviteCode:code, createdAt:Date.now()}), "Player added");
-  },
   editPlayer: async (fd, form) => {
     closeModal();
-    const y = parseInt(fd.get("birthYear"),10);
-    await save(() => S.db.doc("players/" + form.dataset.id).update({name:fd.get("name").trim(), teamId:fd.get("teamId"), position:fd.get("position"), birthYear: isNaN(y)?null:y}), "Saved");
+    await save(() => S.db.doc("players/" + form.dataset.id).update({teamId:fd.get("teamId"), position:fd.get("position")}), "Saved");
   },
   review: async (fd, form) => {
     const f = fd.get("form") === "gk" ? "gk" : "field";
@@ -1439,7 +1525,7 @@ const FORMS = {
     const ann = isStaff() && !!fd.get("announce");
     const ta = form.querySelector("#chat-input"); if(ta) ta.value = "";
     const cb = form.querySelector("#chat-ann"); if(cb) cb.checked = false;
-    const ok = await save(() => S.db.collection("messages").doc().set({clubId:S.me.clubId, teamId:S.chatTeam, authorId:S.uid, authorName:S.me.name||"", role:S.me.role, text:text.slice(0,1000), announce:ann, createdAt:Date.now()}));
+    const ok = await save(() => S.db.collection("messages").doc().set({clubId:(S.teams.find(t => t.id === S.chatTeam) || {}).clubId || S.me.clubId, teamId:S.chatTeam, authorId:S.uid, authorName:S.me.name||"", role:S.me.role, text:text.slice(0,1000), announce:ann, createdAt:Date.now()}));
     if(!ok){ const t2 = document.getElementById("chat-input"); if(t2 && !t2.value) t2.value = text; }
     const t3 = document.getElementById("chat-input"); if(t3) t3.focus();
   },
@@ -1613,13 +1699,13 @@ function pageHow(){
   <div class="grid2">
     <div class="card stack"><h2>For coaches and clubs</h2>
       ${step(1,"Create your club","Sign up as a coach and start your club. You get a club code to share with your other coaches.")}
-      ${step(2,"Add teams and players","Each player gets a 6-letter code to give their family.")}
+      ${step(2,"Add your teams","Families find your club by name and ask to join a team. You approve each request.")}
       ${step(3,"Review and assign","Rate 13 field-player skills (or 7 for goalkeepers) from 1 to 5, add an update note, and assign home drills.")}
     </div>
     <div class="card stack"><h2>For parents and players</h2>
-      ${step(1,"Connect with your code","Sign up as a parent or player and enter the code from your coach.")}
-      ${step(2,"See the feedback","Every review, what changed since last time, and progress since the first review.")}
-      ${step(3,"Train at home","Get drills recommended from the coach's review and tick them off each week.")}
+      ${step(1,"Create your player's profile","Sign up as a parent or player. No code needed. The profile belongs to your family.")}
+      ${step(2,"Join your team","Find your club by name, pick your team and send a request. The coach approves it.")}
+      ${step(3,"See feedback and train at home","Every review and what changed, plus drills recommended from it to tick off each week.")}
     </div>
   </div>
   <div class="grid3">
@@ -1657,11 +1743,11 @@ function pageClubs(){
     ${feature("Progress you can show","Each review needs an update note. The timeline keeps every review and shows what improved.")}
     ${feature("Home training that sticks",`Assign drills or let ${APP_NAME} suggest them from the review. See who did their drills this week.`)}
     ${feature("Team chat & announcements","A chat for every team with coaches and families. Pin announcements for schedule changes.")}
-    ${feature("Simple onboarding","Share one club code with coaches and one code per player with families. No spreadsheets.")}
+    ${feature("Simple onboarding","Coaches join with your club code. Families find your club by name and ask to join a team. You approve. No spreadsheets.")}
     ${feature("Private by design","Families only see their own child. Reviews never appear on public profiles.")}
   </div>
   <div class="card stack callout"><h2>Set up your club in 5 minutes</h2>
-    <ol class="numbered"><li>Sign up as a coach and choose <b>Start a club</b>.</li><li>Share your club code with your other coaches.</li><li>Add your teams and players, then send each family their player code.</li></ol>
+    <ol class="numbered"><li>Sign up as a coach and choose <b>Start a club</b>.</li><li>Share your club code with your other coaches.</li><li>Add your teams. Families find your club by name and ask to join; you approve each request from the Players page.</li></ol>
     <div class="row cta-row"><button type="button" class="btn primary" data-act="pickPortal" data-id="coach">Start your club</button><a class="btn" href="#contact">Talk to us first</a></div></div>`;
 }
 
@@ -1703,7 +1789,7 @@ function pageParents(){
     ${feature("Private and safe","Only your child's coaches and your family can see reviews. Other families can't.")}
   </div>
   <div class="card stack callout"><h2>How to join</h2>
-    <ol class="numbered"><li>Get your child's 6-letter player code from their coach.</li><li>Sign up as a parent or player.</li><li>Enter the code. Older players can use the same code to make their own login.</li></ol>
+    <ol class="numbered"><li>Sign up as a parent or player. No code needed.</li><li>Create your player's profile: positions, strengths, highlights.</li><li>Find your club by name, pick your team and send a request. Once the coach approves, you'll see their reviews, home drills and team chat.</li></ol>
     <div class="row cta-row"><button type="button" class="btn primary" data-act="pickPortal" data-id="family">Sign up as a parent or player</button></div></div>`;
 }
 
@@ -1730,7 +1816,8 @@ function pagePricing(){
   </div>
   <div class="card stack"><h2>Questions</h2>
     <div class="faq"><b>Is Home Training free if my club includes it?</b><p class="muted">Yes. If your club includes Home Training, every connected family gets it at no extra cost.</p></div>
-    <div class="faq"><b>Do players need their own account?</b><p class="muted">No. Parents can use one account; older players can make their own login with the same player code.</p></div>
+    <div class="faq"><b>Do players need their own account?</b><p class="muted">No. One parent account can hold every child's profile.</p></div>
+    <div class="faq"><b>What happens if we change clubs?</b><p class="muted">The profile belongs to your family, not the club. Leave the old team and ask to join the new one. You keep every past review and reference; the old club's coaches lose access.</p></div>
     <div class="faq"><b>Something else?</b><p class="muted"><a href="#contact">Contact us</a> and we'll get back to you.</p></div>
   </div>`;
 }
@@ -1869,7 +1956,7 @@ function messagesView(){
   const players = pmPlayers();
   if(!players.length){
     if(isStaff() && !isAdmin() && !myCoachTeamIds().length) return `<h1>Messages</h1><div class="locked"><h2>You're not assigned to a team yet</h2><p>Private conversations are only open to each player's own team coaches. Ask your club admin to add you to your teams on the Club page, or add yourself there.</p><button class="btn primary" data-act="go" data-view="club">Go to Club</button></div>`;
-    return `<h1>Messages</h1><div class="locked"><h2>No players yet</h2><p>${isStaff() ? "Add players to your teams first. Each player gets a private chat with their family." : "Connect to your player first, using the code from your coach."}</p></div>`;
+    return `<h1>Messages</h1><div class="locked"><h2>No players yet</h2><p>${isStaff() ? "Add players to your teams first. Each player gets a private chat with their family." : "Add your player and ask to join a team first. Private messages with the coaches open once you're on a team."}</p></div>`;
   }
   if(!players.find(p => p.id === S.pmPlayer)) S.pmPlayer = players[0].id;
   const p = players.find(x => x.id === S.pmPlayer);
@@ -1891,7 +1978,7 @@ function messagesView(){
   let main;
   if(S.pmTab !== "meetings"){
     main = `<div class="thread" id="pm-thread" data-key="${esc(readKey(p.id,null))}" aria-live="polite">${bubblesHtml(pmThread(p.id), isStaff() ? `Start a private conversation with ${esc(p.name)}'s family. Only they, ${esc(p.name)}'s team coaches and the club admin can see it.` : `Message your coaches privately. Only your family, your team's coaches and the club admin can see this.`)}</div>
-      ${composerHtml("Message about " + esc(p.name), "pm")}`;
+      ${p.clubId ? composerHtml("Message about " + esc(p.name), "pm") : `<p class="small muted composer">${esc(p.name)} isn't on a team right now, so new messages are paused. Your past messages stay here.</p>`}`;
   } else if(S.meetingId && meetingsFor(p.id).some(m => m.id === S.meetingId)){
     main = meetingRoom(p, S.meetings.find(m => m.id === S.meetingId));
   } else {
@@ -2026,16 +2113,43 @@ ACTS.discussReview = ds => {
 /* forms */
 async function sendPm(fd, form, meetingId){
   const text = String(fd.get("text")||"").trim(); if(!text || !S.pmPlayer) return;
+  const pl = S.players.find(x => x.id === S.pmPlayer);
+  if(!pl || !pl.clubId){ toast("Messages open again once " + (pl ? pl.name : "your player") + " is on a team.", true); return; }
   const ta = form.querySelector("#pm-input"); if(ta) ta.value = "";
-  const ok = await save(() => S.db.collection("pmessages").doc().set({clubId:S.me.clubId, playerId:S.pmPlayer, meetingId: meetingId || null, authorId:S.uid, authorName:S.me.name||"", role:S.me.role, text:text.slice(0,2000), createdAt:Date.now()}));
+  const ok = await save(() => S.db.collection("pmessages").doc().set({clubId:pl.clubId, playerId:S.pmPlayer, meetingId: meetingId || null, authorId:S.uid, authorName:S.me.name||"", role:S.me.role, text:text.slice(0,2000), createdAt:Date.now()}));
   const t2 = document.getElementById("pm-input"); if(t2){ if(!ok && !t2.value) t2.value = text; t2.focus(); }
 }
 FORMS.pm = (fd, form) => sendPm(fd, form, null);
+FORMS.editMine = async (fd, form) => {
+  closeModal(); const y = parseInt(fd.get("birthYear"), 10);
+  const ok = await save(() => rpc("update_player", {pid:form.dataset.id, p_name:String(fd.get("player")).trim(), p_birth_year: isNaN(y) ? null : y}), "Saved");
+  if(ok) schedule("players");
+};
+FORMS.findClub = async fd => {
+  if(!S.find) return;
+  S.find.q = String(fd.get("q") || "").trim(); S.find.pick = null;
+  if(S.find.q.length < 2){ S.find.results = []; S.find.short = true; openModal(findTeamModal()); return; }
+  S.find.short = false;
+  try { S.find.results = (await rpc("find_clubs", {q:S.find.q})) || []; }
+  catch(e){ toast(e.userMessage || "Search didn't work. Try again.", true); return; }
+  openModal(findTeamModal()); const q = document.getElementById("fc-q"); if(q){ q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+};
+FORMS.requestTeam = async fd => {
+  const f = S.find; if(!f || !f.pick) return;
+  closeModal();
+  const ok = await save(() => rpc("request_team", {pid:f.pid, tid:f.pick.teamId, p_note:String(fd.get("note") || "").trim()}), "Request sent to " + f.pick.clubName);
+  if(ok){ S.find = null; S.view = "home"; S.childId = f.pid; refreshAll(); }
+};
+FORMS.approveReq = async (fd, form) => {
+  let name;
+  const ok = await save(async () => { name = await rpc("decide_request", {rid:form.dataset.id, approve:true, tid:fd.get("teamId") || null}); });
+  if(ok){ toast((name || "Player") + " is on your roster"); refreshAll(); }
+};
 FORMS.pmMeeting = (fd, form) => sendPm(fd, form, S.meetingId);
 FORMS.meetingNew = async (fd, form) => {
   const pid = form.dataset.player, when = fd.get("when"), where = String(fd.get("where")||"").trim();
   const id = crypto.randomUUID();
-  const row = {clubId:S.me.clubId, playerId:pid, topic:String(fd.get("topic")||"Meeting"), reviewId: fd.get("reviewId") || null,
+  const row = {clubId:(S.players.find(x => x.id === pid) || {}).clubId || S.me.clubId, playerId:pid, topic:String(fd.get("topic")||"Meeting"), reviewId: fd.get("reviewId") || null,
     details:String(fd.get("details")||"").trim(), preferredTimes:String(fd.get("times")||"").trim(),
     status: when ? "scheduled" : "requested", scheduledAt: when ? new Date(when).getTime() : null, location: where,
     createdBy:S.uid, createdByName:S.me.name||"", createdAt:Date.now(), updatedAt:Date.now()};
@@ -2138,7 +2252,7 @@ function authView(){
     : `<span class="pill good" style="align-self:flex-start">Parent / Player</span>
        <h1>${mode==="signup"?"Follow your player's progress":"Welcome back"}</h1>
        <p style="max-width:52ch">See your coach's reviews, practice the drills they pick for you, build a highlight profile and chat with your team.</p>
-       <div class="card stack"><h3>First time here?</h3><p class="small">Create an account with your email. Then enter the 6-letter player code your coach gave you.</p></div>`;
+       <div class="card stack"><h3>First time here?</h3><p class="small">Create an account with your email and set up your player's profile. Then find your club and ask to join your team.</p></div>`;
   return `<button class="btn ghost back" data-act="pickPortal" data-id="">← ${coach?"Not a coach? Switch to Parent / Player":"Not a parent or player? Switch to Coach"}</button>
   <section class="hero">
     <div class="stack">${side}</div>
@@ -2288,7 +2402,7 @@ async function onSession(session, event){
   S.uid = uid; S.authChecked = true;
   if(!uid){
     subscribeClub(null); S.drillSteps = {}; S.stepsLoaded = false;
-    S.me = undefined; S.loading = false; S.view = null; S.authMode = "signin"; S.ptab = "dev"; S.playerId = null; S.chatTeam = null; S.pub = S.publicSlug ? S.pub : null;
+    S.me = undefined; S.loading = false; S.view = null; S.menuOpen = false; S.find = null; S.childId = null; S.authMode = "signin"; S.ptab = "dev"; S.playerId = null; S.chatTeam = null; S.pub = S.publicSlug ? S.pub : null;
     render();
     if(S.publicSlug && !S.pub) loadPublic(S.publicSlug);
     return;
