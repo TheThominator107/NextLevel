@@ -432,9 +432,8 @@ function fixView(){
 }
 
 /* ---------- views ---------- */
-/* NextPlay wordmark: "Next", a forward arrow, "Play" */
-const logoArrow = `<svg class="wm-arrow" viewBox="1.5 0 25.5 20" aria-hidden="true"><path d="M3.5 10 H24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"/><path d="M17.5 3.5 L25 10 L17.5 16.5" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-const logoHtml = () => `<span class="wordmark"><span class="wm-word">Next</span>${logoArrow}<span class="wm-word">Play</span></span>`;
+/* NextPlay wordmark (words only; the standalone mark lives in /brand) */
+const logoHtml = () => `<span class="wordmark"><span class="wm-word">Next</span><span class="wm-word wm-play">Play</span></span>`;
 const brandSvg = "";
 
 function topbar(){
