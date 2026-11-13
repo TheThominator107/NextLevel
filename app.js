@@ -1607,7 +1607,7 @@ function pageRecruiting(){
     </div>
     <div class="card stack">
       <div class="row between"><h3>What a scout sees</h3><span class="pill warn">Example</span></div>
-      <div class="pcard"><div class="photo ph" aria-hidden="true" style="width:96px;height:96px;font-size:2.2rem">GP</div>
+      <div class="pcard"><div class="photo avatar-art" style="width:96px;height:96px">${GRAY_AVATAR}</div>
         <div class="stack" style="gap:6px"><h2>${esc(E.name)}</h2><p class="muted">${esc(E.club)} · ${esc(E.team)}</p>
           <div class="chips"><span class="chip str">Central mid · main</span><span class="chip">Attacking mid</span></div></div></div>
       <div class="vid"><div class="vlink" style="aspect-ratio:16/7">▶ Fall 2026 highlights</div></div>
@@ -1744,6 +1744,34 @@ function authView(){
   </section>`;
 }
 
+
+/* illustrated headshot for the fictional example player (original artwork) */
+const GRAY_AVATAR = `<svg viewBox="0 0 200 200" class="avatar-art-svg" role="img" aria-label="Cartoon headshot of the example player, Gray Patchett">
+  <defs>
+    <linearGradient id="gp-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f8553"/><stop offset="1" stop-color="#1a4f31"/></linearGradient>
+    <linearGradient id="gp-kit" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ec6a37"/><stop offset="1" stop-color="#c94a1f"/></linearGradient>
+  </defs>
+  <rect width="200" height="200" fill="url(#gp-bg)"/>
+  <rect x="0" width="33" height="200" fill="#ffffff" opacity=".06"/><rect x="67" width="33" height="200" fill="#ffffff" opacity=".06"/><rect x="134" width="33" height="200" fill="#ffffff" opacity=".06"/>
+  <circle cx="100" cy="236" r="78" fill="none" stroke="#ffffff" stroke-opacity=".22" stroke-width="3"/>
+  <path d="M26 200 C30 160 60 144 100 144 C140 144 170 160 174 200 Z" fill="url(#gp-kit)"/>
+  <path d="M38 190 C44 170 56 160 72 154" stroke="#ffffff" stroke-width="4" fill="none" opacity=".85" stroke-linecap="round"/>
+  <path d="M162 190 C156 170 144 160 128 154" stroke="#ffffff" stroke-width="4" fill="none" opacity=".85" stroke-linecap="round"/>
+  <path d="M86 128 h28 v20 c-7 7 -21 7 -28 0z" fill="#c4875b"/>
+  <path d="M80 147 L100 170 L120 147" fill="none" stroke="#14213a" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"/>
+  <text x="141" y="191" font-family="Barlow Condensed, Arial Narrow, Arial, sans-serif" font-weight="700" font-size="24" fill="#ffffff">8</text>
+  <ellipse cx="61" cy="96" rx="8" ry="11" fill="#d29a6b"/><ellipse cx="139" cy="96" rx="8" ry="11" fill="#d29a6b"/>
+  <ellipse cx="100" cy="92" rx="39" ry="45" fill="#dca678"/>
+  <path d="M60 88 C56 52 80 38 103 40 C128 41 146 56 140 88 C137 74 128 64 114 64 C101 56 84 58 73 68 C66 73 62 80 60 88Z" fill="#3b2a1f"/>
+  <path d="M74 60 C86 50 104 48 118 54" stroke="#56402f" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
+  <path d="M76 80 q9 -6 18 -1" stroke="#3b2a1f" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M106 79 q9 -5 18 1" stroke="#3b2a1f" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <g class="gp-eyes"><ellipse cx="86" cy="93" rx="5" ry="6.2" fill="#1f1a17"/><ellipse cx="114" cy="93" rx="5" ry="6.2" fill="#1f1a17"/>
+    <circle cx="87.8" cy="90.8" r="1.7" fill="#ffffff"/><circle cx="115.8" cy="90.8" r="1.7" fill="#ffffff"/></g>
+  <path d="M100 98 q-4 10 0 13 q3 1 5 -1" stroke="#b47a50" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <circle cx="75" cy="110" r="6.5" fill="#e07a5f" opacity=".28"/><circle cx="125" cy="110" r="6.5" fill="#e07a5f" opacity=".28"/>
+  <path d="M85 117 q15 13 30 0" stroke="#7a3b2a" stroke-width="4" fill="none" stroke-linecap="round"/>
+</svg>`;
 /* ---------- example profile on the front page (fictional player) ---------- */
 const EXAMPLE = {
   name:"Gray Patchett", club:"Example FC", team:"U14 Boys Premier", positions:["CM","CAM"], foot:"Right",
@@ -1778,7 +1806,7 @@ function exampleProfile(){
       <span class="pill warn">Example player, not a real person</span>
     </div>
     <div class="card pcard">
-      <div class="photo ph" aria-hidden="true">GP</div>
+      <div class="photo avatar-art">${GRAY_AVATAR}</div>
       <div class="stack">
         <div class="stack" style="gap:2px"><h2 style="font-size:1.9rem">${esc(E.name)}</h2><p class="muted">${esc(E.club)} · ${esc(E.team)} · ${esc(E.foot)} footed</p></div>
         <div class="chips">${E.positions.map((k,i)=>`<span class="chip${i===0?" str":""}">${esc(posLabel(k))}${i===0?" · main":""}</span>`).join("")}</div>
