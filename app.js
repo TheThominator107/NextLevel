@@ -36,7 +36,7 @@ function changesBetween(prev, cur){
   return skillsFor(reviewForm(cur)).map(s => ({label:s.label, from:validRating(prev.ratings[s.k]), to:validRating(cur.ratings[s.k])}))
     .filter(c => c.from != null && c.to != null && c.from !== c.to);
 }
-const changeChip = c => `<span class="chip ${c.to>c.from?"str":"imp"}">${esc(c.label)} ${c.from} → ${c.to} ${c.to>c.from?"▲":"▼"}</span>`;
+const changeChip = c => `<span class="chip ${c.to>c.from?"up":"down"}">${esc(c.label)} ${c.from} → ${c.to} ${c.to>c.from?"▲":"▼"}</span>`;
 function progressSummary(rs){
   if(rs.length < 2) return "";
   const first = rs[0], last = rs[rs.length-1];
@@ -1177,7 +1177,7 @@ const MODALS = {
     <p class="small muted">${last?`Sliders start at the last review's ratings (${fmtDate(last.date)}). Move only what has changed. The previous review stays saved in the timeline.`:"This first review sets the baseline that future progress is measured from."} 1 Needs a lot of work · 2 Developing · 3 Solid for their level · 4 Strong · 5 Excellent</p>
     <form data-form="review" data-id="${esc(p.id)}" data-last="${last ? esc(JSON.stringify({form:lastForm, ratings:last.ratings})) : ""}">
       <label class="f" for="r-date" style="max-width:200px">Date<input type="date" id="r-date" name="date" value="${today()}" required></label>
-      <fieldset class="seg" style="border:0;padding:0;margin:0"><legend class="small" style="font-weight:600;margin-bottom:6px">Review type</legend>
+      <fieldset class="rtype" style="border:0;padding:0;margin:0;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><legend class="small" style="font-weight:600;margin-bottom:6px;color:var(--blue-deep)">Review type</legend>
         <label class="chipbox" for="rf-field"><input type="radio" id="rf-field" name="form" value="field" data-reviewform="1" ${form==="field"?"checked":""}><span>Field player</span></label>
         <label class="chipbox" for="rf-gk"><input type="radio" id="rf-gk" name="form" value="gk" data-reviewform="1" ${form==="gk"?"checked":""}><span>Goalkeeper</span></label>
       </fieldset>
@@ -2159,7 +2159,7 @@ function authView(){
 /* illustrated headshot for the fictional example player (original artwork) */
 const GRAY_AVATAR = `<svg viewBox="0 0 200 200" class="avatar-art-svg" role="img" aria-label="Cartoon headshot of the example player, Gray Patchett">
   <defs>
-    <linearGradient id="gp-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f8553"/><stop offset="1" stop-color="#1a4f31"/></linearGradient>
+    <linearGradient id="gp-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f6fd6"/><stop offset="1" stop-color="#16408f"/></linearGradient>
     <linearGradient id="gp-kit" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ec6a37"/><stop offset="1" stop-color="#c94a1f"/></linearGradient>
   </defs>
   <rect width="200" height="200" fill="url(#gp-bg)"/>
