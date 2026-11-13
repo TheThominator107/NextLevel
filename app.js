@@ -364,38 +364,68 @@ function clubMissing(){
 }
 
 function onboarding(){
+  const portal = S.portal;
+  if(!portal) return `<div class="stack" style="gap:6px"><h1>Welcome to ${APP_NAME}</h1><p class="muted">You're signed in. Which best describes you?</p></div>${portalCards("setPortal")}`;
+  const switcher = `<button type="button" class="btn ghost sm" data-act="setPortal" data-id="${portal==="coach"?"family":"coach"}">${portal==="coach"?"I'm actually a parent or player":"I'm actually a coach"}</button>`;
+  if(portal === "family") return `<section class="hero">
+    <div class="stack">
+      <span class="pill good" style="align-self:flex-start">Parent / Player</span>
+      <h1>Connect to your player</h1>
+      <p style="max-width:52ch">Your coach gives every player a 6-letter code. Enter it once and you'll see their reviews, home drills, profile and team chat.</p>
+      <p class="small muted">Have more than one child at the club? Add the others later under Account.</p>
+    </div>
+    <div class="stack">
+      <form class="card stack auth-family" data-form="joinFamily">
+        <h2>Enter your player code</h2>
+        <label class="f" for="jf-name">Your name<input type="text" id="jf-name" name="name" required maxlength="60" autocomplete="name" placeholder="e.g. Sarah Brandt (Leo's mom)"></label>
+        <label class="f" for="jf-code">Player code<input type="text" id="jf-code" name="code" required maxlength="12" placeholder="6-letter code" autocapitalize="characters"></label>
+        <div><button class="btn primary" type="submit">Connect to my player</button></div>
+      </form>
+      <div>${switcher}</div>
+    </div>
+  </section>`;
   return `<section class="hero">
     <div class="stack">
-      <h1>Player development your whole club can see</h1>
-      <p style="max-width:58ch">Coaches review each player's strengths and the parts of their game to work on. Families see that feedback at home and get drills to practice between sessions.</p>
-      <div class="card stack" style="margin-top:8px">
-        <h3>Welcome</h3>
-        <p class="small">You're signed in. Now set up your club, join one as a coach, or connect to your player.</p>
-      </div>
+      <span class="pill warn" style="align-self:flex-start">Coach</span>
+      <h1>Set up your coaching account</h1>
+      <p style="max-width:52ch">Starting fresh? Create your club and you become its admin. Joining an existing club? Ask your club admin for the 6-letter club code.</p>
     </div>
     <div class="stack">
       <form class="card stack" data-form="createClub">
         <h2>Start a club</h2>
-        <p class="small muted">For club directors and coaches setting up for the first time.</p>
+        <p class="small muted">For club directors setting up ${APP_NAME} for the first time.</p>
         <label class="f" for="cc-name">Your name<input type="text" id="cc-name" name="name" required maxlength="60" autocomplete="name"></label>
         <label class="f" for="cc-club">Club or team name<input type="text" id="cc-club" name="club" required maxlength="80"></label>
         <div><button class="btn primary" type="submit">Create club</button></div>
       </form>
       <form class="card stack" data-form="joinCoach">
-        <h2>Join your club as a coach</h2>
+        <h2>Join your club</h2>
         <label class="f" for="jc-name">Your name<input type="text" id="jc-name" name="name" required maxlength="60" autocomplete="name"></label>
         <label class="f" for="jc-code">Club code<input type="text" id="jc-code" name="code" required maxlength="12" placeholder="6-letter code" autocapitalize="characters"></label>
         <div><button class="btn primary" type="submit">Join club</button></div>
       </form>
-      <form class="card stack" data-form="joinFamily">
-        <h2>I'm a parent or player</h2>
-        <p class="small muted">Your coach gives each player a code.</p>
-        <label class="f" for="jf-name">Your name<input type="text" id="jf-name" name="name" required maxlength="60" autocomplete="name"></label>
-        <label class="f" for="jf-code">Player code<input type="text" id="jf-code" name="code" required maxlength="12" placeholder="6-letter code" autocapitalize="characters"></label>
-        <div><button class="btn primary" type="submit">Connect to my player</button></div>
-      </form>
+      <div>${switcher}</div>
     </div>
   </section>`;
+}
+
+const coachIcon = `<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect x="5" y="9" width="30" height="22" rx="3" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M11 25 l5-6 4 3 7-8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="27" cy="14" r="2" fill="currentColor"/></svg>`;
+const familyIcon = `<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="14" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="27" cy="16" r="3.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M5 33c0-6 4-10 9-10s9 4 9 10M21 33c0-4 2.6-7 6-7s6 3 6 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+function portalCards(act){
+  return `<div class="portals">
+    <button type="button" class="portal coach" data-act="${act}" data-id="coach">
+      <span class="picon">${coachIcon}</span>
+      <span class="ptitle">Coach</span>
+      <span class="pdesc">Review players, assign home drills, write references and run your team chats.</span>
+      <span class="pgo">Continue as a coach →</span>
+    </button>
+    <button type="button" class="portal family" data-act="${act}" data-id="family">
+      <span class="picon">${familyIcon}</span>
+      <span class="ptitle">Parent / Player</span>
+      <span class="pdesc">See your coach's feedback, do your home drills, build your player profile and chat with the team.</span>
+      <span class="pgo">Continue as a parent or player →</span>
+    </button>
+  </div>`;
 }
 
 /* roster */
@@ -752,6 +782,7 @@ async function loadPublic(slug){
 }
 function readHash(){
   const h = location.hash.slice(1);
+  if(h === "coach" || h === "parent"){ savePortal(h === "coach" ? "coach" : "family"); if(S.publicSlug){ S.publicSlug = null; S.pub = null; } if(!S.uid){ S.authMode = "signin"; } render(); return; }
   const m = /^profile-([a-z0-9]+)$/.exec(h);
   const slug = m ? m[1] : null;
   if(slug !== S.publicSlug){ S.publicSlug = slug; S.pub = null; if(slug && S.authChecked) loadPublic(slug); else render(); }
@@ -1224,18 +1255,31 @@ function setupView(){
   </div>`;
 }
 function authView(){
+  if(!S.portal){
+    return `<section class="stack" style="gap:24px">
+      <div class="stack" style="gap:8px;max-width:640px">
+        <h1>Player development your whole club can see</h1>
+        <p class="muted">Coaches review each player's strengths and what to work on. Families see that feedback at home, practice with assigned drills, and keep up with the team in one place.</p>
+      </div>
+      ${portalCards("pickPortal")}
+    </section>`;
+  }
+  const coach = S.portal === "coach";
   const mode = S.authMode || "signin";
   const title = mode === "signup" ? "Create your account" : mode === "reset" ? "Reset your password" : "Sign in";
-  return `<section class="hero">
-    <div class="stack">
-      <h1>Player development your whole club can see</h1>
-      <p style="max-width:58ch">Coaches review each player's strengths and the parts of their game to work on. Families see that feedback at home, get drills to practice between sessions, and keep up with the team in one place.</p>
-      <div class="card stack" style="margin-top:8px">
-        <h3>How it works</h3>
-        <p class="small">Club directors create a club and share a code with their coaches. Coaches add players, and each player gets a code their family uses to connect.</p>
-      </div>
-    </div>
-    <form class="card stack" data-form="auth" style="align-self:start">
+  const side = coach
+    ? `<span class="pill warn" style="align-self:flex-start">Coach</span>
+       <h1>${mode==="signup"?"Bring your club onto "+APP_NAME:"Welcome back, coach"}</h1>
+       <p style="max-width:52ch">Track every player's development, assign home drills, write references for scouts and keep your teams in the loop.</p>
+       <div class="card stack"><h3>New club?</h3><p class="small">Create an account, then start your club. You'll get a club code to share with your other coaches.</p></div>`
+    : `<span class="pill good" style="align-self:flex-start">Parent / Player</span>
+       <h1>${mode==="signup"?"Follow your player's progress":"Welcome back"}</h1>
+       <p style="max-width:52ch">See your coach's reviews, practice the drills they pick for you, build a highlight profile and chat with your team.</p>
+       <div class="card stack"><h3>First time here?</h3><p class="small">Create an account with your email. Then enter the 6-letter player code your coach gave you.</p></div>`;
+  return `<button class="btn ghost back" data-act="pickPortal" data-id="">← ${coach?"Not a coach? Switch to Parent / Player":"Not a parent or player? Switch to Coach"}</button>
+  <section class="hero">
+    <div class="stack">${side}</div>
+    <form class="card stack auth-${coach?"coach":"family"}" data-form="auth" style="align-self:start">
       <h2>${title}</h2>
       <label class="f" for="au-email">Email<input type="email" id="au-email" name="email" required autocomplete="email"></label>
       ${mode !== "reset" ? `<label class="f" for="au-pass">Password<input type="password" id="au-pass" name="password" required minlength="8" autocomplete="${mode==="signup"?"new-password":"current-password"}"></label>` : ""}
@@ -1249,6 +1293,14 @@ function authView(){
     </form>
   </section>`;
 }
+function savePortal(p){ S.portal = p || null; try { if(p) localStorage.setItem("np.portal", p); else localStorage.removeItem("np.portal"); } catch(_){} }
+ACTS.pickPortal = ds => {
+  savePortal(ds.id);
+  S.authMode = "signin";
+  try { history.replaceState(null, "", location.pathname + location.search + (ds.id ? "#" + (ds.id === "coach" ? "coach" : "parent") : "")); } catch(_){}
+  render(); const e = document.getElementById("au-email"); if(e) e.focus();
+};
+ACTS.setPortal = ds => { savePortal(ds.id); render(); };
 function newPasswordView(){
   return `<form class="card stack" data-form="newPassword" style="max-width:480px">
     <h2>Choose a new password</h2>
@@ -1274,6 +1326,11 @@ async function onSession(session, event){
   }
   S.loading = true; render();
   await loadMe();
+  if(S.me && S.me.role){
+    const actual = S.me.role === "family" ? "family" : "coach";
+    if(S.portal && S.portal !== actual && event === "SIGNED_IN") toast(actual === "family" ? "This is a parent / player account, so we opened the family view." : "This is a coach account, so we opened the coach view.");
+    savePortal(actual);
+  }
   if(S.publicSlug && !S.pub) loadPublic(S.publicSlug);
 }
 
@@ -1281,6 +1338,9 @@ async function onSession(session, event){
   const cfg = window.NEXTPLAY_CONFIG || {};
   const m = /^profile-([a-z0-9]+)$/.exec(location.hash.slice(1));
   if(m) S.publicSlug = m[1];
+  try { S.portal = localStorage.getItem("np.portal") || null; } catch(_){}
+  if(location.hash === "#coach") savePortal("coach");
+  if(location.hash === "#parent") savePortal("family");
   if(!cfg.supabaseUrl || !cfg.supabaseKey || /YOUR_/.test(cfg.supabaseUrl + cfg.supabaseKey)){
     S.loading = false; S.noConfig = true; render(); return;
   }

@@ -246,6 +246,23 @@ nav.tabs button[aria-current="page"] .badge{background:var(--paper);color:var(--
   .chat-pick{display:block;max-width:240px}
   .msg{max-width:90%}
 }
+
+/* sign-in entrances */
+.portals{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:720px){.portals{grid-template-columns:1fr}}
+.portal{display:flex;flex-direction:column;gap:10px;align-items:flex-start;text-align:left;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-top:6px solid var(--accent);border-radius:14px;padding:26px 24px;box-shadow:var(--shadow);min-height:230px}
+.portal.family{border-top-color:var(--pitch)}
+.portal:hover{border-color:var(--muted);border-top-color:var(--accent)}
+.portal.family:hover{border-top-color:var(--pitch)}
+.portal .picon{width:60px;height:60px;border-radius:14px;display:grid;place-items:center;background:var(--chip);color:var(--accent)}
+.portal.family .picon{color:var(--pitch)}
+.portal .ptitle{font-family:var(--display);font-size:1.9rem;font-weight:700;line-height:1}
+.portal .pdesc{color:var(--muted);max-width:42ch}
+.portal .pgo{margin-top:auto;font-weight:700;color:var(--accent)}
+.portal.family .pgo{color:var(--pitch)}
+form.auth-family{border-top:5px solid var(--pitch)}
+form.auth-family .btn.primary{background:var(--pitch);border-color:var(--pitch);color:#fff}
+form.auth-coach{border-top:5px solid var(--accent)}
 </style>
 </head>
 <body>
