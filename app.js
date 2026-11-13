@@ -432,7 +432,10 @@ function fixView(){
 }
 
 /* ---------- views ---------- */
-const brandSvg = `<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect x="1.5" y="4.5" width="25" height="19" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="14" y1="4.5" x2="14" y2="23.5" stroke="currentColor" stroke-width="2"/><circle cx="14" cy="14" r="3.6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 10 l3 4 -3 4" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+/* NextPlay wordmark: "Next", a forward arrow, "Play" */
+const logoArrow = `<svg class="wm-arrow" viewBox="1.5 0 25.5 20" aria-hidden="true"><path d="M3.5 10 H24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"/><path d="M17.5 3.5 L25 10 L17.5 16.5" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const logoHtml = () => `<span class="wordmark"><span class="wm-word">Next</span>${logoArrow}<span class="wm-word">Play</span></span>`;
+const brandSvg = "";
 
 function topbar(){
   let tabs = "";
@@ -444,7 +447,7 @@ function topbar(){
     tabs = `<nav class="tabs" aria-label="Main">${items.map(([v,l]) => `<button data-act="go" data-view="${v}" ${!S.publicPage && (S.view===v || (v==="roster" && S.view==="player")) ? 'aria-current="page"' : ""}>${l}${v==="chat" && un ? `<span class="badge" aria-label="${un} unread">${un>99?"99+":un}</span>` : ""}</button>`).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>`;
   }
   return `<header class="top"><div class="top-in">
-    <a href="#" class="brand" data-act="home" aria-label="${APP_NAME} home">${brandSvg}<span>${APP_NAME}</span></a>
+    <a href="#" class="brand" data-act="home" aria-label="${APP_NAME} home">${logoHtml()}</a>
     ${S.club ? `<span class="clubname">${esc(S.club.name)}</span>` : ""}
     ${!S.uid && !S.noConfig ? publicNav() : (tabs || (S.uid ? `<nav class="tabs"><a href="#contact" class="signout-link">Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>` : ""))}
   </div></header>`;
@@ -1513,7 +1516,7 @@ function publicNav(){
 }
 function siteFooter(){
   return `<footer class="site-foot"><div class="foot-in">
-    <span class="brand small-brand">${brandSvg}<span>${APP_NAME}</span></span>
+    <span class="brand small-brand" aria-label="${APP_NAME}">${logoHtml()}</span>
     <nav aria-label="Footer">${PUBLIC_PAGES.map(([id,label]) => `<a href="#${id}">${label}</a>`).join("")}</nav>
     <span class="muted small">© ${new Date().getFullYear()} ${APP_NAME}</span>
   </div></footer>`;

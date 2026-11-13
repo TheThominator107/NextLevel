@@ -6,10 +6,10 @@
 <title>NextPlay</title>
 <meta name="description" content="Player development for soccer clubs: coach reviews, home drills, player profiles and team chat.">
 <meta name="theme-color" content="#14213a">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Crect width='28' height='28' rx='6' fill='%2314213a'/%3E%3Crect x='4' y='7' width='20' height='14' rx='1.5' fill='none' stroke='white' stroke-width='1.8'/%3E%3Cline x1='14' y1='7' x2='14' y2='21' stroke='white' stroke-width='1.8'/%3E%3Ccircle cx='14' cy='14' r='2.8' fill='none' stroke='%23f0763f' stroke-width='1.8'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2314213a'/%3E%3Cpath d='M7 16 H23' stroke='%23f0763f' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M16.5 9 L24 16 L16.5 23' fill='none' stroke='%23f0763f' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Outfit:wght@600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   /* layout: slim top bar + one working column; coach goes roster -> player, family lands on one child's page */
@@ -64,7 +64,11 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* top bar */
 .top{background:#14213a;color:#f3f5f8;position:sticky;top:0;z-index:5}
 .top-in{max-width:1120px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700;font-size:1.45rem;letter-spacing:.04em;text-transform:uppercase}
+.brand{display:flex;align-items:center;line-height:1}
+.wordmark{display:inline-flex;align-items:center;gap:.16em;font-family:"Outfit","Source Sans 3",system-ui,sans-serif;font-weight:700;font-size:1.6rem;letter-spacing:-.015em;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.wm-arrow{width:.92em;height:.72em;color:var(--accent);flex:none;transform:translateY(.02em)}
+.brand:hover .wm-arrow{transform:translate(.08em,.02em)}
+@media (prefers-reduced-motion:no-preference){.wm-arrow{transition:transform .2s ease}}
 .brand svg{flex:none}
 .tag{font-family:var(--body);font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border:1px solid currentColor;border-radius:999px;padding:1px 7px;opacity:.7}
 .clubname{opacity:.75;font-size:.92rem}
@@ -325,7 +329,8 @@ ol.numbered{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6p
 .foot-in nav{display:flex;gap:14px;flex-wrap:wrap}
 .foot-in nav a{color:var(--muted);text-decoration:none;font-weight:600;font-size:.92rem}
 .foot-in nav a:hover{color:var(--ink)}
-.small-brand{font-size:1.1rem;color:var(--ink)}
+.small-brand{color:var(--ink)}
+.small-brand .wordmark{font-size:1.25rem}
 
 /* illustrated example headshot */
 .avatar-art{padding:0;overflow:hidden;background:#1a4f31;flex:none}
