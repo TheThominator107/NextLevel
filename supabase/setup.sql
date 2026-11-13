@@ -270,6 +270,10 @@ create policy assign_write on public.assignments for insert to authenticated
 create policy assign_edit  on public.assignments for update to authenticated
   using (club_id = my_club() and is_staff()) with check (club_id = my_club());
 create policy assign_del   on public.assignments for delete to authenticated using (club_id = my_club() and is_staff());
+create policy assign_family_insert on public.assignments for insert to authenticated
+  with check (not is_staff() and club_id = my_club() and player_id in (select my_player_ids()) and assigned_by = auth.uid());
+create policy assign_family_delete on public.assignments for delete to authenticated
+  using (assigned_by = auth.uid() and player_id in (select my_player_ids()));
 
 -- player profiles: the family edits; coaches and the family read;
 -- 'club' profiles are readable by the whole club; public ones via get_public_profile()

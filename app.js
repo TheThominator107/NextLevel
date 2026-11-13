@@ -69,21 +69,60 @@ function timelineHtml(rs, opts={}){
 }
 const TAGS = ["First touch","Weak foot","Passing range","Scanning","1v1 attacking","1v1 defending","Finishing","Crossing","Heading","Shielding","Positioning","Decision making","Speed","Work rate","Communication","Confidence on the ball","Leadership","Composure"];
 const POSITIONS = ["Goalkeeper","Defender","Midfielder","Forward","Not set"];
-const CATS = ["Ball mastery","Passing","Dribbling","Shooting","Defending","Awareness","Speed & agility","Goalkeeping"];
+const CATS = ["Ball mastery","Passing","Dribbling","Shooting","Defending","Awareness","Speed & agility","Strength","Game understanding","Mindset","Goalkeeping"];
 
+/* skills: review attributes a drill trains (used for recommendations); tags: matching "Work on" tags; gk: goalkeeper drill */
 const BUILTIN_DRILLS = [
-  {id:"b-wall-pass",title:"Two-touch wall passes",category:"Passing",minutes:10,equipment:"Ball, wall",level:"All levels",steps:["Stand 3 to 5 yards from a wall.","Pass with the inside of your right foot, take one touch to control, pass again.","Do 25 passes, then switch to your left foot for 25.","Make it harder: step back to 8 yards and use one touch only."]},
-  {id:"b-toe-taps",title:"Toe taps",category:"Ball mastery",minutes:5,equipment:"Ball",level:"All levels",steps:["Ball still in front of you, tap the top with the sole of each foot in turn.","Stay on the balls of your feet and keep your head up.","3 rounds of 30 seconds, 30 seconds rest.","Make it harder: move the ball in a circle while tapping."]},
-  {id:"b-cone-weave",title:"Cone weave dribble",category:"Dribbling",minutes:10,equipment:"Ball, 6 cones (or shoes)",level:"All levels",steps:["Set 6 cones in a line, 1 to 2 yards apart.","Weave through using only your right foot, then only your left.","Then use inside and outside of the same foot.","Time 3 runs each way and try to beat your best."]},
-  {id:"b-sole-roll",title:"Sole rolls and pull-backs",category:"Ball mastery",minutes:8,equipment:"Ball",level:"Beginner",steps:["Roll the ball across your body with the sole, side to side.","Add a pull-back: drag it back with the sole and push forward with the laces.","Alternate feet every 5 reps.","3 rounds of 45 seconds."]},
-  {id:"b-juggle",title:"Juggling ladder",category:"Ball mastery",minutes:10,equipment:"Ball",level:"All levels",steps:["Count your best juggle with any surface.","Then try feet only, then alternating feet.","Write down your record each time.","Goal: add 5 to your record each week."]},
-  {id:"b-first-touch",title:"Open-body first touch",category:"Passing",minutes:10,equipment:"Ball, wall, 2 cones",level:"Intermediate",steps:["Put a cone 2 yards to your left and one 2 yards to your right.","Pass at the wall; as it comes back, take your first touch past one cone with your back foot.","Alternate sides each rep.","20 reps each side. Focus on opening your hips before the ball arrives."]},
-  {id:"b-targets",title:"Target finishing",category:"Shooting",minutes:15,equipment:"Ball(s), goal or wall, tape",level:"All levels",steps:["Mark the 4 corners of a goal or wall with tape or objects.","From 12 yards, aim for a corner with the inside of the foot.","Then laces, keeping your knee over the ball.","Score 1 point per corner hit. Best of 20."]},
-  {id:"b-weak-foot",title:"Weak-foot only",category:"Ball mastery",minutes:15,equipment:"Ball",level:"All levels",steps:["For one session, touch the ball with your weaker foot only.","Do 2 minutes each of: taps, rolls, wall passes, short dribbles.","Finish with 10 shots with the weak foot.","Note which part felt hardest for your coach."]},
-  {id:"b-5-10-5",title:"5-10-5 shuttle",category:"Speed & agility",minutes:10,equipment:"3 cones",level:"All levels",steps:["Set 3 cones in a line, 5 yards apart.","Start at the middle, sprint 5 yards right and touch the line.","Sprint 10 yards left, then 5 back to the middle.","6 reps with full rest. Low hips on each turn."]},
-  {id:"b-scan",title:"Shoulder checks",category:"Awareness",minutes:8,equipment:"Ball, wall, a helper",level:"Intermediate",steps:["A helper stands behind you and holds up fingers.","Check over your shoulder before each pass arrives and call the number.","Then receive and pass back to the wall.","Aim for 2 checks before every touch."]},
-  {id:"b-jockey",title:"Jockey footwork",category:"Defending",minutes:8,equipment:"2 cones",level:"All levels",steps:["Side-on stance, knees bent, weight on the balls of your feet.","Shuffle backward and sideways between two cones 5 yards apart without crossing your feet.","20 seconds on, 20 seconds off, 6 rounds.","Add a helper dribbling at you at walking pace."]},
-  {id:"b-shield",title:"Shield the ball",category:"Dribbling",minutes:10,equipment:"Ball, a helper",level:"Intermediate",steps:["Keep the ball on your far foot with your body between it and the helper.","Arm out for balance, knees bent, keep turning your back to them.","Rounds of 30 seconds: can you keep it?","Switch roles after each round."]}
+  /* ---- first touch & ball mastery ---- */
+  {id:"b-toe-taps",title:"Toe taps",category:"Ball mastery",minutes:5,equipment:"Ball",level:"All levels",skills:["first_touch","handling_speed"],tags:["Confidence on the ball"],steps:["Ball still in front of you, tap the top with the sole of each foot in turn.","Stay on the balls of your feet and keep your head up.","3 rounds of 30 seconds, 30 seconds rest.","Make it harder: move the ball in a circle while tapping."]},
+  {id:"b-sole-roll",title:"Sole rolls and pull-backs",category:"Ball mastery",minutes:8,equipment:"Ball",level:"Beginner",skills:["first_touch","dribbling"],tags:["Confidence on the ball"],steps:["Roll the ball across your body with the sole, side to side.","Add a pull-back: drag it back with the sole and push forward with the laces.","Alternate feet every 5 reps.","3 rounds of 45 seconds."]},
+  {id:"b-juggle",title:"Juggling ladder",category:"Ball mastery",minutes:10,equipment:"Ball",level:"All levels",skills:["first_touch"],tags:["First touch","Composure"],steps:["Count your best juggle with any surface.","Then try feet only, then alternating feet.","Write down your record each time.","Goal: add 5 to your record each week."]},
+  {id:"b-first-touch",title:"Open-body first touch",category:"Passing",minutes:10,equipment:"Ball, wall, 2 cones",level:"Intermediate",skills:["first_touch","positional_awareness","decision_making"],tags:["First touch","Composure"],steps:["Put a cone 2 yards to your left and one 2 yards to your right.","Pass at the wall; as it comes back, take your first touch past one cone with your back foot.","Alternate sides each rep.","20 reps each side. Open your hips before the ball arrives."]},
+  {id:"b-volley",title:"Volleys and half-volleys",category:"Shooting",minutes:10,equipment:"Ball, wall or goal",level:"Intermediate",skills:["first_touch","shooting"],tags:["Finishing","Composure"],steps:["Toss the ball up to yourself (or have a helper toss it).","Cushion it down with your thigh or foot, then strike it at the wall or goal.","Next, strike it on the half-volley as it bounces: knee over the ball, toes down.","3 sets of 10. Count clean strikes."]},
+
+  /* ---- passing ---- */
+  {id:"b-wall-pass",title:"Two-touch wall passes",category:"Passing",minutes:10,equipment:"Ball, wall",level:"All levels",skills:["passing","first_touch"],tags:["Passing range"],steps:["Stand 3 to 5 yards from a wall.","Pass with the inside of your right foot, take one touch to control, pass again.","Do 25 passes, then switch to your left foot for 25.","Make it harder: step back to 8 yards and use one touch only."]},
+  {id:"b-long-pass",title:"Long-pass targets",category:"Passing",minutes:15,equipment:"Ball(s), 4 cones",level:"Intermediate",skills:["passing","tactical_understanding"],tags:["Passing range","Crossing"],steps:["Make a 3x3 yard box with cones 20 to 30 yards away.","Strike the ball into the box: lean slightly back, lock your ankle, strike through the middle-bottom.","10 with each foot. Count how many land in the box.","Make it harder: move the box further away or to the side."]},
+  {id:"b-weak-foot",title:"Weak-foot only",category:"Ball mastery",minutes:15,equipment:"Ball",level:"All levels",skills:["passing","shooting","dribbling"],tags:["Weak foot"],steps:["For one session, touch the ball with your weaker foot only.","Do 2 minutes each of: taps, rolls, wall passes, short dribbles.","Finish with 10 shots with the weak foot.","Note which part felt hardest for your coach."]},
+
+  /* ---- shooting ---- */
+  {id:"b-targets",title:"Target finishing",category:"Shooting",minutes:15,equipment:"Ball(s), goal or wall, tape",level:"All levels",skills:["shooting"],tags:["Finishing"],steps:["Mark the 4 corners of a goal or wall with tape or objects.","From 12 yards, aim for a corner with the inside of the foot.","Then laces, keeping your knee over the ball.","Score 1 point per corner hit. Best of 20."]},
+  {id:"b-dribble-shoot",title:"Dribble, set and shoot",category:"Shooting",minutes:12,equipment:"Ball, 3 cones, goal or wall",level:"Intermediate",skills:["shooting","dribbling","decision_making"],tags:["Finishing","1v1 attacking"],steps:["Dribble through 3 cones, then take one touch to set the ball out of your feet.","Shoot within 2 touches of the last cone.","Pick your corner before you strike, and follow your shot in.","10 reps; alternate the foot you shoot with."]},
+
+  /* ---- dribbling & speed with the ball ---- */
+  {id:"b-cone-weave",title:"Cone weave dribble",category:"Dribbling",minutes:10,equipment:"Ball, 6 cones (or shoes)",level:"All levels",skills:["dribbling","handling_speed"],tags:["Confidence on the ball"],steps:["Set 6 cones in a line, 1 to 2 yards apart.","Weave through using only your right foot, then only your left.","Then use inside and outside of the same foot.","Time 3 runs each way and try to beat your best."]},
+  {id:"b-speed-dribble",title:"Speed dribble races",category:"Dribbling",minutes:10,equipment:"Ball, 2 cones, timer",level:"All levels",skills:["handling_speed","dribbling","separation_speed"],tags:["Speed"],steps:["Set two cones 20 yards apart.","Dribble as fast as you can, touching the ball every 2 to 3 steps with your laces.","Stop the ball dead on the far line, turn, race back.","6 runs with full rest. Time them and try to beat your best."]},
+  {id:"b-change-pace",title:"Change of pace and direction",category:"Dribbling",minutes:10,equipment:"Ball, 4 cones",level:"Intermediate",skills:["separation_speed","dribbling","handling_speed"],tags:["1v1 attacking","Speed"],steps:["Dribble slowly toward a cone as if it's a defender.","At 1 yard away, do a move (scissor, drop of the shoulder or cut) and explode away for 5 yards.","The burst is the point: go from slow to full speed in 2 touches.","10 reps each direction."]},
+  {id:"b-shield",title:"Shield the ball",category:"Dribbling",minutes:10,equipment:"Ball, a helper",level:"Intermediate",skills:["physicality","dribbling"],tags:["Shielding"],steps:["Keep the ball on your far foot with your body between it and the helper.","Arm out for balance, knees bent, keep turning your back to them.","Rounds of 30 seconds: can you keep it?","Switch roles after each round."]},
+  {id:"b-1v1-line",title:"1v1 to the line",category:"Dribbling",minutes:12,equipment:"Ball, 4 cones, a helper",level:"All levels",skills:["dribbling","defending","separation_speed"],tags:["1v1 attacking","1v1 defending"],steps:["Make a channel 8 yards wide and 15 yards long.","Attacker tries to stop the ball on the far line; defender tries to win it.","Attacker: change speed, don't just change direction. Defender: side-on, stay patient.","Best of 10, then swap roles."]},
+
+  /* ---- speed & strength ---- */
+  {id:"b-5-10-5",title:"5-10-5 shuttle",category:"Speed & agility",minutes:10,equipment:"3 cones",level:"All levels",skills:["separation_speed","physicality"],tags:["Speed"],steps:["Set 3 cones in a line, 5 yards apart.","Start at the middle, sprint 5 yards right and touch the line.","Sprint 10 yards left, then 5 back to the middle.","6 reps with full rest. Low hips on each turn."]},
+  {id:"b-first-step",title:"First-step burst",category:"Speed & agility",minutes:8,equipment:"2 cones, a helper (optional)",level:"All levels",skills:["separation_speed"],tags:["Speed","1v1 attacking"],steps:["Start side-on or facing away from a cone 5 yards ahead.","On a clap or call, turn and sprint to the cone. Short, quick first steps; drive your arms.","Rest 30 seconds between reps.","8 reps. The first 2 steps matter most."]},
+  {id:"b-strength",title:"Young player strength circuit",category:"Strength",minutes:15,equipment:"None (bodyweight only)",level:"All levels",skills:["physicality"],tags:["Shielding","Heading"],steps:["30 seconds each, 30 seconds rest: squats, forward lunges, glute bridges, plank, side plank (each side).","Then 30 seconds balancing on one leg, eyes closed if you can (each leg).","Go through the circuit twice.","Good form beats speed. Stop if anything hurts."]},
+  {id:"b-recovery",title:"Recovery runs",category:"Defending",minutes:10,equipment:"3 cones",level:"All levels",skills:["defending","physicality"],tags:["Work rate"],steps:["Stand at a cone 'in attack'. A helper calls 'Lost it!'.","Sprint back past a cone 15 yards behind you, then turn and face forward in a defending stance.","Get goal-side first, then slow down and get side-on.","8 reps with a walk-back rest."]},
+
+  /* ---- defending ---- */
+  {id:"b-jockey",title:"Jockey footwork",category:"Defending",minutes:8,equipment:"2 cones",level:"All levels",skills:["defending"],tags:["1v1 defending"],steps:["Side-on stance, knees bent, weight on the balls of your feet.","Shuffle backward and sideways between two cones 5 yards apart without crossing your feet.","20 seconds on, 20 seconds off, 6 rounds.","Add a helper dribbling at you at walking pace."]},
+
+  /* ---- awareness, decisions, tactics, mindset ---- */
+  {id:"b-scan",title:"Shoulder checks",category:"Awareness",minutes:8,equipment:"Ball, wall, a helper",level:"Intermediate",skills:["positional_awareness","decision_making","communication"],tags:["Scanning"],steps:["A helper stands behind you and holds up fingers.","Check over your shoulder before each pass arrives and call the number.","Then receive and pass back to the wall.","Aim for 2 checks before every touch."]},
+  {id:"b-color-gates",title:"Colour gate decisions",category:"Awareness",minutes:10,equipment:"Ball, 6 cones in 3 colours, a helper",level:"All levels",skills:["decision_making","positional_awareness","handling_speed"],tags:["Decision making","Scanning"],steps:["Make 3 small gates out of coloured cones around you.","Dribble in the middle. When the helper calls a colour, dribble through that gate as fast as you can.","Keep your head up so you already know where each gate is.","Make it harder: the helper holds up a colour instead of calling it."]},
+  {id:"b-pro-watch",title:"Watch a pro in your position",category:"Game understanding",minutes:15,equipment:"A match on TV or online",level:"All levels",skills:["tactical_understanding","positional_awareness","coachability"],tags:["Positioning","Decision making"],steps:["Pick one player who plays your position and watch only them for 10 minutes.","Note where they stand when their team has the ball, and where they go when it's lost.","Count how often they check their shoulder before receiving.","Write down 3 things you'll copy and share them with your coach."]},
+  {id:"b-draw-shape",title:"Draw the team shape",category:"Game understanding",minutes:10,equipment:"Paper and pen",level:"All levels",skills:["tactical_understanding","positional_awareness"],tags:["Positioning"],steps:["Draw a field and your team's formation.","Mark where you stand when we have the ball, and where you go when we lose it.","Draw one arrow for your best run and one for your best pass.","Bring it to practice and ask your coach if you got it right."]},
+  {id:"b-talk",title:"Talk the game",category:"Mindset",minutes:8,equipment:"Ball, a helper",level:"All levels",skills:["communication","decision_making"],tags:["Communication","Leadership"],steps:["Pass back and forth with a helper.","Before each pass, they call 'Man on!', 'Time!' or 'Turn!'.","You react: one-touch pass back, take a touch and look up, or turn away.","Swap roles so you practise giving loud, short, clear calls too."]},
+  {id:"b-reflect",title:"Session reflection",category:"Mindset",minutes:5,equipment:"Notebook or phone",level:"All levels",skills:["coachability","communication"],tags:["Work rate","Leadership"],steps:["After each practice or game, write 3 short lines.","1: One thing my coach asked me to do. 2: One thing that went well. 3: One thing I'll try next time.","Read last week's notes before your next session.","Show your coach once a month."]},
+
+  /* ---- goalkeepers ---- */
+  {id:"g-set-catch",title:"Set position and catch",category:"Goalkeeping",minutes:10,equipment:"Ball, a helper",level:"All levels",gk:true,skills:["gk_ball_handling","gk_shot_stopping","gk_positioning"],tags:[],steps:["Set position: feet shoulder-width, knees soft, weight forward, hands in front.","A helper throws or kicks at chest, waist and head height.","Catch with a 'W' (thumbs behind the ball) above the waist and scoop below it.","3 sets of 10. Get set before every shot."]},
+  {id:"g-w-catch",title:"W-catch, basket and scoop",category:"Goalkeeping",minutes:8,equipment:"Ball, wall",level:"Beginner",gk:true,skills:["gk_ball_handling"],tags:[],steps:["Throw the ball at a wall and catch the rebound with a W-catch at head height.","Then a basket catch at your chest, then a scoop from the ground.","10 of each, then mix them up.","Make it harder: stand closer to the wall."]},
+  {id:"g-collapse",title:"Collapse dive progression",category:"Goalkeeping",minutes:12,equipment:"Ball, soft grass or a mat, a helper",level:"All levels",gk:true,skills:["gk_diving","gk_shot_stopping"],tags:[],steps:["On grass or a mat only. Start kneeling: the helper rolls the ball to your side; fall on your side and catch it, hands first.","Next from a crouch, then from standing.","Land on your side (hip and shoulder), never on your elbow or stomach.","5 each side at each stage. Stop if it hurts."]},
+  {id:"g-reaction",title:"Reaction saves",category:"Goalkeeping",minutes:8,equipment:"Tennis ball or ball, wall",level:"Intermediate",gk:true,skills:["gk_shot_stopping","gk_diving"],tags:[],steps:["Stand 3 yards from a wall in your set position.","A helper throws a tennis ball at the wall from behind you; react and catch the rebound.","Stay low and balanced; move your feet before your hands.","3 rounds of 10."]},
+  {id:"g-angles",title:"Narrow the angle",category:"Goalkeeping",minutes:10,equipment:"4 cones or markers",level:"Intermediate",gk:true,skills:["gk_positioning","gk_decision_making"],tags:["Positioning"],steps:["Mark two posts and place 3 cones in an arc 12 yards out.","A helper stands on a cone. Move so you're on the line between the ball and the middle of the goal.","Take 1 to 2 steps off your line toward the ball. Check the angle by turning your head.","Helper moves to a new cone every 10 seconds."]},
+  {id:"g-shuffle",title:"Shuffle and set",category:"Goalkeeping",minutes:8,equipment:"2 cones, a ball",level:"All levels",gk:true,skills:["gk_positioning","gk_shot_stopping"],tags:[],steps:["Shuffle sideways between two cones 3 yards apart without crossing your feet.","On a call of 'Set!', stop and get into your set position.","The helper throws a ball for you to catch right away.","6 rounds of 30 seconds."]},
+  {id:"g-distribution",title:"Distribution targets",category:"Goalkeeping",minutes:15,equipment:"Ball(s), 2 cones or a helper",level:"All levels",gk:true,skills:["gk_distribution"],tags:["Passing range"],steps:["Roll the ball along the ground to a target 15 yards away, 10 times.","Then sidearm throws to 20 yards, then overarm throws to 25+ yards.","Finish with 10 kicks from your hands or the ground to a target.","Count how many reach the target."]},
+  {id:"g-come-stay",title:"Come or stay?",category:"Goalkeeping",minutes:10,equipment:"Ball, a helper",level:"Intermediate",gk:true,skills:["gk_decision_making","gk_communication"],tags:["Decision making","Communication"],steps:["A helper throws high balls into your area from the side.","Decide early: call 'KEEPER!' and attack the ball at its highest point, or call 'AWAY!' and stay set.","Take off from one foot, knee up for protection.","10 balls each side."]},
+  {id:"g-organiser",title:"Organiser calls",category:"Goalkeeping",minutes:10,equipment:"A match on TV or online",level:"All levels",gk:true,skills:["gk_communication","gk_positioning"],tags:["Communication","Leadership"],steps:["Watch 10 minutes of a match as if you're the keeper.","Say out loud what you'd tell your defenders: 'Push up!', 'Mark 9!', 'Time!', 'Away!'.","Keep calls short, loud and early.","Practise the same calls in your next session."]}
 ];
 
 const S = {
@@ -152,6 +191,61 @@ function overall(r){
 }
 const allDrills = () => BUILTIN_DRILLS.concat(S.drills.map(d => ({...d, custom:true, steps:Array.isArray(d.steps)?d.steps:[]})));
 const drillById = id => allDrills().find(d => d.id === id);
+const SKILL_LABEL = Object.fromEntries(FIELD_SKILLS.concat(GK_SKILLS).map(s => [s.k, s.label]));
+/* coach "Work on" tags -> review attributes */
+const TAG_SKILLS = {
+  "First touch":["first_touch","gk_ball_handling"], "Weak foot":["passing","shooting","dribbling"], "Passing range":["passing","gk_distribution"],
+  "Scanning":["positional_awareness","decision_making"], "1v1 attacking":["dribbling","separation_speed"], "1v1 defending":["defending"],
+  "Finishing":["shooting"], "Crossing":["passing"], "Heading":["physicality"], "Shielding":["physicality","dribbling"],
+  "Positioning":["positional_awareness","gk_positioning"], "Decision making":["decision_making","gk_decision_making"],
+  "Speed":["separation_speed","handling_speed"], "Work rate":["physicality","coachability"],
+  "Communication":["communication","gk_communication"], "Confidence on the ball":["dribbling","first_touch"],
+  "Leadership":["communication","gk_communication"], "Composure":["decision_making","first_touch"]
+};
+/* Pick home drills from the latest review: low ratings, ratings that dropped, and the coach's "Work on" tags count most. */
+function recommendFor(pid, n = 3){
+  const rs = reviewsFor(pid), last = rs[rs.length-1];
+  if(!last) return null;
+  const prev = rs[rs.length-2], form = reviewForm(last), skills = skillsFor(form);
+  const improve = last.improve || [];
+  const need = {}, why = {};
+  for(const sk of skills){
+    const v = validRating(last.ratings[sk.k]); if(v == null) continue;
+    need[sk.k] = (5 - v) * 2; why[sk.k] = [`rated ${v}/5`];
+    const pv = prev && reviewForm(prev) === form ? validRating(prev.ratings[sk.k]) : null;
+    if(pv != null && v < pv){ need[sk.k] += 2; why[sk.k].push(`down from ${pv}`); }
+  }
+  for(const t of improve) for(const k of (TAG_SKILLS[t] || [])) if(k in need){ need[k] += 3; if(!why[k].some(w => w.startsWith("coach"))) why[k].push(`coach's work-on: ${t}`); }
+  const focus = Object.keys(need).filter(k => need[k] > 0).sort((a,b) => need[b] - need[a]).slice(0, 3)
+    .map(k => ({k, label:SKILL_LABEL[k], why:why[k]}));
+  const assigned = new Set(assignmentsFor(pid).map(a => a.drillId));
+  const pool = BUILTIN_DRILLS.filter(d => (form === "gk") === !!d.gk && !assigned.has(d.id));
+  const scored = pool.map(d => {
+    const hits = (d.skills || []).filter(k => need[k] > 0).sort((a,b) => need[b] - need[a]);
+    const tagHits = (d.tags || []).filter(t => improve.includes(t));
+    const score = hits.reduce((s,k) => s + need[k], 0) / Math.sqrt((d.skills||[]).length || 1) + tagHits.length * 4;
+    const reasons = hits.slice(0, 2).map(k => `${SKILL_LABEL[k]} (${why[k][0]})`);
+    if(tagHits.length) reasons.push(`your coach's work-on: ${tagHits.join(", ")}`);
+    return {drill:d, score, reasons};
+  }).filter(x => x.score > 0).sort((a,b) => b.score - a.score);
+  /* spread picks across different focus skills */
+  const picks = [], covered = new Set();
+  for(const x of scored){ const main = (x.drill.skills||[]).find(k => need[k] > 0); if(picks.length < n && !covered.has(main)){ picks.push(x); covered.add(main); } }
+  for(const x of scored){ if(picks.length >= n) break; if(!picks.includes(x)) picks.push(x); }
+  return {last, focus, picks};
+}
+function recommendCard(p, opts = {}){
+  const R = recommendFor(p.id);
+  const head = `<div class="row between"><h2>${opts.title || "Recommended home drills"}</h2><span class="pill good">Based on the coach's review</span></div>`;
+  if(!R) return `<div class="card stack rec-card">${head}<p class="muted">Recommendations appear after the coach's first review.</p></div>`;
+  if(opts.locked) return `<div class="locked">${head}<p>${R.picks.length} drills picked for ${esc(p.name)} from the latest review, focusing on ${R.focus.map(f => esc(f.label)).join(", ")}.</p><button class="btn primary" data-act="go" data-view="plans">Unlock with Home Training</button></div>`;
+  return `<div class="card stack rec-card">${head}
+    <p class="small muted">From ${esc(R.last.coachName || "the coach")}'s review on ${fmtDate(R.last.date)}.${R.focus.length ? " Focus areas:" : ""}</p>
+    ${R.focus.length ? `<div class="chips">${R.focus.map(f => `<span class="chip imp" title="${esc(f.why.join(", "))}">${esc(f.label)} · ${esc(f.why[0])}</span>`).join("")}</div>` : ""}
+    ${R.picks.length ? `<div class="stack">${R.picks.map(x => drillCard(x.drill, {rec:x, recFor:p, staff:opts.staff, family:opts.family, preview:opts.preview})).join("")}</div>`
+      : `<p class="muted small">Every matching drill is already in this week's plan.</p>`}
+  </div>`;
+}
 const teamName = id => (S.teams.find(t => t.id === id) || {}).name || "No team";
 const assignmentsFor = pid => S.assignments.filter(a => a.playerId === pid && a.active !== false);
 const doneThisWeek = a => (Array.isArray(a.done) ? a.done : []).filter(x => x >= weekStart()).length;
@@ -527,7 +621,7 @@ function rosterView(){
 }
 
 function deltaHtml(d){
-  if(Math.abs(d) < 0.05) return `<span class="delta flat" aria-label="no change">±0</span>`;
+  if(Math.abs(d) < 0.05) return "";
   return d > 0 ? `<span class="delta up" aria-label="up ${fix1(d)}">▲ ${fix1(d)}</span>` : `<span class="delta down" aria-label="down ${fix1(-d)}">▼ ${fix1(-d)}</span>`;
 }
 
@@ -571,21 +665,28 @@ function chartHtml(rs){
     </svg></div></div>`;
 }
 
+const byFamily = a => !!a.assignedBy && S.members.some(m => m.id === a.assignedBy && m.role === "family") || (a.assignedBy === S.uid && S.me && S.me.role === "family");
 function drillCard(d, opts={}){
   const a = opts.assignment;
   let foot = "";
   if(a){
     const n = doneThisWeek(a), t = a.perWeek || 3, doneToday = (a.done||[]).includes(today());
     foot = `<div class="row small"><span class="num"><b>${n} of ${t}</b> this week</span><div class="progress" aria-hidden="true"><i style="width:${Math.min(100,n/t*100)}%"></i></div></div>
-      ${a.note ? `<p class="small"><b>Coach:</b> ${esc(a.note)}</p>` : ""}
+      ${a.note ? `<p class="small"><b>${byFamily(a) ? "Note" : "Coach"}:</b> ${esc(a.note)}</p>` : ""}
       <div class="row">${opts.family ? `<button class="btn ${doneToday?"":"primary"} sm" data-act="done" data-id="${esc(a.id)}" ${opts.preview?"disabled":""}>${doneToday?"Done today ✓ (undo)":"Mark done today"}</button>` : ""}
-      ${opts.staff ? `<button class="btn ghost sm" data-act="unassign" data-id="${esc(a.id)}">Remove</button>` : ""}</div>`;
+      ${opts.staff || (opts.family && a.assignedBy === S.uid && !opts.preview) ? `<button class="btn ghost sm" data-act="unassign" data-id="${esc(a.id)}">Remove</button>` : ""}</div>`;
+  } else if(opts.rec){
+    const pid = opts.recFor.id;
+    foot = `<p class="small rec-why"><b>Why:</b> works on ${esc(opts.rec.reasons.join("; "))}</p>
+      <div class="row">${opts.staff ? `<button class="btn sm primary" data-act="modal" data-m="assign" data-player="${esc(pid)}" data-drill="${esc(d.id)}">Assign</button>`
+        : opts.family ? `<button class="btn sm primary" data-act="selfAssign" data-player="${esc(pid)}" data-drill="${esc(d.id)}" ${opts.preview?"disabled":""}>Add to my week</button>` : ""}</div>`;
   } else if(opts.assignable){
     foot = `<div class="row"><button class="btn sm" data-act="modal" data-m="assign" data-drill="${esc(d.id)}">Assign to a player</button>${d.custom?`<button class="btn ghost sm" data-act="delDrill" data-id="${esc(d.id)}">Delete</button>`:""}</div>`;
   }
   return `<div class="drill">
-    <div class="row between"><h3>${esc(d.title)}</h3>${d.custom?'<span class="pill plain">Club drill</span>':""}</div>
+    <div class="row between"><h3>${esc(d.title)}</h3><span class="row" style="gap:6px">${a && byFamily(a) ? '<span class="pill good">Added from recommendations</span>' : ""}${d.gk?'<span class="pill warn">Goalkeeper</span>':""}${d.custom?'<span class="pill plain">Club drill</span>':""}</span></div>
     <div class="dmeta"><span>${esc(d.category)}</span><span>· ${esc(d.minutes)} min</span><span>· ${esc(d.equipment)}</span><span>· ${esc(d.level)}</span></div>
+    ${(d.skills||[]).length ? `<div class="trains small"><span class="muted">Trains:</span> ${(d.skills).map(k => esc(SKILL_LABEL[k] || k)).join(" · ")}</div>` : ""}
     <details ${opts.open?"open":""}><summary>How to do it</summary><ol>${(d.steps||[]).map(s=>`<li>${esc(s)}</li>`).join("")}</ol></details>
     ${foot}
   </div>`;
@@ -629,7 +730,7 @@ function playerDetail(p, mode){
   const historyCard = (home || !fam) ? `<div class="card stack"><h2>Progress & review timeline</h2>${progressSummary(rs)}${timelineHtml(rs, {staff:!fam})}</div>` : `<div class="locked"><h2>Review timeline</h2><p>Every past review is saved. See each update, what changed and progress since the first review with Home Training.</p><button class="btn primary" data-act="go" data-view="plans">See Home Training plan</button></div>`;
 
   return `<div class="grid2">
-    <div class="stack" style="gap:20px">${reviewCard}${drillsCard}</div>
+    <div class="stack" style="gap:20px">${reviewCard}${drillsCard}${recommendCard(p, {staff:!fam, family:fam, preview, locked: fam && !home, title: fam ? "Recommended for you" : "Suggested home drills"})}</div>
     <div class="stack" style="gap:20px">${ratingsCard}${progressCard}${historyCard}</div>
   </div>`;
 }
@@ -875,9 +976,19 @@ function drillsView(){
   if(!staff && !familyHasHome()){
     return `<h1>Home drills</h1><div class="locked"><h2>Part of Home Training</h2><p>Your club hasn't included Home Training for families, so the drill library comes with the family plan.</p><button class="btn primary" data-act="go" data-view="plans">See Home Training plan</button></div>`;
   }
-  const list = allDrills().filter(d => S.catFilter === "All" || d.category === S.catFilter);
+  const list = allDrills().filter(d => (S.catFilter === "All" || d.category === S.catFilter) && (!S.skillFilter || (d.skills||[]).includes(S.skillFilter)));
+  let recs = "";
+  if(!staff){
+    const kids = S.players.filter(p => (S.me.playerIds||[]).includes(p.id));
+    recs = kids.map(k => recommendCard(k, {family:true, title: kids.length > 1 ? "Recommended for " + k.name : "Recommended for you"})).join("");
+  }
   return `<div class="row between"><div class="stack" style="gap:4px"><h1>${staff?"Drill library":"Home drills"}</h1><p class="muted small">${staff?"Built-in drills plus any your club adds. Assign them to players for home practice.":"Drills you can do at home with a ball and a little space."}</p></div>
     ${staff?`<button class="btn primary" data-act="modal" data-m="drill">Add club drill</button>`:""}</div>
+  ${recs}
+  <div class="row between"><h2>${staff ? "All drills" : "All home drills"}</h2>
+    <label class="f small" for="skill-filter" style="min-width:220px">Works on<select id="skill-filter" data-change="skillFilter"><option value="">Any skill</option>
+      <optgroup label="Field players">${FIELD_SKILLS.map(sk=>`<option value="${sk.k}" ${S.skillFilter===sk.k?"selected":""}>${sk.label}</option>`).join("")}</optgroup>
+      <optgroup label="Goalkeepers">${GK_SKILLS.map(sk=>`<option value="${sk.k}" ${S.skillFilter===sk.k?"selected":""}>${sk.label}</option>`).join("")}</optgroup></select></label></div>
   <div class="filters" role="group" aria-label="Filter by category">${["All"].concat(CATS).map(c=>`<button data-act="cat" data-id="${esc(c)}" aria-pressed="${S.catFilter===c}">${esc(c)}</button>`).join("")}</div>
   ${list.length ? `<div class="dgrid">${list.map(d=>drillCard(d,{assignable:staff})).join("")}</div>` : `<p class="muted">No drills in this category yet.</p>`}`;
 }
@@ -1138,6 +1249,13 @@ const ACTS = {
   startPlan: async () => { await save(() => S.db.doc("members/" + S.uid).update({familyPlan:"trial", planStarted:today()}), "Home Training trial started"); },
   cancelPlan: async () => { await save(() => S.db.doc("members/" + S.uid).update({familyPlan:null}), "Trial cancelled"); },
   ptab: ds => { S.ptab = ds.id; render(); },
+  selfAssign: async ds => {
+    const d = drillById(ds.drill); if(!d) return;
+    await save(async () => {
+      try { await S.db.collection("assignments").doc().set({clubId:S.me.clubId, playerId:ds.player, drillId:d.id, drillTitle:d.title, perWeek:3, note:"", assignedBy:S.uid, done:[], active:true, createdAt:Date.now()}); }
+      catch(e){ if(e.code === "invalid_argument"){ const x = new Error("x"); x.userMessage = "Adding drills yourself needs a quick database update (003). Ask your club admin, or ask your coach to assign it."; throw x; } throw e; }
+    }, "Added to this week's drills. Your coach can see it too.");
+  },
   chatTeam: ds => { S.chatTeam = ds.id; render(); const c = document.getElementById("chat-input"); if(c) c.focus(); },
   delMsg: async ds => { await save(() => S.db.doc("messages/" + ds.id).delete(), "Message deleted"); },
   exitPublic: () => { try { history.replaceState(null, "", location.pathname + location.search); } catch(_){ try { location.hash = ""; } catch(__){} } S.publicSlug = null; S.pub = null; render(); },
@@ -1371,6 +1489,7 @@ document.addEventListener("change", ev => {
     updateChangeHint(form);
     return;
   }
+  if(ev.target.dataset && ev.target.dataset.change === "skillFilter"){ S.skillFilter = ev.target.value || null; render(); const el = document.getElementById("skill-filter"); if(el) el.focus(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "chatTeam"){ S.chatTeam = ev.target.value; render(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "chartSkill"){ S.chartSkill = ev.target.value; render(); const s = document.getElementById("chart-skill"); if(s) s.focus(); }
 });
