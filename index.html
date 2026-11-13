@@ -347,6 +347,14 @@ ol.numbered{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6p
 /* text on white surfaces keeps the softer grey; text straight on the grass uses the darker one */
 .card,.modal,.drill,.portal,.chat,.site-foot,.locked,.ref,.vid,.banner,.toast{--muted:var(--card-muted)}
 .locked{background:var(--surface);border-color:var(--card-muted)}
+
+/* drill paywall */
+.paywall{border-top:5px solid var(--accent)}
+.paywall-line{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--chip);border-radius:8px;padding:8px 10px;font-size:.9rem;font-weight:600}
+.paywall-line a.btn{text-decoration:none}
+
+a.btn{text-decoration:none;color:var(--ink)}
+a.btn.primary{color:var(--accent-ink)}
 </style>
 </head>
 <body>
