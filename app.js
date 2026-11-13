@@ -141,8 +141,8 @@ const OLD_POSITIONS = {WB:"Wingback"}; /* positions saved before the list change
 const positionLabel = k => (FIELD_POSITIONS.find(x => x[0] === k) || [k, OLD_POSITIONS[k] || k])[1];
 const posChip = (k, main) => `<span class="chip${main?" str":""}" title="${esc(positionLabel(k))}">${esc(k)}${main?" · main":""}</span>`;
 const VIS = {
-  public:{label:"Public",cls:"good",icon:"🌐",help:"Anyone with your profile link can see your photo, positions, strengths, bio, highlight videos, club history and coach references. Great for scouts and new clubs."},
-  private:{label:"Private",cls:"plain",icon:"🔒",help:"Anyone with your profile link only sees your name, club and age. Everything else stays with your family and coaches."}
+  public:{label:"Public",cls:"good",icon:"🌐",help:"Anyone with the link sees the Recruitment Profile: photo, positions, recruiting details, career highlights, stats, highlight videos, club history and coach references. Great for college, academy and club coaches."},
+  private:{label:"Private",cls:"plain",icon:"🔒",help:"Anyone with the link only sees the player's name, club and age. Everything else stays with your family and coaches."}
 };
 const visOf = pr => (pr && pr.visibility === "public") ? "public" : "private";
 const ageOf = by => by ? new Date().getFullYear() - Number(by) : null;
@@ -472,7 +472,7 @@ function subscribeClub(cid){
 const ALL_KEYS = ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","meetings","teamCoaches","requests"];
 function refreshAll(){ ALL_KEYS.forEach(schedule); }
 function fixView(){
-  const staffViews = ["roster","player","chat","messages","drills","plans","club"], famViews = ["home","chat","messages","drills","plans","account"];
+  const staffViews = ["roster","player","chat","messages","drills","plans","club"], famViews = ["home","chat","messages","drills","recruit","plans","account"];
   if(!S.me) { S.view = null; return; }
   const ok = isStaff() ? staffViews : famViews;
   if(!ok.includes(S.view)) S.view = isStaff() ? "roster" : "home";
@@ -488,7 +488,7 @@ function topbar(){
   if(S.me && (S.club || !isStaff())){
     const items = isStaff()
       ? [["roster","Players"],["chat","Team chat"],["messages","Messages"],["drills","Drill library"],["plans","Plans"],["club","Club"]]
-      : [["home","My player"],["chat","Team chat"],["messages","Messages"],["drills","Home drills"],["plans","Plans"],["account","Account"]];
+      : [["home","My player"],["chat","Team chat"],["messages","Messages"],["drills","Home drills"],["recruit","Recruiting"],["plans","Plans"],["account","Account"]];
     const pmu = totalPmUnread();
     const un = totalUnread();
     const allUnread = un + pmu;
@@ -552,6 +552,7 @@ function viewBody(){
     case "drills": return drillsView();
     case "plans": return plansView();
     case "account": return accountView();
+    case "recruit": return recruitView();
     case "chat": return chatView();
     case "messages": return messagesView();
     default: return familyHome();
@@ -827,7 +828,7 @@ function playerView(){
   </div></div>
   ${subtabs()}
   ${S.preview ? `<div class="banner">Family preview: this is what ${esc(p.name)}'s family sees.${S.club.familyAccess==="subscribe" && S.ptab==="dev"?" Home drills show as locked until the family starts Home Training.":""}</div>` : ""}
-  ${S.ptab === "profile" ? profileHtml(p, {staff:!S.preview}) : playerDetail(p, S.preview ? "preview" : "staff")}`;
+  ${S.ptab === "profile" ? profileHtml(p, {staff:!S.preview}) : S.ptab === "recruit" ? recruitHtml(p, {staff:!S.preview}) : playerDetail(p, S.preview ? "preview" : "staff")}`;
 }
 
 function familyHome(){
@@ -989,9 +990,11 @@ function requestsCard(){
 }
 
 function subtabs(){
+  const staff = isStaff(), t = S.ptab === "profile" || (staff && S.ptab === "recruit") ? S.ptab : "dev";
   return `<div class="subtabs" role="tablist" aria-label="Player sections">
-    <button role="tab" data-act="ptab" data-id="dev" aria-selected="${S.ptab!=="profile"}">Development</button>
-    <button role="tab" data-act="ptab" data-id="profile" aria-selected="${S.ptab==="profile"}">Player profile</button>
+    <button role="tab" data-act="ptab" data-id="dev" aria-selected="${t==="dev"}">Development</button>
+    <button role="tab" data-act="ptab" data-id="profile" aria-selected="${t==="profile"}">Player profile</button>
+    ${staff ? `<button role="tab" data-act="ptab" data-id="recruit" aria-selected="${t==="recruit"}">Recruiting</button>` : ""}
   </div>`;
 }
 
@@ -1021,16 +1024,57 @@ function profileHtml(p, opts){
     <div class="stack">
       <div class="row between">
         <div class="stack" style="gap:2px"><h1>${esc(p.name)}</h1><p class="muted">${[clubName, p.teamId && p.clubId && !pub ? teamName(p.teamId) : "", playerAge(p) != null ? "Age " + playerAge(p) : "", pr.foot ? pr.foot + " footed" : ""].filter(Boolean).map(esc).join(" · ")}</p></div>
-        ${pub ? "" : ed ? visSwitch(p, pr) : `<div class="vis"><span class="pill ${VIS[visOf(pr)].cls}">${VIS[visOf(pr)].icon} ${VIS[visOf(pr)].label} profile</span></div>`}
+        ${pub ? "" : `<div class="vis"><span class="pill plain" title="The player profile is never public">🔒 Family & coaches only</span></div>`}
       </div>
       <div class="stack" style="gap:6px"><h3>Positions</h3><div class="chips">${positions.length?positions.map((k,i)=>posChip(k,i===0)).join(""):'<span class="muted small">Not added yet</span>'}</div></div>
       <div class="stack" style="gap:6px"><h3>Strengths</h3><div class="chips">${strengths.length?strengths.map(t=>`<span class="chip">${esc(t)}</span>`).join(""):'<span class="muted small">Not added yet</span>'}</div></div>
       ${pr.bio ? `<p style="max-width:65ch">${esc(pr.bio)}</p>` : ""}
-      ${ed ? `<div class="row"><button class="btn" data-act="modal" data-m="about" data-player="${esc(p.id)}">Edit positions, strengths & bio</button>${pr.slug?`<button class="btn ghost sm" data-act="copy" data-text="${esc(APP_URL + "#profile-" + pr.slug)}">Copy profile link</button><a class="btn ghost sm" href="#profile-${esc(pr.slug)}" data-act="previewPublic" data-slug="${esc(pr.slug)}">See what others see</a>`:""}</div>` : ""}
+      ${ed ? `<div class="row"><button class="btn" data-act="modal" data-m="about" data-player="${esc(p.id)}">Edit positions, strengths & bio</button></div>` : ""}
       ${staff && !pr.updatedAt ? `<p class="small muted">The family hasn't filled in this profile yet. They can do it from their account.</p>` : ""}
     </div>
   </div>`;
 
+  let privCard = "";
+  if(!pub){
+    const rs = reviewsFor(p.id), last = rs[rs.length-1], prev = rs[rs.length-2];
+    const o = overall(last), po = overall(prev);
+    privCard = `<div class="card stack private-card">
+      <div class="row between"><h2>Coach review</h2><span class="pill plain" title="Never shown on a public profile">🔒 Private</span></div>
+      <p class="small muted">Only ${esc(p.name)}, their family and the club's coaches can see this. It never appears on the Recruitment Profile.</p>
+      ${last ? `<div class="row between"><div class="overall"><span class="big num">${o!=null?fix1(o):"–"}</span><span class="muted">/ 5 overall</span>${o!=null&&po!=null?deltaHtml(o-po):""}</div><span class="small muted">${fmtDate(last.date)}${last.coachName?" · "+esc(last.coachName):""}</span></div>
+        ${last.summary ? `<p class="tl-sum">“${esc(last.summary)}”</p>` : ""}
+        ${(last.strengths||[]).length?`<div class="chips">${last.strengths.map(t=>`<span class="chip str">${esc(t)}</span>`).join("")}</div>`:""}
+        ${(last.improve||[]).length?`<div class="chips">${last.improve.map(t=>`<span class="chip imp">Work on: ${esc(t)}</span>`).join("")}</div>`:""}
+        ${ratingsHtml(last, prev)}
+        ${last.note?`<div class="note">${esc(last.note)}</div>`:""}
+        ${rs.length>1?`<p class="small muted">${rs.length} reviews so far. See progress over time on the Development tab.</p>`:""}`
+      : `<p class="muted">${staff ? "No review yet." : "Your coach hasn't posted a review yet."}</p>`}
+      ${staff ? `<div><button class="btn primary sm" data-act="modal" data-m="review" data-player="${esc(p.id)}">${rs.length ? "Update review" : "First review"}</button></div>` : ""}
+    </div>`;
+  }
+  const R = pr.recruit || {};
+  const teaser = pub ? "" : `<div class="card stack recruit-teaser">
+    <div class="row between"><h2>Recruitment Profile</h2>${R.created ? `<span class="pill ${VIS[visOf(pr)].cls}">${VIS[visOf(pr)].icon} ${VIS[visOf(pr)].label}</span>` : `<span class="pill plain">Not created</span>`}</div>
+    <p class="small muted">${R.created ? "Highlight videos, club history, career highlights, season stats and coach references live on the Recruitment Profile."
+      : staff ? "The family hasn't created one yet. You can still write references; they show once it's public."
+      : "An optional, separate profile for college, academy and club coaches: highlight videos, club history, career highlights, stats and coach references."}</p>
+    <div><button class="btn sm${R.created ? "" : " primary"}" ${staff || S.preview ? `data-act="ptab" data-id="recruit"` : `data-act="go" data-view="recruit"`}>${R.created ? "Open Recruitment Profile" : staff ? "Write a reference" : "Create a Recruitment Profile"}</button></div>
+  </div>`;
+  return `${head}<div class="grid2"><div class="stack" style="gap:20px">${privCard}</div><div class="stack" style="gap:20px">${teaser}</div></div>`;
+}
+
+/* the Recruitment Profile: the public profile for college, academy and club coaches.
+   opts: editable (family), staff (coach), pub (public view: {profile, refs, clubName}) */
+function recruitHtml(p, opts){
+  const pr = (opts.pub ? opts.pub.profile : profileFor(p.id)) || {};
+  const R = pr.recruit || {};
+  const ed = !!opts.editable, staff = !!opts.staff, pub = !!opts.pub;
+  const positions = pr.positions || [], strengths = pr.strengths || [];
+  const history = (pr.history || []).slice().sort((a,b) => (b.to==="Present"?9999:+b.to||0) - (a.to==="Present"?9999:+a.to||0) || (+b.from||0) - (+a.from||0));
+  const videos = pr.videos || [];
+  const allComments = pub ? opts.pub.refs : S.comments.filter(c => c.playerId === p.id).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const clubName = (pub ? (opts.pub.clubName||"") : clubNameOf(p)) || outsideClub(pr);
+  const empty = (msg) => `<p class="muted">${msg}</p>`;
   const vidCard = `<div class="card stack">
     <div class="row between"><h2>Highlight videos</h2>${ed?`<button class="btn sm" data-act="modal" data-m="video" data-player="${esc(p.id)}">Add video</button>`:""}</div>
     ${videos.length ? `<div class="vgrid">${videos.map((v,i)=>`<div class="vid">
@@ -1052,33 +1096,79 @@ function profileHtml(p, opts){
   const comments = allComments.filter(c => pub ? c.kind === "reference" : true);
   const comCard = `<div class="card stack">
     <div class="row between"><h2>${pub?"Coach references":"Coach comments & references"}</h2>${staff?`<button class="btn sm primary" data-act="modal" data-m="comment" data-player="${esc(p.id)}">Write one</button>`:""}</div>
-    ${!pub ? `<p class="small muted">References show on the profile when it's public. Comments stay between coaches and the family.</p>` : ""}
+    ${!pub ? `<p class="small muted">References show on the Recruitment Profile when it's public. Comments stay between coaches and the family.</p>` : ""}
     ${comments.length ? comments.map(c=>`<div class="ref ${c.kind==="reference"?"reference":""}">
       <div class="row between"><span class="pill ${c.kind==="reference"?"good":"plain"}">${c.kind==="reference"?"Reference":"Comment"}</span><span class="small muted">${c.date?esc(fmtDate(c.date)):""}</span></div>
       <blockquote>${esc(c.text)}</blockquote>
       <div class="row between"><span class="small"><b>${esc(c.authorName||"Coach")}</b>${c.authorTitle?`, ${esc(c.authorTitle)}`:""}</span>${staff && c.authorId===S.uid?`<button class="btn ghost sm" data-act="delComment" data-id="${esc(c.id)}">Delete</button>`:""}</div>
-    </div>`).join("") : empty(staff ? "No comments yet. A reference is what a scout or new coach would read." : "No coach comments yet.")}
+    </div>`).join("") : empty(staff ? "No comments yet. A reference is what a scout or new coach would read." : pub ? "No references yet." : "No coach comments or references yet.")}
   </div>`;
 
-  let privCard = "";
-  if(!pub){
-    const rs = reviewsFor(p.id), last = rs[rs.length-1], prev = rs[rs.length-2];
-    const o = overall(last), po = overall(prev);
-    privCard = `<div class="card stack private-card">
-      <div class="row between"><h2>Coach review</h2><span class="pill plain" title="Never shown on a public profile">🔒 Private</span></div>
-      <p class="small muted">Only ${esc(p.name)}, their family and the club's coaches can see this. It never appears on the public profile.</p>
-      ${last ? `<div class="row between"><div class="overall"><span class="big num">${o!=null?fix1(o):"–"}</span><span class="muted">/ 5 overall</span>${o!=null&&po!=null?deltaHtml(o-po):""}</div><span class="small muted">${fmtDate(last.date)}${last.coachName?" · "+esc(last.coachName):""}</span></div>
-        ${last.summary ? `<p class="tl-sum">“${esc(last.summary)}”</p>` : ""}
-        ${(last.strengths||[]).length?`<div class="chips">${last.strengths.map(t=>`<span class="chip str">${esc(t)}</span>`).join("")}</div>`:""}
-        ${(last.improve||[]).length?`<div class="chips">${last.improve.map(t=>`<span class="chip imp">Work on: ${esc(t)}</span>`).join("")}</div>`:""}
-        ${ratingsHtml(last, prev)}
-        ${last.note?`<div class="note">${esc(last.note)}</div>`:""}
-        ${rs.length>1?`<p class="small muted">${rs.length} reviews so far. See progress over time on the Development tab.</p>`:""}`
-      : `<p class="muted">${staff ? "No review yet." : "Your coach hasn't posted a review yet."}</p>`}
-      ${staff ? `<div><button class="btn primary sm" data-act="modal" data-m="review" data-player="${esc(p.id)}">${rs.length ? "Update review" : "First review"}</button></div>` : ""}
+
+  if(!R.created && !pub){
+    if(ed) return `<div class="card stack recruit-intro">
+      <h2>Create ${esc(p.name)}'s Recruitment Profile</h2>
+      <p style="max-width:62ch">One link to send to college programs, academies and new clubs. It brings together everything a coach looks for:</p>
+      <ul class="ticks">
+        <li>Recruiting summary, graduation year, height, weight, stronger foot, school and GPA</li>
+        <li>A contact email for coaches</li>
+        <li>Career highlights and season stats</li>
+        <li>Highlight videos</li>
+        <li>Club history</li>
+        <li>References from your coaches</li>
+      </ul>
+      <p class="small muted">It starts private, and you choose when to make it public. Coach reviews, ratings, home drills and messages are never shown on it.</p>
+      <div><button class="btn primary" data-act="createRecruit" data-id="${esc(p.id)}">Create Recruitment Profile</button></div>
     </div>`;
+    return `<div class="card stack"><h2>Recruitment Profile</h2><p class="muted">${esc(p.name)}'s family hasn't created a Recruitment Profile yet. References you write now will show on it once it's public.</p></div>${comCard}`;
   }
-  return `${head}<div class="grid2"><div class="stack" style="gap:20px">${privCard}${vidCard}${histCard}</div><div class="stack" style="gap:20px">${comCard}</div></div>`;
+
+  const facts = [["Class of", R.gradYear], ["Height", R.height], ["Weight", R.weight], ["Stronger foot", pr.foot], ["School", R.school], ["GPA", R.gpa]].filter(x => x[1]);
+  const head = `<div class="card pcard recruit-head">
+    <div class="photo-wrap">${photoHtml(pr, p)}</div>
+    <div class="stack">
+      <div class="row between">
+        <div class="stack" style="gap:2px"><span class="eyebrow">Recruitment Profile</span><h1>${esc(p.name)}</h1>
+          <p class="muted">${[R.gradYear ? "Class of " + R.gradYear : "", clubName, p.teamId && p.clubId && !pub ? teamName(p.teamId) : "", playerAge(p) != null ? "Age " + playerAge(p) : ""].filter(Boolean).map(esc).join(" · ")}</p></div>
+        ${pub ? "" : ed ? visSwitch(p, pr) : `<div class="vis"><span class="pill ${VIS[visOf(pr)].cls}">${VIS[visOf(pr)].icon} ${VIS[visOf(pr)].label}</span></div>`}
+      </div>
+      ${positions.length ? `<div class="chips">${positions.map((k,i) => posChip(k, i===0)).join("")}</div>` : ""}
+      ${facts.length ? `<div class="facts">${facts.map(([k,v]) => `<div class="fact"><span class="small muted">${k}</span><b>${esc(v)}</b></div>`).join("")}</div>` : ed ? `<p class="small muted">Add graduation year, height, school and more under Edit recruiting details.</p>` : ""}
+      ${R.summary || pr.bio ? `<p style="max-width:65ch">${esc(R.summary || pr.bio)}</p>` : ""}
+      ${strengths.length ? `<div class="chips">${strengths.map(t => `<span class="chip">${esc(t)}</span>`).join("")}</div>` : ""}
+      ${R.contact ? `<p class="small">📧 Coaches can contact the family at <a href="mailto:${esc(R.contact)}">${esc(R.contact)}</a></p>` : ""}
+      ${ed ? `<div class="row"><button class="btn" data-act="modal" data-m="recruitDetails" data-player="${esc(p.id)}">Edit recruiting details</button>${pr.slug ? `<button class="btn ghost sm" data-act="copy" data-text="${esc(APP_URL + "#profile-" + pr.slug)}">Copy profile link</button><a class="btn ghost sm" href="#profile-${esc(pr.slug)}" data-act="previewPublic" data-slug="${esc(pr.slug)}">See what coaches see</a>` : ""}</div>
+        <p class="small muted">Photo, positions, strengths and the short bio come from the player profile.</p>` : ""}
+    </div>
+  </div>`;
+
+  const hls = (R.highlights || []).map((h, i) => ({...h, i})).sort((a,b) => (+b.year||0) - (+a.year||0));
+  const hlCard = `<div class="card stack">
+    <div class="row between"><h2>Career highlights</h2>${ed ? `<button class="btn sm" data-act="modal" data-m="highlight" data-player="${esc(p.id)}">Add highlight</button>` : ""}</div>
+    ${hls.length ? `<div class="list">${hls.map(h => `<div class="hl"><div class="row between"><b>🏆 ${esc(h.title)}</b><span class="small muted num">${esc(h.year || "")}</span></div>${h.details ? `<p class="small muted">${esc(h.details)}</p>` : ""}${ed ? `<div><button class="btn ghost sm" data-act="delHighlight" data-id="${esc(p.id)}" data-i="${h.i}">Remove</button></div>` : ""}</div>`).join("")}</div>`
+      : empty(ed ? "Add trophies, selections, awards, captaincies and standout moments." : "No highlights added yet.")}
+  </div>`;
+
+  const stats = (R.stats || []).map((x, i) => ({...x, i}));
+  const showCs = stats.some(x => x.cleanSheets !== "" && x.cleanSheets != null);
+  const statCard = `<div class="card stack">
+    <div class="row between"><h2>Season stats</h2>${ed ? `<button class="btn sm" data-act="modal" data-m="stat" data-player="${esc(p.id)}">Add season</button>` : ""}</div>
+    ${stats.length ? `<div class="tbl-wrap"><table class="stats"><thead><tr><th>Season</th><th>Team</th><th class="num" title="Games played">GP</th><th class="num" title="Goals">G</th><th class="num" title="Assists">A</th>${showCs ? `<th class="num" title="Clean sheets">CS</th>` : ""}${ed ? "<th></th>" : ""}</tr></thead>
+      <tbody>${stats.map(x => `<tr><td>${esc(x.season)}</td><td>${esc(x.team || "")}</td><td class="num">${esc(x.games ?? "")}</td><td class="num">${esc(x.goals ?? "")}</td><td class="num">${esc(x.assists ?? "")}</td>${showCs ? `<td class="num">${esc(x.cleanSheets ?? "")}</td>` : ""}${ed ? `<td><button class="btn ghost sm" data-act="delStat" data-id="${esc(p.id)}" data-i="${x.i}">Remove</button></td>` : ""}</tr>`).join("")}</tbody></table></div>`
+      : empty(ed ? "Add games, goals, assists (and clean sheets for keepers) for each season." : "No stats added yet.")}
+  </div>`;
+
+  return `${head}<div class="grid2"><div class="stack" style="gap:20px">${vidCard}${hlCard}${statCard}</div><div class="stack" style="gap:20px">${comCard}${histCard}</div></div>`;
+}
+
+/* family: the Recruiting tab */
+function recruitView(){
+  const kids = S.players.filter(p => (S.me.playerIds || []).includes(p.id));
+  const intro = `<div class="stack" style="gap:4px"><h1>Recruiting</h1><p class="muted small">A public profile for college, academy and club coaches, separate from the player profile your team sees.</p></div>`;
+  if(!kids.length) return intro + `<div class="card stack"><h2>Add your player first</h2><div><button class="btn primary" data-act="modal" data-m="addChild">Add player</button></div></div>`;
+  const p = kids.find(k => k.id === S.childId) || kids[0];
+  return `<div class="row between">${intro}${kids.length > 1 ? `<div class="filters" role="group" aria-label="Choose player">${kids.map(k => `<button data-act="child" data-id="${esc(k.id)}" aria-pressed="${k.id===p.id}">${esc(k.name)}</button>`).join("")}</div>` : ""}</div>
+  ${recruitHtml(p, {editable:canEditProfile(p)})}`;
 }
 function visSwitch(p, pr){
   const v = visOf(pr), on = v === "public";
@@ -1184,7 +1274,7 @@ function publicView(){
         <p class="small muted" style="max-width:52ch">This player keeps their profile private, so only their name, club and age are shown.</p></div>
     </div>`;
   if(P.error || !P.player) return back + `<div class="card"><p>The profile couldn't load. Try again in a moment.</p></div>`;
-  return back + profileHtml(P.player, {pub:{profile:P.profile, refs:P.refs, clubName:P.clubName}});
+  return back + recruitHtml(P.player, {pub:{profile:P.profile, refs:P.refs, clubName:P.clubName}});
 }
 async function loadPublic(slug){
   S.pub = {loading:true}; render();
@@ -1422,10 +1512,40 @@ const MODALS = {
     const cur = visOf(profileFor(p.id));
     return `<h2>Public or private?</h2><form data-form="visibility" data-id="${esc(p.id)}">
       ${Object.entries(VIS).map(([k,v])=>`<label class="choice" for="vis-${k}"><input type="radio" id="vis-${k}" name="vis" value="${k}" ${cur===k?"checked":""}><span><b>${v.icon} ${v.label}</b><br><span class="small muted">${v.help}</span></span></label>`).join("")}
-      <div class="note small"><b>Never shared, public or private:</b> coach reviews and ratings, the review timeline, home drills, coach comments, private messages and meetings. Only you, your family and your coaches see those.</div>
+      <div class="note small"><b>Never shared, public or private:</b> coach reviews and ratings, the review timeline, home drills, coach comments, private messages, meetings and the full date of birth. Only you, your family and your coaches see those.</div>
       <p class="small muted">You can switch any time. Your family, your team's coaches and the club admin always see your full profile.</p>
       <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`;
   },
+  recruitDetails: ds => { const p = S.players.find(x => x.id === ds.player); if(!p) return "<p>Player not found.</p>";
+    const pr = profileFor(p.id) || {}, R = pr.recruit || {}, y = new Date().getFullYear();
+    return `<h2>Recruiting details</h2><form data-form="recruitDetails" data-id="${esc(p.id)}">
+      <label class="f" for="rd-sum">Recruiting summary<textarea id="rd-sum" name="summary" maxlength="800" rows="4" placeholder="What makes ${esc(p.name)} stand out: playing style, strengths, goals, what level you're aiming for.">${esc(R.summary || "")}</textarea></label>
+      <div class="grid2" style="gap:14px">
+        <label class="f" for="rd-grad">Graduation year (class of)<input type="number" id="rd-grad" name="gradYear" min="${y - 2}" max="${y + 16}" value="${esc(R.gradYear || "")}" placeholder="e.g. ${y + 5}"></label>
+        <label class="f" for="rd-foot">Stronger foot<select id="rd-foot" name="foot">${["","Right","Left","Both"].map(f => `<option value="${f}" ${pr.foot===f?"selected":""}>${f || "Not set"}</option>`).join("")}</select></label>
+        <label class="f" for="rd-h">Height<input type="text" id="rd-h" name="height" maxlength="20" value="${esc(R.height || "")}" placeholder="e.g. 5'6&quot; or 168 cm"></label>
+        <label class="f" for="rd-w">Weight (optional)<input type="text" id="rd-w" name="weight" maxlength="20" value="${esc(R.weight || "")}" placeholder="e.g. 120 lb"></label>
+        <label class="f" for="rd-school">School<input type="text" id="rd-school" name="school" maxlength="80" value="${esc(R.school || "")}"></label>
+        <label class="f" for="rd-gpa">GPA (optional)<input type="text" id="rd-gpa" name="gpa" maxlength="10" value="${esc(R.gpa || "")}" placeholder="e.g. 3.8"></label>
+      </div>
+      <label class="f" for="rd-mail">Contact email for coaches (optional)<input type="email" id="rd-mail" name="contact" maxlength="120" value="${esc(R.contact || "")}" placeholder="A parent's email is best"></label>
+      <p class="small muted">Everything here shows on the Recruitment Profile when it's public, including the contact email.</p>
+      <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`; },
+  highlight: ds => `<h2>Add a career highlight</h2><form data-form="highlight" data-id="${esc(ds.player)}">
+    <label class="f" for="hl-t">Highlight<input type="text" id="hl-t" name="title" required maxlength="100" placeholder="e.g. State Cup champions, ODP selection, team captain"></label>
+    <label class="f" for="hl-y" style="max-width:200px">Year<input type="number" id="hl-y" name="year" min="2000" max="${new Date().getFullYear() + 1}" value="${new Date().getFullYear()}"></label>
+    <label class="f" for="hl-d">Details (optional)<textarea id="hl-d" name="details" maxlength="300" rows="2" placeholder="e.g. Scored the winner in the final; named tournament MVP."></textarea></label>
+    <div class="row"><button class="btn primary" type="submit">Add</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
+  stat: ds => `<h2>Add a season</h2><form data-form="stat" data-id="${esc(ds.player)}">
+    <div class="grid2" style="gap:14px">
+      <label class="f" for="st-s">Season<input type="text" id="st-s" name="season" required maxlength="30" placeholder="e.g. Fall 2026"></label>
+      <label class="f" for="st-t">Team<input type="text" id="st-t" name="team" maxlength="60" placeholder="e.g. U14 Boys Premier"></label>
+      <label class="f" for="st-g">Games played<input type="number" id="st-g" name="games" min="0" max="200"></label>
+      <label class="f" for="st-go">Goals<input type="number" id="st-go" name="goals" min="0" max="300"></label>
+      <label class="f" for="st-a">Assists<input type="number" id="st-a" name="assists" min="0" max="300"></label>
+      <label class="f" for="st-cs">Clean sheets (keepers)<input type="number" id="st-cs" name="cleanSheets" min="0" max="200"></label>
+    </div>
+    <div class="row"><button class="btn primary" type="submit">Add</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
   video: (ds) => `<h2>Add a highlight video</h2><form data-form="video" data-id="${esc(ds.player)}">
     <label class="f" for="v-title">Title<input type="text" id="v-title" name="title" maxlength="80" required placeholder="e.g. Fall 2026 highlights"></label>
     <label class="f" for="v-date" style="max-width:200px">Date<input type="date" id="v-date" name="date" value="${today()}"></label>
@@ -1444,7 +1564,7 @@ const MODALS = {
     <div class="row"><button class="btn primary" type="submit">Add</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
   comment: (ds) => { const p = S.players.find(x=>x.id===ds.player); return `<h2>Write about ${esc(p?p.name:"this player")}</h2><form data-form="comment" data-id="${esc(ds.player)}">
     <fieldset class="stack" style="border:0;padding:0;margin:0"><legend class="sr" style="font-weight:600;margin-bottom:8px">Type</legend>
-      <label class="choice" for="c-ref"><input type="radio" id="c-ref" name="kind" value="reference" checked><span><b>Reference</b><br><span class="small muted">A recommendation for scouts or new coaches. Shows on the profile when it's public.</span></span></label>
+      <label class="choice" for="c-ref"><input type="radio" id="c-ref" name="kind" value="reference" checked><span><b>Reference</b><br><span class="small muted">A recommendation for scouts or new coaches. Shows on the player's Recruitment Profile when it's public.</span></span></label>
       <label class="choice" for="c-com"><input type="radio" id="c-com" name="kind" value="comment"><span><b>Comment</b><br><span class="small muted">Feedback for the player and family only.</span></span></label>
     </fieldset>
     <label class="f" for="c-title">Your title (optional)<input type="text" id="c-title" name="title" maxlength="60" placeholder="e.g. Head Coach, U12 Boys"></label>
@@ -1516,6 +1636,15 @@ const ACTS = {
   delMsg: async ds => { await save(() => S.db.doc("messages/" + ds.id).delete(), "Message deleted"); },
   exitPublic: () => { try { history.replaceState(null, "", location.pathname + location.search); } catch(_){ try { location.hash = ""; } catch(__){} } S.publicSlug = null; S.pub = null; render(); },
   delPhoto: async ds => { const p = S.players.find(x=>x.id===ds.id); if(p) await saveProfile(p, {photo:null}, "Photo removed"); },
+  createRecruit: async ds => {
+    const p = S.players.find(x => x.id === ds.id); if(!p) return;
+    const R = (profileFor(p.id) || {}).recruit || {};
+    await saveProfile(p, {recruit:{...R, created:true}, visibility:"private"}, "Recruitment Profile created. It's private until you make it public.");
+  },
+  delHighlight: async ds => { const p = S.players.find(x => x.id === ds.id); if(!p) return; const R = (profileFor(p.id) || {}).recruit || {};
+    await saveProfile(p, {recruit:{...R, highlights:(R.highlights || []).filter((_, i) => i !== +ds.i)}}, "Highlight removed"); },
+  delStat: async ds => { const p = S.players.find(x => x.id === ds.id); if(!p) return; const R = (profileFor(p.id) || {}).recruit || {};
+    await saveProfile(p, {recruit:{...R, stats:(R.stats || []).filter((_, i) => i !== +ds.i)}}, "Season removed"); },
   delVideo: async ds => {
     const p = S.players.find(x=>x.id===ds.id), pr = profileFor(ds.id); if(!p || !pr) return;
     const vids = (pr.videos||[]).slice(); const [gone] = vids.splice(Number(ds.i), 1);
@@ -1639,7 +1768,7 @@ const FORMS = {
   visibility: async (fd, form) => {
     const p = S.players.find(x=>x.id===form.dataset.id); if(!p) return;
     const v = fd.get("vis"); closeModal();
-    await saveProfile(p, {visibility: v === "public" ? "public" : "private"}, v === "public" ? "Your profile is public. Use Copy profile link to share it." : "Your profile is private. Others only see your name, club and age.");
+    await saveProfile(p, {visibility: v === "public" ? "public" : "private"}, v === "public" ? "The Recruitment Profile is public. Use Copy profile link to share it." : "The Recruitment Profile is private. Others only see the name, club and age.");
   },
   video: async (fd, form) => {
     const p = S.players.find(x=>x.id===form.dataset.id); if(!p) return;
@@ -1661,6 +1790,24 @@ const FORMS = {
     const pr = profileFor(p.id) || {};
     closeModal();
     await saveProfile(p, {videos:(pr.videos||[]).concat(entry).slice(-24)}, "Video added");
+  },
+  recruitDetails: async (fd, form) => {
+    const p = S.players.find(x => x.id === form.dataset.id); if(!p) return;
+    const pr = profileFor(p.id) || {}, R = pr.recruit || {}, g = k => String(fd.get(k) || "").trim();
+    closeModal();
+    await saveProfile(p, {foot:g("foot"), recruit:{...R, summary:g("summary").slice(0,800), gradYear:g("gradYear"), height:g("height"), weight:g("weight"), school:g("school"), gpa:g("gpa"), contact:g("contact")}}, "Recruiting details saved");
+  },
+  highlight: async (fd, form) => {
+    const p = S.players.find(x => x.id === form.dataset.id); if(!p) return;
+    const R = (profileFor(p.id) || {}).recruit || {};
+    closeModal();
+    await saveProfile(p, {recruit:{...R, highlights:(R.highlights || []).concat({title:String(fd.get("title")).trim(), year:String(fd.get("year") || "").trim(), details:String(fd.get("details") || "").trim()}).slice(-40)}}, "Highlight added");
+  },
+  stat: async (fd, form) => {
+    const p = S.players.find(x => x.id === form.dataset.id); if(!p) return;
+    const R = (profileFor(p.id) || {}).recruit || {}, n = k => { const v = String(fd.get(k) || "").trim(); return v === "" ? "" : Math.max(0, parseInt(v, 10) || 0); };
+    closeModal();
+    await saveProfile(p, {recruit:{...R, stats:(R.stats || []).concat({season:String(fd.get("season")).trim(), team:String(fd.get("team") || "").trim(), games:n("games"), goals:n("goals"), assists:n("assists"), cleanSheets:n("cleanSheets")}).slice(-30)}}, "Season added");
   },
   history: async (fd, form) => {
     const p = S.players.find(x=>x.id===form.dataset.id); if(!p) return;
@@ -1870,26 +2017,31 @@ function pageClubs(){
 function pageRecruiting(){
   const E = EXAMPLE;
   return `<section class="page-hero stack"><span class="eyebrow">Recruiting</span>
-    <h1>A player profile you can send to scouts</h1>
-    <p class="lead">Players build a profile with highlight videos, club history and coach references, then share one link with college programmes, academies or a new club.</p></section>
+    <h1>A Recruitment Profile you can send to coaches</h1>
+    <p class="lead">Families create an optional Recruitment Profile, separate from the player profile their team sees, and share one link with college programs, academies or a new club.</p></section>
   <div class="grid2">
     <div class="stack" style="gap:16px">
+      ${feature("The details coaches ask for","Graduation year, height, stronger foot, school, GPA, positions and a recruiting summary, plus a contact email for coaches.")}
+      ${feature("Career highlights and stats","Trophies, selections and awards, and games, goals, assists and clean sheets for each season.")}
       ${feature("Highlight videos","Upload clips or link YouTube, Hudl or Veo.")}
-      ${feature("Coach references","Coaches write references that show on the public profile, in their own words.")}
-      ${feature("Club history","Every club and team, with years and highlights.")}
-      ${feature("You choose who sees it","Private, club only or public. Coach reviews and ratings always stay private.")}
+      ${feature("Coach references","Coaches write references in their own words, right from the player's page.")}
+      ${feature("Club history","Every club and team, with years and notes.")}
+      ${feature("You choose who sees it","It starts private. Make it public when you're ready. Coach reviews, ratings and messages are never on it.")}
     </div>
     <div class="card stack">
       <div class="row between"><h3>What a scout sees</h3><span class="pill warn">Example</span></div>
       <div class="pcard"><div class="photo avatar-art" style="width:96px;height:96px">${GRAY_AVATAR}</div>
-        <div class="stack" style="gap:6px"><h2>${esc(E.name)}</h2><p class="muted">${esc(E.club)} · ${esc(E.team)}</p>
+        <div class="stack" style="gap:6px"><h2>${esc(E.name)}</h2><p class="muted">Class of ${esc(E.recruit.gradYear)} · ${esc(E.club)} · ${esc(E.team)}</p>
           <div class="chips">${posChip("CM",true)}${posChip("CAM")}</div></div></div>
+      <div class="facts">${[["Height", E.recruit.height], ["Stronger foot", E.foot], ["School", E.recruit.school], ["GPA", E.recruit.gpa]].map(([k,v]) => `<div class="fact"><span class="small muted">${k}</span><b>${esc(v)}</b></div>`).join("")}</div>
+      <div class="list">${E.recruit.highlights.map(h => `<div class="hl"><div class="row between"><b>🏆 ${esc(h.title)}</b><span class="small muted num">${esc(h.year)}</span></div>${h.details ? `<p class="small muted">${esc(h.details)}</p>` : ""}</div>`).join("")}</div>
+      <div class="tbl-wrap"><table class="stats"><thead><tr><th>Season</th><th class="num">GP</th><th class="num">G</th><th class="num">A</th></tr></thead><tbody>${E.recruit.stats.map(x => `<tr><td>${esc(x.season)}</td><td class="num">${x.games}</td><td class="num">${x.goals}</td><td class="num">${x.assists}</td></tr>`).join("")}</tbody></table></div>
       <div class="vid"><div class="vlink" style="aspect-ratio:16/7">▶ Fall 2026 highlights</div></div>
       <div class="ref reference"><blockquote>${esc(E.reference.text)}</blockquote><span class="small"><b>${esc(E.reference.author)}</b>, ${esc(E.reference.title)}</span></div>
       <div class="timeline">${E.history.map(h=>`<div class="titem${h.to==="Present"?" now":""}"><div class="row between"><b>${esc(h.club)}</b><span class="small muted num">${esc(h.from)} – ${esc(h.to)}</span></div><div class="small">${esc(h.team)}</div></div>`).join("")}</div>
     </div>
   </div>
-  ${cta("I'm a coach","Build my player profile")}`;
+  ${cta("I'm a coach","Build my Recruitment Profile")}`;
 }
 
 function pageParents(){
@@ -2208,7 +2360,7 @@ MODALS.meetingNotes = ds => {
 ACTS.setVis = async ds => {
   const p = S.players.find(x => x.id === ds.player); if(!p) return;
   if(visOf(profileFor(p.id)) === ds.v) return;
-  await saveProfile(p, {visibility: ds.v === "public" ? "public" : "private"}, ds.v === "public" ? "Your profile is public. Use Copy profile link to share it." : "Your profile is private. Others only see your name, club and age.");
+  await saveProfile(p, {visibility: ds.v === "public" ? "public" : "private"}, ds.v === "public" ? "The Recruitment Profile is public. Use Copy profile link to share it." : "The Recruitment Profile is private. Others only see the name, club and age.");
 };
 ACTS.previewPublic = ds => { S.previewAsOutsider = true; location.hash = "profile-" + ds.slug; };
 ACTS.pmPlayer = ds => { S.pmPlayer = ds.id; S.meetingId = null; render(); };
@@ -2436,7 +2588,10 @@ const EXAMPLE = {
           {title:"Weak-foot only", meta:"Ball mastery · 15 min", per:2, done:1, note:"Left foot only. Finish with 10 shots."}],
   reference:{text:"Gray is one of the most coachable players I've worked with. He reads the game early, keeps the ball moving and has become a real voice in our midfield. He takes feedback on board and turns it into progress week after week.", author:"Coach Rivera", title:"Head Coach, U14 Boys Premier"},
   history:[{club:"Example FC", team:"U14 Boys Premier", from:"2023", to:"Present", notes:"League runners-up, fall 2026"},
-           {club:"Northside Rec", team:"U10 Coed", from:"2020", to:"2023", notes:"Started playing"}]
+           {club:"Northside Rec", team:"U10 Coed", from:"2020", to:"2023", notes:"Started playing"}],
+  recruit:{gradYear:"2031", height:"5'4\"", school:"Example Middle School", gpa:"3.8",
+    highlights:[{title:"League runners-up", year:"2026", details:"Started every game in midfield."},{title:"Team captain", year:"2026", details:""}],
+    stats:[{season:"Fall 2026", team:"U14 Boys Premier", games:14, goals:4, assists:9}]}
 };
 function exampleProfile(){
   const E = EXAMPLE, rs = E.reviews, last = rs[rs.length-1], prev = rs[rs.length-2];
@@ -2474,16 +2629,17 @@ function exampleProfile(){
             <p class="small"><b>Coach:</b> ${esc(d.note)}</p></div>`).join("")}
         </div>
         <div class="card stack">
-          <h3>Coach reference</h3>
+          <div class="row between"><h3>Recruitment Profile</h3><span class="pill good">🌐 Public</span></div>
+          <p class="small muted">Optional, and separate from the player profile: the link the family sends to college, academy and club coaches.</p>
+          <div class="facts">${[["Class of", E.recruit.gradYear], ["Height", E.recruit.height], ["Stronger foot", E.foot], ["GPA", E.recruit.gpa]].map(([k,v]) => `<div class="fact"><span class="small muted">${k}</span><b>${esc(v)}</b></div>`).join("")}</div>
+          <div class="list">${E.recruit.highlights.map(h => `<div class="hl"><div class="row between"><b>🏆 ${esc(h.title)}</b><span class="small muted num">${esc(h.year)}</span></div></div>`).join("")}</div>
           <div class="ref reference"><blockquote>${esc(E.reference.text)}</blockquote><span class="small"><b>${esc(E.reference.author)}</b>, ${esc(E.reference.title)}</span></div>
+          <div><a class="btn sm" href="#recruiting">How recruiting works</a></div>
         </div>
       </div>
       <div class="stack" style="gap:20px">
         <div class="card stack"><h3>Skill ratings</h3>${ratingsHtml(last, prev)}</div>
         <div class="card stack"><h3>Progress & review timeline</h3>${progressSummary(rs)}${timelineHtml(rs)}</div>
-        <div class="card stack"><h3>Club history</h3>
-          <div class="timeline">${E.history.map(h=>`<div class="titem${h.to==="Present"?" now":""}"><div class="row between"><b>${esc(h.club)}</b><span class="small muted num">${esc(h.from)} – ${esc(h.to)}</span></div><div class="small">${esc(h.team)}</div><p class="small muted">${esc(h.notes)}</p></div>`).join("")}</div>
-        </div>
       </div>
     </div>
     <div class="row" style="justify-content:center;gap:12px">

@@ -506,6 +506,17 @@ fieldset.plain legend{padding:0;margin-bottom:6px}
 button.team-pick.hit{border-color:var(--accent)}
 button.team-pick[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
 button.team-pick[aria-pressed="true"] .muted{color:#fde3d6}
+
+/* recruitment profile */
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.fact{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--blue-soft)}
+.fact b{color:var(--blue-deep)}
+.hl{padding:10px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
+.hl:last-child{border-bottom:0}
+table.stats td,table.stats th{white-space:nowrap}
+.recruit-head{border-top:4px solid var(--accent)}
+.recruit-intro ul.ticks{margin:0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.recruit-intro ul.ticks li::before{content:"✓ ";color:var(--accent);font-weight:700}
 p.picked{margin:0;padding:8px 12px;border-radius:8px;background:var(--blue-soft);color:var(--blue-deep)}
 
 </style>
