@@ -539,7 +539,7 @@ function ratingsHtml(last, prev){
     if(s.group !== g){ g = s.group; html += `<div class="rgroup">${g}</div>`; }
     const v = Number(last.ratings[s.k]) || 0, pvRaw = prev && prev.ratings ? Number(prev.ratings[s.k]) : NaN;
     const pv = pvRaw >= 1 && pvRaw <= 5 ? pvRaw : null;
-    html += `<div class="rate"><span>${s.label}</span><div class="bar" role="img" aria-label="${v} out of 5, ${esc(SCALE[v]||"not rated")}"><i style="width:${v*20}%"></i></div><span class="num" title="${esc(SCALE[v]||"")}"><span class="score">${v||"–"}</span>${pv!=null && v ? " "+deltaHtml(v-pv) : ""}</span></div>`;
+    html += `<div class="rate"><span>${s.label}</span><div class="bar" role="img" aria-label="${v} out of 5, ${esc(SCALE[v]||"not rated")}"><i style="width:${v*20}%"></i></div><span class="num" title="${esc(SCALE[v]||"")}"><span class="score">${v||"–"}</span>${pv!=null && v && v!==pv ? " "+deltaHtml(v-pv) : ""}</span></div>`;
   }
   html += `<p class="small muted" style="margin-top:6px">1 Needs a lot of work · 2 Developing · 3 Solid for their level · 4 Strong · 5 Excellent</p>`;
   return `<div class="stack" style="gap:8px">${html}</div>`;
@@ -1390,6 +1390,7 @@ function authView(){
         <p class="muted">Coaches review each player's strengths and what to work on. Families see that feedback at home, practice with assigned drills, and keep up with the team in one place.</p>
       </div>
       ${portalCards("pickPortal")}
+      ${exampleProfile()}
     </section>`;
   }
   const coach = S.portal === "coach";
@@ -1419,6 +1420,85 @@ function authView(){
         ${mode === "signin" ? `<button type="button" class="btn ghost sm" data-act="authMode" data-id="reset">Forgot password?</button>` : ""}
       </div>
     </form>
+  </section>`;
+}
+
+/* ---------- example profile on the front page (fictional player) ---------- */
+const EXAMPLE = {
+  name:"Gray Patchett", club:"Example FC", team:"U14 Boys Premier", positions:["CM","CAM"], foot:"Right",
+  strengths:["Passing range","Scanning","Work rate","Composure"],
+  bio:"Central midfielder who likes to get on the ball, switch play and set the tempo.",
+  reviews:[
+    {date:"2026-08-22", coachName:"Coach Rivera", summary:"Composed passer with a great attitude. Needs to win more duels and track back.",
+     ratings:{first_touch:3,passing:4,shooting:2,dribbling:3,physicality:2,handling_speed:3,separation_speed:2,positional_awareness:3,decision_making:3,defending:2,tactical_understanding:3,communication:3,coachability:5},
+     strengths:["Passing range","Work rate"], improve:["1v1 defending","Strength in duels"], note:""},
+    {date:"2026-10-03", coachName:"Coach Rivera", summary:"Checking his shoulder before receiving has made his first touch much cleaner. Defending is improving.",
+     ratings:{first_touch:4,passing:4,shooting:2,dribbling:3,physicality:3,handling_speed:3,separation_speed:3,positional_awareness:4,decision_making:3,defending:3,tactical_understanding:3,communication:3,coachability:5},
+     strengths:["Scanning","Passing range"], improve:["Finishing","Weak foot"], note:""},
+    {date:"2026-11-07", coachName:"Coach Rivera", summary:"Now dictating the tempo in midfield. Next step: arrive in the box and shoot with confidence.",
+     ratings:{first_touch:4,passing:5,shooting:3,dribbling:3,physicality:3,handling_speed:3,separation_speed:3,positional_awareness:4,decision_making:4,defending:3,tactical_understanding:4,communication:4,coachability:5},
+     strengths:["Passing range","Scanning","Communication"], improve:["Finishing","Weak foot","Staying goal-side"],
+     note:"Gray, your range of passing has been the best in the group this month, and you're talking much more to organise the midfield. To take the next step:\n1. When the shooting window opens, take it instead of looking for one more pass.\n2. Keep working your left foot so defenders can't force you back inside.\n3. When we lose the ball, get goal-side first, then press.\nGreat attitude every session. Keep it up."}
+  ],
+  drills:[{title:"Target finishing", meta:"Shooting · 15 min", per:3, done:2, note:"Inside of the foot first, then laces. Pick your corner before you strike."},
+          {title:"Weak-foot only", meta:"Ball mastery · 15 min", per:2, done:1, note:"Left foot only. Finish with 10 shots."}],
+  reference:{text:"Gray is one of the most coachable players I've worked with. He reads the game early, keeps the ball moving and has become a real voice in our midfield. He takes feedback on board and turns it into progress week after week.", author:"Coach Rivera", title:"Head Coach, U14 Boys Premier"},
+  history:[{club:"Example FC", team:"U14 Boys Premier", from:"2023", to:"Present", notes:"League runners-up, fall 2026"},
+           {club:"Northside Rec", team:"U10 Coed", from:"2020", to:"2023", notes:"Started playing"}]
+};
+function exampleProfile(){
+  const E = EXAMPLE, rs = E.reviews, last = rs[rs.length-1], prev = rs[rs.length-2];
+  const o = overall(last), po = overall(prev);
+  const posLabel = k => (FIELD_POSITIONS.find(x=>x[0]===k)||[k,k])[1];
+  return `<section class="example stack" aria-labelledby="ex-h">
+    <div class="row between">
+      <div class="stack" style="gap:4px"><h2 id="ex-h">See what a player profile looks like</h2>
+        <p class="muted small">Here's what a family sees after a few months of coach reviews.</p></div>
+      <span class="pill warn">Example player, not a real person</span>
+    </div>
+    <div class="card pcard">
+      <div class="photo ph" aria-hidden="true">GP</div>
+      <div class="stack">
+        <div class="stack" style="gap:2px"><h2 style="font-size:1.9rem">${esc(E.name)}</h2><p class="muted">${esc(E.club)} · ${esc(E.team)} · ${esc(E.foot)} footed</p></div>
+        <div class="chips">${E.positions.map((k,i)=>`<span class="chip${i===0?" str":""}">${esc(posLabel(k))}${i===0?" · main":""}</span>`).join("")}</div>
+        <div class="chips">${E.strengths.map(t=>`<span class="chip">${esc(t)}</span>`).join("")}</div>
+        <p style="max-width:65ch">${esc(E.bio)}</p>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="stack" style="gap:20px">
+        <div class="card stack">
+          <div class="row between"><h3>Coach's latest review</h3><span class="small muted">${fmtDate(last.date)} · ${esc(last.coachName)}</span></div>
+          <div class="overall"><span class="big num">${fix1(o)}</span><span class="muted">/ 5 overall</span>${deltaHtml(o-po)}</div>
+          <p class="tl-sum">“${esc(last.summary)}”</p>
+          <div class="chips">${changesBetween(prev, last).map(changeChip).join("")}</div>
+          <div class="stack" style="gap:6px"><b class="small">Strengths</b><div class="chips">${last.strengths.map(t=>`<span class="chip str">${esc(t)}</span>`).join("")}</div></div>
+          <div class="stack" style="gap:6px"><b class="small">Work on</b><div class="chips">${last.improve.map(t=>`<span class="chip imp">${esc(t)}</span>`).join("")}</div></div>
+          <div class="note" style="white-space:pre-wrap">${esc(last.note)}</div>
+        </div>
+        <div class="card stack">
+          <h3>Home drills this week</h3>
+          ${E.drills.map(d=>`<div class="drill"><div class="row between"><b>${esc(d.title)}</b><span class="small muted">${esc(d.meta)}</span></div>
+            <div class="row small"><span class="num"><b>${d.done} of ${d.per}</b> this week</span><div class="progress" aria-hidden="true"><i style="width:${Math.round(d.done/d.per*100)}%"></i></div></div>
+            <p class="small"><b>Coach:</b> ${esc(d.note)}</p></div>`).join("")}
+        </div>
+        <div class="card stack">
+          <h3>Coach reference</h3>
+          <div class="ref reference"><blockquote>${esc(E.reference.text)}</blockquote><span class="small"><b>${esc(E.reference.author)}</b>, ${esc(E.reference.title)}</span></div>
+        </div>
+      </div>
+      <div class="stack" style="gap:20px">
+        <div class="card stack"><h3>Skill ratings</h3>${ratingsHtml(last, prev)}</div>
+        <div class="card stack"><h3>Progress & review timeline</h3>${progressSummary(rs)}${timelineHtml(rs)}</div>
+        <div class="card stack"><h3>Club history</h3>
+          <div class="timeline">${E.history.map(h=>`<div class="titem${h.to==="Present"?" now":""}"><div class="row between"><b>${esc(h.club)}</b><span class="small muted num">${esc(h.from)} – ${esc(h.to)}</span></div><div class="small">${esc(h.team)}</div><p class="small muted">${esc(h.notes)}</p></div>`).join("")}</div>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="justify-content:center;gap:12px">
+      <button type="button" class="btn primary" data-act="pickPortal" data-id="coach">Start as a coach</button>
+      <button type="button" class="btn" data-act="pickPortal" data-id="family">I'm a parent or player</button>
+    </div>
   </section>`;
 }
 function savePortal(p){ S.portal = p || null; try { if(p) localStorage.setItem("np.portal", p); else localStorage.removeItem("np.portal"); } catch(_){} }
