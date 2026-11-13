@@ -65,7 +65,11 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* top bar */
 .top{background:#14213a;color:#f3f5f8;position:sticky;top:0;z-index:5}
 .top-in{max-width:1120px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;line-height:1}
+.brand{display:flex;align-items:center;gap:10px;line-height:1}
+.logo-mark{width:38px;height:38px;flex:none;display:block;border-radius:10px}
+.top .logo-mark{box-shadow:0 0 0 1px rgba(255,255,255,.14)}
+.small-brand .logo-mark{width:30px;height:30px;border-radius:8px}
+@media (max-width:420px){.logo-mark{width:32px;height:32px}}
 .wordmark{display:inline-flex;align-items:center;gap:0;font-family:"Outfit","Source Sans 3",system-ui,sans-serif;font-weight:700;font-size:1.6rem;letter-spacing:-.015em;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 .wm-play{color:#f0763f}
 .small-brand .wm-play{color:var(--accent)}

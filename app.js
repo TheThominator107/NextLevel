@@ -433,7 +433,7 @@ function fixView(){
 
 /* ---------- views ---------- */
 /* NextPlay wordmark (words only; the standalone mark lives in /brand) */
-const logoHtml = () => `<span class="wordmark"><span class="wm-word">Next</span><span class="wm-word wm-play">Play</span></span>`;
+const logoHtml = () => `<img class="logo-mark" src="brand/mark.svg" alt="" width="36" height="36"><span class="wordmark"><span class="wm-word">Next</span><span class="wm-word wm-play">Play</span></span>`;
 const brandSvg = "";
 
 function topbar(){
