@@ -146,6 +146,15 @@ const VIS = {
 };
 const visOf = pr => (pr && pr.visibility === "public") ? "public" : "private";
 const ageOf = by => by ? new Date().getFullYear() - Number(by) : null;
+/* exact age from the date of birth when there is one */
+function playerAge(p){
+  if(!p) return null;
+  if(p.age != null) return p.age;
+  if(p.birthDate){ const b = new Date(p.birthDate + "T00:00:00"), n = new Date(); let a = n.getFullYear() - b.getFullYear();
+    if(n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) a--; return a; }
+  return p.birthYear ? ageOf(p.birthYear) : null;
+}
+const fmtDob = d => d ? new Date(d + "T00:00:00").toLocaleDateString(undefined, {year:"numeric", month:"short", day:"numeric"}) : "";
 const profileFor = pid => S.profiles.find(x => x.playerId === pid) || null;
 const blobUrl = id => sb ? sb.storage.from("media").getPublicUrl(id).data.publicUrl : "";
 const canEditProfile = p => !!(S.me && !isStaff() && (S.me.playerIds||[]).includes(p.id));
@@ -262,6 +271,10 @@ function familyHasHome(){
 /* the club a player is on right now (families can have players at different clubs) */
 const clubOf = p => !p || !p.clubId ? null : isStaff() ? (S.club && S.club.id === p.clubId ? S.club : null) : (S.clubs || []).find(c => c.id === p.clubId) || null;
 const clubNameOf = p => (clubOf(p) || {}).name || "";
+/* a current club that isn't on NextPlay, from the profile's club history */
+const outsideClub = pr => ((pr && pr.history || []).find(h => h.to === "Present") || {}).club || "";
+/* the coach's position, or the family's main position */
+const posText = p => p.position && p.position !== "Not set" ? p.position : (((profileFor(p.id) || {}).positions || [])[0] ? positionLabel(profileFor(p.id).positions[0]) : "");
 const pendingFor = pid => (S.requests || []).find(r => r.playerId === pid && r.status === "pending");
 const pendingRequests = () => (S.requests || []).filter(r => r.status === "pending");
 function reviewStatus(pid){
@@ -569,15 +582,14 @@ function onboarding(){
     <div class="stack">
       <span class="pill good" style="align-self:flex-start">Parent / Player</span>
       <h1>Set up your player</h1>
-      <p style="max-width:52ch">Create your player's profile, then find your club and ask to join your team. Your coach approves the request, and then you'll see their reviews, home drills and team chat.</p>
+      <p style="max-width:52ch">Create your player's profile and find your club. Pick your team and the coach gets a request to add you. Once they approve, you'll see their reviews, home drills and team chat.</p>
       <p class="small muted">The profile belongs to your family. It stays with you if you change teams or clubs. Have more than one child? Add the others later under Account.</p>
     </div>
     <div class="stack">
       <form class="card stack auth-family" data-form="familyStart">
         <h2>About you and your player</h2>
         <label class="f" for="jf-name">Your name<input type="text" id="jf-name" name="name" required maxlength="60" autocomplete="name" placeholder="e.g. Sarah Brandt (Leo's mom)"></label>
-        <label class="f" for="jf-player">Player's name<input type="text" id="jf-player" name="player" required maxlength="60" placeholder="e.g. Leo Brandt"></label>
-        <label class="f" for="jf-year">Birth year (optional)<input type="number" id="jf-year" name="birthYear" min="1990" max="${new Date().getFullYear()}" placeholder="e.g. 2014"></label>
+        ${playerSetupFields("jf")}
         <div><button class="btn primary" type="submit">Create profile</button></div>
       </form>
       <div>${switcher}</div>
@@ -640,7 +652,7 @@ function rosterView(){
     const wk = as.reduce((s,a)=>s+Math.min(doneThisWeek(a),a.perWeek||3),0), wt = as.reduce((s,a)=>s+(a.perWeek||3),0);
     const d = (o!=null && po!=null) ? o - po : null;
     return `<tr data-act="open" data-id="${esc(p.id)}" tabindex="0">
-      <td><div class="pname">${esc(p.name)}</div><div class="small muted">${esc(p.position && p.position !== "Not set" ? p.position : (((profileFor(p.id) || {}).positions || [])[0] ? positionLabel(profileFor(p.id).positions[0]) : ""))}</div></td>
+      <td><div class="pname">${esc(p.name)}</div><div class="small muted">${esc(posText(p))}</div></td>
       <td>${esc(teamName(p.teamId))}</td>
       <td class="num"><span class="score">${o!=null?fix1(o):"–"}</span> ${d!=null?deltaHtml(d):""}</td>
       <td>${last ? relDays(last.date) : '<span class="muted">Never</span>'}</td>
@@ -804,7 +816,7 @@ function playerView(){
   return `<button class="btn ghost back" data-act="go" data-view="roster">← All players</button>
   <div class="card"><div class="row between">
     <div class="phead"><div class="avatar">${esc(initials(p.name))}</div>
-      <div class="stack" style="gap:2px"><h1>${esc(p.name)}</h1><p class="muted">${esc(p.position||"")} · ${esc(teamName(p.teamId))}${p.birthYear?" · Born "+esc(p.birthYear):""}</p>
+      <div class="stack" style="gap:2px"><h1>${esc(p.name)}</h1><p class="muted">${[posText(p), teamName(p.teamId), playerAge(p) != null ? "Age " + playerAge(p) : ""].filter(Boolean).map(esc).join(" · ")}</p>
       <p class="small"><span class="pill ${st.cls}">${st.txt}</span></p></div></div>
     <div class="row">
       <button class="btn" data-act="preview">${S.preview?"Back to coach view":"See what the family sees"}</button>
@@ -822,10 +834,10 @@ function familyHome(){
   const ids = (S.me.playerIds || []);
   const kids = S.players.filter(p => ids.includes(p.id));
   if(!kids.length) return `<div class="card stack"><h2>Add your player</h2><p>Create your player's profile first. Then you can find your club and ask to join your team.</p><div><button class="btn primary" data-act="modal" data-m="addChild">Add player</button></div></div>`;
-  if(!kids.find(k => k.id === S.childId)) S.childId = kids[0].id;
-  const p = kids.find(k => k.id === S.childId);
+  /* keep the chosen child even if the list hasn't caught up yet */
+  const p = kids.find(k => k.id === S.childId) || kids[0];
   const main = ((profileFor(p.id) || {}).positions || [])[0];
-  const line = [main ? positionLabel(main) : "", p.clubId ? teamName(p.teamId) : "", clubNameOf(p)].filter(Boolean).join(" · ");
+  const line = [main ? positionLabel(main) : "", p.clubId ? teamName(p.teamId) : "", clubNameOf(p) || outsideClub(profileFor(p.id))].filter(Boolean).join(" · ");
   return `<div class="card"><div class="row between">
     <div class="phead"><div class="avatar">${esc(initials(p.name))}</div><div class="stack" style="gap:2px"><h1>${esc(p.name)}</h1><p class="muted">${esc(line || "Not on a team yet")}</p></div></div>
     ${kids.length>1 ? `<div class="filters" role="group" aria-label="Choose player">${kids.map(k=>`<button data-act="child" data-id="${esc(k.id)}" aria-pressed="${k.id===p.id}">${esc(k.name)}</button>`).join("")}</div>` : ""}
@@ -833,6 +845,92 @@ function familyHome(){
   ${teamStatusHtml(p)}
   ${subtabs()}
   ${S.ptab === "profile" ? profileHtml(p, {editable:canEditProfile(p)}) : playerDetail(p, "family")}`;
+}
+
+/* family: the player setup form (name, date of birth, position, photo, bio, current club) */
+function playerSetupFields(px){
+  const today = new Date().toLocaleDateString("en-CA");
+  return `<label class="f" for="${px}-player">Player's name<input type="text" id="${px}-player" name="player" required maxlength="60" placeholder="e.g. Leo Brandt"></label>
+    <label class="f" for="${px}-dob">Date of birth<input type="date" id="${px}-dob" name="dob" required min="1990-01-01" max="${today}"></label>
+    <p class="small muted" style="margin-top:-8px">Only you and your club's coaches see the date. Profiles and requests show the age.</p>
+    <label class="f" for="${px}-main">Main position<select id="${px}-main" name="main" required><option value="">Choose…</option>${FIELD_POSITIONS.map(([k,l]) => `<option value="${k}">${k} – ${l}</option>`).join("")}</select></label>
+    <fieldset class="plain"><legend class="small"><b>Other positions</b> <span class="muted">(optional)</span></legend>
+      <div class="chips">${FIELD_POSITIONS.map(([k,l],i) => `<label class="chipbox" title="${l}"><input type="checkbox" name="pos" value="${k}" id="${px}-pos-${i}"><span>${k}</span></label>`).join("")}</div></fieldset>
+    <label class="f" for="${px}-bio">Short bio<textarea id="${px}-bio" name="bio" required maxlength="300" rows="3" placeholder="e.g. Two-footed center mid who loves to switch the play. Trains 3 times a week."></textarea></label>
+    <div class="photo-pick"><div class="photo ph" id="${px}-photo-prev" aria-hidden="true">📷</div>
+      <div class="stack" style="gap:4px"><label class="btn sm" for="${px}-photo">Add profile picture</label><input type="file" id="${px}-photo" name="photo" accept="image/jpeg,image/png,image/webp,image/gif" data-preview="${px}-photo-prev" hidden><span class="small muted">Optional. You can add or change it later.</span></div></div>
+    ${clubPickHtml(px)}`;
+}
+/* current club: search NextPlay, or name a club that isn't on it yet, or none */
+function clubPickHtml(px){
+  return `<fieldset class="plain clubpick" data-scope="${px}"><legend><b>Current club</b></legend>
+    <div class="seg-choice" role="radiogroup">
+      <label class="choice" for="${px}-cm-search"><input type="radio" id="${px}-cm-search" name="clubMode" value="search" checked data-clubmode="${px}"><span><b>Find our club on ${APP_NAME}</b><br><span class="small muted">Pick your team and the coach gets a request to add you.</span></span></label>
+      <label class="choice" for="${px}-cm-other"><input type="radio" id="${px}-cm-other" name="clubMode" value="other" data-clubmode="${px}"><span><b>Our club isn't on ${APP_NAME} yet</b><br><span class="small muted">We'll add it to the profile's club history.</span></span></label>
+      <label class="choice" for="${px}-cm-none"><input type="radio" id="${px}-cm-none" name="clubMode" value="none" data-clubmode="${px}"><span><b>Not on a club right now</b></span></label>
+    </div>
+    <div data-mode-panel="search">
+      <label class="f" for="${px}-q">Search clubs and teams<input type="search" id="${px}-q" data-input="clubSearch" data-scope="${px}" data-mode="form" maxlength="80" autocomplete="off" placeholder="Club or team name, e.g. Quality U12"></label>
+      <div id="${px}-res" class="club-results" aria-live="polite"></div>
+      <input type="hidden" name="teamId" id="${px}-team">
+      <p class="picked" id="${px}-picked" hidden></p>
+    </div>
+    <div data-mode-panel="other" hidden>
+      <div class="grid2" style="gap:14px">
+        <label class="f" for="${px}-oclub">Club name<input type="text" id="${px}-oclub" name="otherClub" maxlength="80"></label>
+        <label class="f" for="${px}-oteam">Team (optional)<input type="text" id="${px}-oteam" name="otherTeam" maxlength="60" placeholder="e.g. U12 Boys"></label>
+      </div>
+    </div>
+  </fieldset>`;
+}
+/* search results, shared by the sign-up form and the Find your team window */
+function clubResultsHtml(res, q, mode, px, curTeam){
+  if(res == null) return "";
+  if(String(q || "").trim().length < 2) return `<p class="small muted">Type at least 2 letters.</p>`;
+  if(!res.length) return `<p class="muted small">Nothing matches “${esc(q)}”. Try another spelling, part of the name, or the team's age group. If your club isn't on ${APP_NAME} yet, ${mode === "form" ? "choose “Our club isn't on " + APP_NAME + " yet” above" : "ask your coach to set it up"}.</p>`;
+  const words = String(q).toLowerCase().split(/\s+/).filter(Boolean);
+  const hit = t => words.some(w => (t.name + " " + (t.age_group || "")).toLowerCase().includes(w));
+  return res.map(c => { const teams = (c.teams || []).slice().sort((a,b) => hit(b) - hit(a));
+    return `<div class="club-hit"><b>${esc(c.name)}</b>
+    ${teams.length ? `<div class="chips">${teams.map(t => { const cur = t.id === curTeam;
+      return `<button type="button" class="chip team-pick${hit(t) ? " hit" : ""}" data-act="${mode === "form" ? "clubPick" : "pickTeam"}" data-scope="${esc(px)}" data-club="${esc(c.id)}" data-club-name="${esc(c.name)}" data-team="${esc(t.id)}" data-team-name="${esc(t.name)}"${cur ? " disabled" : ""}>${esc(t.name)}${t.age_group ? ` <span class="muted">${esc(t.age_group)}</span>` : ""}${cur ? " · current" : ""}</button>`; }).join("")}</div>`
+      : `<p class="small muted">This club hasn't added its teams yet.</p>`}</div>`; }).join("");
+}
+let clubSearchTimer = null, clubSearchSeq = 0;
+async function runClubSearch(input){
+  const q = input.value, px = input.dataset.scope, mode = input.dataset.mode, box = document.getElementById(px + "-res");
+  if(!box) return;
+  const seq = ++clubSearchSeq;
+  if(q.trim().length < 2){ box.innerHTML = q.trim() ? clubResultsHtml([], q, mode, px) : ""; if(mode === "modal" && S.find){ S.find.q = q; S.find.results = null; } return; }
+  let res;
+  try { res = (await rpc("find_clubs", {q})) || []; } catch(e){ box.innerHTML = `<p class="small muted">Search didn't work. Try again.</p>`; return; }
+  if(seq !== clubSearchSeq) return;
+  const cur = mode === "modal" && S.find ? (S.players.find(x => x.id === S.find.pid) || {}).teamId : null;
+  if(mode === "modal" && S.find){ S.find.q = q; S.find.results = res; }
+  box.innerHTML = clubResultsHtml(res, q, mode, px, cur);
+}
+async function createPlayerFromForm(fd, form, parentName){
+  const mode = fd.get("clubMode") || "search", tid = fd.get("teamId");
+  const other = String(fd.get("otherClub") || "").trim();
+  if(mode === "search" && !tid){ toast("Search for your club and tap your team, or choose one of the other club options.", true); const q = form.querySelector('[data-input="clubSearch"]'); if(q) q.focus(); return null; }
+  if(mode === "other" && !other){ toast("Type your club's name.", true); form.querySelector('[name="otherClub"]').focus(); return null; }
+  const main = fd.get("main"), positions = [main, ...fd.getAll("pos").filter(k => k !== main)].slice(0, 6);
+  const fileIn = form.querySelector('input[type="file"][name="photo"]'), file = fileIn && fileIn.files && fileIn.files[0];
+  let pid;
+  try {
+    if(parentName != null) await rpc("start_family", {my_name:parentName});
+    pid = await rpc("create_player", {p_name:String(fd.get("player")).trim(), p_birth_date:fd.get("dob")});
+  } catch(e){ toast(errMsg(e), true); return null; }
+  let photo = null;
+  if(file && S.assets){
+    try { const blob = await shrinkImage(file); photo = (await S.assets.upload(blob, {type: blob.type && /^image\/(jpeg|png|webp|gif)$/.test(blob.type) ? blob.type : "image/jpeg", folder:pid})).id; }
+    catch(e){ toast("Profile created, but the photo didn't upload: " + assetErr(e), true); }
+  }
+  const history = mode === "other" ? [{club:other, team:String(fd.get("otherTeam") || "").trim(), from:"", to:"Present", notes:""}] : [];
+  await saveProfile({id:pid}, {positions, bio:String(fd.get("bio") || "").trim().slice(0, 600), history, ...(photo ? {photo} : {})}, null);
+  let sent = false;
+  if(mode === "search"){ try { await rpc("request_team", {pid, tid, p_note:""}); sent = true; } catch(e){ toast(errMsg(e), true); } }
+  return {pid, sent};
 }
 
 /* family: which team the player is on, or the request waiting for a coach */
@@ -858,18 +956,13 @@ function findTeamModal(){
       <p class="small muted">The coach sees ${esc(p.name)}'s name, age and positions, your name and this note. Reviews and messages stay private until they approve.</p>
       <div class="row"><button class="btn primary" type="submit">Send request</button><button class="btn" type="button" data-act="unpickTeam">Back</button></div>
     </form>`;
-  const res = f.results;
-  const list = res == null ? "" : f.short ? `<p class="small muted">Type at least 2 letters of the club's name.</p>`
-    : !res.length ? `<p class="muted">No clubs match “${esc(f.q)}”. Check the spelling, or ask your coach what the club is called in ${APP_NAME}.</p>`
-    : `<div class="stack club-results">${res.map(c => `<div class="card stack" style="padding:14px"><b>${esc(c.name)}</b>
-        ${(c.teams||[]).length ? `<div class="chips">${c.teams.map(t => `<button type="button" class="chip team-pick" data-act="pickTeam" data-club="${esc(c.id)}" data-club-name="${esc(c.name)}" data-team="${esc(t.id)}" data-team-name="${esc(t.name)}"${p.teamId===t.id?" disabled":""}>${esc(t.name)}${t.age_group?` <span class="muted">${esc(t.age_group)}</span>`:""}${p.teamId===t.id?" · current":""}</button>`).join("")}</div>`
-          : `<p class="small muted">This club hasn't added its teams yet.</p>`}</div>`).join("")}</div>`;
+  const list = clubResultsHtml(f.results, f.q, "modal", "fc", p.teamId);
   return `<h2>Find ${esc(p.name)}'s team</h2>
     <form data-form="findClub" class="search-row">
-      <label class="f" for="fc-q">Club name<input type="search" id="fc-q" name="q" maxlength="80" value="${esc(f.q||"")}" placeholder="e.g. Quality Sports Training" autocomplete="off"></label>
+      <label class="f" for="fc-q">Search clubs and teams<input type="search" id="fc-q" name="q" maxlength="80" value="${esc(f.q||"")}" placeholder="Club or team name, e.g. Quality U12" autocomplete="off" data-input="clubSearch" data-scope="fc" data-mode="modal"></label>
       <button class="btn primary" type="submit">Search</button>
     </form>
-    ${list}
+    <div id="fc-res" class="club-results" aria-live="polite">${list}</div>
     <div class="row"><button class="btn" type="button" data-act="close">Close</button></div>`;
 }
 
@@ -879,7 +972,7 @@ function requestsCard(){
   if(!reqs.length) return "";
   return `<div class="card stack requests"><h2>Join requests <span class="badge">${reqs.length}</span></h2>
     <p class="small muted">Families found ${esc(S.club.name)} and asked to join a team. Approve to add the player to your roster, or pick a different team first.</p>
-    <div class="list">${reqs.map(r => { const age = r.birthYear ? ageOf(r.birthYear) : null;
+    <div class="list">${reqs.map(r => { const age = r.age != null ? r.age : r.birthYear ? ageOf(r.birthYear) : null;
       return `<div class="req">
         <div class="stack" style="gap:4px">
           <span><b>${esc(r.playerName)}</b>${age != null ? ` <span class="muted small">age ${esc(age)}</span>` : ""} ${(r.positions||[]).slice(0,3).map((k,i) => posChip(k, i===0)).join("")}</span>
@@ -917,7 +1010,7 @@ function profileHtml(p, opts){
   const history = (pr.history || []).slice().sort((a,b) => (b.to==="Present"?9999:+b.to||0) - (a.to==="Present"?9999:+a.to||0) || (+b.from||0) - (+a.from||0));
   const videos = pr.videos || [];
   const allComments = pub ? opts.pub.refs : S.comments.filter(c => c.playerId === p.id).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  const clubName = pub ? (opts.pub.clubName||"") : clubNameOf(p);
+  const clubName = (pub ? (opts.pub.clubName||"") : clubNameOf(p)) || outsideClub(pr);
   const empty = (msg) => `<p class="muted">${msg}</p>`;
 
   const head = `<div class="card pcard">
@@ -927,7 +1020,7 @@ function profileHtml(p, opts){
     </div>
     <div class="stack">
       <div class="row between">
-        <div class="stack" style="gap:2px"><h1>${esc(p.name)}</h1><p class="muted">${[clubName, p.teamId && p.clubId && !pub ? teamName(p.teamId) : "", p.birthYear ? "Age " + ageOf(p.birthYear) : "", pr.foot ? pr.foot + " footed" : ""].filter(Boolean).map(esc).join(" · ")}</p></div>
+        <div class="stack" style="gap:2px"><h1>${esc(p.name)}</h1><p class="muted">${[clubName, p.teamId && p.clubId && !pub ? teamName(p.teamId) : "", playerAge(p) != null ? "Age " + playerAge(p) : "", pr.foot ? pr.foot + " footed" : ""].filter(Boolean).map(esc).join(" · ")}</p></div>
         ${pub ? "" : ed ? visSwitch(p, pr) : `<div class="vis"><span class="pill ${VIS[visOf(pr)].cls}">${VIS[visOf(pr)].icon} ${VIS[visOf(pr)].label} profile</span></div>`}
       </div>
       <div class="stack" style="gap:6px"><h3>Positions</h3><div class="chips">${positions.length?positions.map((k,i)=>posChip(k,i===0)).join(""):'<span class="muted small">Not added yet</span>'}</div></div>
@@ -1105,7 +1198,7 @@ async function loadPublic(slug){
       S.pub = {limited:{name:data.player.name, club:data.club_name || "", age: data.player.age != null ? data.player.age : ageOf(data.player.birth_year)}, preview: true}; render(); return;
     }
     S.previewAsOutsider = false;
-    S.pub = {profile: camel(data.profile), player: {id:data.player.id, name:data.player.name, birthYear:data.player.birth_year},
+    S.pub = {profile: camel(data.profile), player: {id:data.player.id, name:data.player.name, birthYear:data.player.birth_year, age:data.player.age},
       clubName: data.club_name || "", refs: (data.refs || []).map(camel)};
   } catch(e){ console.error(e); S.pub = {error:true}; }
   render();
@@ -1202,7 +1295,7 @@ function accountView(){
     <div class="card stack"><h2>Your players</h2>
       <div class="list">${kids.map(k=>{ const pend = pendingFor(k.id);
         const where = k.clubId ? `${esc(teamName(k.teamId))} · ${esc(clubNameOf(k))}` : pend ? `Waiting to join ${esc(pend.teamName)} · ${esc(pend.clubName)}` : "Not on a team yet";
-        return `<div class="row between"><span><b>${esc(k.name)}</b>${k.birthYear?` <span class="muted small">born ${esc(k.birthYear)}</span>`:""}<br><span class="small muted">${where}</span></span>
+        return `<div class="row between"><span><b>${esc(k.name)}</b>${k.birthDate ? ` <span class="muted small">born ${esc(fmtDob(k.birthDate))}</span>` : k.birthYear ? ` <span class="muted small">born ${esc(k.birthYear)}</span>` : ""}<br><span class="small muted">${where}</span></span>
         <span class="row"><button class="btn ghost sm" data-act="modal" data-m="editMine" data-player="${esc(k.id)}">Edit</button>${k.clubId ? `<button class="btn ghost sm" data-act="modal" data-m="leaveTeam" data-player="${esc(k.id)}">Leave team</button>` : pend ? "" : `<button class="btn sm" data-act="findTeam" data-player="${esc(k.id)}">Find team</button>`}</span></div>`; }).join("") || '<p class="muted">None yet.</p>'}</div>
       <div><button class="btn" data-act="modal" data-m="addChild">Add another player</button></div>
     </div>
@@ -1227,7 +1320,7 @@ const MODALS = {
     <label class="f" for="t-age">Age group<input type="text" id="t-age" name="age" maxlength="20" placeholder="e.g. U12"></label>
     <div class="row"><button class="btn primary" type="submit">Add team</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
   editPlayer: (ds) => { const p = S.players.find(x=>x.id===ds.player); if(!p) return "<p>Player not found.</p>"; return `<h2>Edit ${esc(p.name)}</h2><form data-form="editPlayer" data-id="${esc(p.id)}">
-    <p class="small muted">${p.birthYear ? "Born " + esc(p.birthYear) + ". " : ""}The family manages the name and profile.</p>
+    <p class="small muted">${p.birthDate ? "Born " + esc(fmtDob(p.birthDate)) + ". " : p.birthYear ? "Born " + esc(p.birthYear) + ". " : ""}The family manages the name, date of birth and profile.</p>
     <div class="grid2" style="gap:14px">
       <label class="f" for="e-team">Team<select id="e-team" name="teamId">${teamOptions(p.teamId)}</select></label>
       <label class="f" for="e-pos">Position<select id="e-pos" name="position">${POSITIONS.map(x=>`<option ${x===p.position?"selected":""}>${x}</option>`).join("")}</select></label>
@@ -1300,12 +1393,11 @@ const MODALS = {
     </fieldset>
     <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
   addChild: () => `<h2>Add a player</h2><form data-form="addChild">
-    <label class="f" for="ac-name">Player's name<input type="text" id="ac-name" name="player" required maxlength="60"></label>
-    <label class="f" for="ac-year">Birth year (optional)<input type="number" id="ac-year" name="birthYear" min="1990" max="${new Date().getFullYear()}"></label>
+    ${playerSetupFields("ac")}
     <div class="row"><button class="btn primary" type="submit">Add player</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
   editMine: ds => { const p = S.players.find(x => x.id === ds.player); if(!p) return "<p>Player not found.</p>"; return `<h2>Edit ${esc(p.name)}</h2><form data-form="editMine" data-id="${esc(p.id)}">
     <label class="f" for="em-name">Player's name<input type="text" id="em-name" name="player" required maxlength="60" value="${esc(p.name)}"></label>
-    <label class="f" for="em-year">Birth year (optional)<input type="number" id="em-year" name="birthYear" min="1990" max="${new Date().getFullYear()}" value="${esc(p.birthYear||"")}"></label>
+    <label class="f" for="em-dob">Date of birth<input type="date" id="em-dob" name="dob" min="1990-01-01" max="${new Date().toLocaleDateString("en-CA")}" value="${esc(p.birthDate||"")}"></label>
     <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`; },
   findTeam: () => findTeamModal(),
   leaveTeam: ds => { const p = S.players.find(x => x.id === ds.player); if(!p) return "<p>Player not found.</p>"; const club = clubNameOf(p) || "the club";
@@ -1397,6 +1489,13 @@ const ACTS = {
   findTeam: ds => { S.find = {pid: ds.player || S.childId, q: "", results: null, pick: null}; openModal(findTeamModal()); },
   pickTeam: ds => { if(!S.find) return; S.find.pick = {clubId:ds.club, clubName:ds.clubName, teamId:ds.team, teamName:ds.teamName}; openModal(findTeamModal()); },
   unpickTeam: () => { if(!S.find) return; S.find.pick = null; openModal(findTeamModal()); },
+  clubPick: (ds, el) => {
+    const px = ds.scope, team = document.getElementById(px + "-team"), picked = document.getElementById(px + "-picked");
+    if(!team) return;
+    team.value = ds.team;
+    document.querySelectorAll(`#${px}-res .team-pick`).forEach(b => b.setAttribute("aria-pressed", b === el ? "true" : "false"));
+    if(picked){ picked.hidden = false; picked.innerHTML = `✓ <b>${esc(ds.teamName)}</b> at <b>${esc(ds.clubName)}</b>. The coach gets a request when you save.`; }
+  },
   cancelRequest: async ds => { const ok = await save(() => rpc("cancel_request", {rid:ds.id}), "Request cancelled"); if(ok) refreshAll(); },
   declineReq: async (ds, el) => {
     if(!el.dataset.armed){ el.dataset.armed = "1"; el.textContent = "Click again to decline"; return; }
@@ -1449,18 +1548,17 @@ const FORMS = {
     const ok = await save(async () => { name = await rpc("join_club", {club_code:fd.get("code").trim(), my_name:fd.get("name").trim()}); });
     if(ok){ toast("Welcome to " + name); await loadMe(); }
   },
-  familyStart: async fd => {
-    const y = parseInt(fd.get("birthYear"), 10);
-    const ok = await save(async () => {
-      await rpc("start_family", {my_name:String(fd.get("name")).trim()});
-      await rpc("add_player", {p_name:String(fd.get("player")).trim(), p_birth_year: isNaN(y) ? null : y});
-    });
-    if(ok){ toast("Profile created. Next, find your team."); await loadMe(); refreshAll(); }
+  familyStart: async (fd, form) => {
+    const r = await createPlayerFromForm(fd, form, String(fd.get("name")).trim());
+    if(!r) return;
+    toast(r.sent ? "Profile created and request sent to the coach" : "Profile created");
+    S.childId = r.pid; S.view = "home"; S.ptab = "profile"; await loadMe(); refreshAll();
   },
-  addChild: async fd => {
-    closeModal(); const y = parseInt(fd.get("birthYear"), 10); let pid;
-    const ok = await save(async () => { pid = await rpc("add_player", {p_name:String(fd.get("player")).trim(), p_birth_year: isNaN(y) ? null : y}); });
-    if(ok){ toast("Player added"); S.childId = pid; S.view = "home"; await loadMe(); refreshAll(); }
+  addChild: async (fd, form) => {
+    const r = await createPlayerFromForm(fd, form, null);
+    if(!r) return;
+    closeModal(); toast(r.sent ? "Player added and request sent to the coach" : "Player added");
+    S.childId = r.pid; S.view = "home"; S.ptab = "profile"; await loadMe(); refreshAll();
   },
   auth: async (fd, form) => {
     const email = String(fd.get("email")||"").trim(), password = String(fd.get("password")||"");
@@ -1602,6 +1700,24 @@ document.addEventListener("input", ev => {
   const o = ev.target.dataset && ev.target.dataset.out;
   if(o){ const out = document.getElementById(o); if(out){ out.textContent = ev.target.value; if(ev.target.dataset.scale) out.title = SCALE[ev.target.value] || ""; } }
   if(ev.target.dataset && ev.target.dataset.scale) updateChangeHint(ev.target.form);
+});
+document.addEventListener("input", ev => {
+  const t = ev.target; if(!t.dataset || t.dataset.input !== "clubSearch") return;
+  clearTimeout(clubSearchTimer); clubSearchTimer = setTimeout(() => runClubSearch(t), 250);
+});
+document.addEventListener("change", ev => {
+  const t = ev.target; if(!t.dataset) return;
+  if(t.dataset.clubmode){
+    const fs = t.closest(".clubpick"); if(!fs) return;
+    fs.querySelectorAll("[data-mode-panel]").forEach(el => { el.hidden = el.dataset.modePanel !== t.value; });
+    const oc = fs.querySelector('[name="otherClub"]'); if(oc) oc.required = t.value === "other";
+  }
+  if(t.dataset.preview && t.files && t.files[0]){
+    const prev = document.getElementById(t.dataset.preview); if(!prev) return;
+    const img = document.createElement("img"); img.className = "photo"; img.id = t.dataset.preview; img.alt = "Profile picture preview";
+    img.src = URL.createObjectURL(t.files[0]); prev.replaceWith(img);
+    const lbl = document.querySelector(`label[for="${t.id}"]`); if(lbl) lbl.textContent = "Change picture";
+  }
 });
 document.addEventListener("error", ev => {
   const t = ev.target;
@@ -2121,8 +2237,8 @@ async function sendPm(fd, form, meetingId){
 }
 FORMS.pm = (fd, form) => sendPm(fd, form, null);
 FORMS.editMine = async (fd, form) => {
-  closeModal(); const y = parseInt(fd.get("birthYear"), 10);
-  const ok = await save(() => rpc("update_player", {pid:form.dataset.id, p_name:String(fd.get("player")).trim(), p_birth_year: isNaN(y) ? null : y}), "Saved");
+  closeModal();
+  const ok = await save(() => rpc("edit_player", {pid:form.dataset.id, p_name:String(fd.get("player")).trim(), p_birth_date: fd.get("dob") || null}), "Saved");
   if(ok) schedule("players");
 };
 FORMS.findClub = async fd => {

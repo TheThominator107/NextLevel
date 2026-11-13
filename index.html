@@ -489,6 +489,21 @@ button.team-pick:disabled{opacity:.6;cursor:default}
 p.composer{padding:12px 0}
 .modal form.search-row,.search-row{display:flex;flex-direction:row;gap:10px;align-items:flex-end;flex-wrap:wrap}
 .search-row .f{flex:1 1 240px;max-width:none}
+/* player setup form */
+fieldset.plain{border:0;padding:0;margin:0;min-width:0;display:flex;flex-direction:column;gap:10px}
+fieldset.plain legend{padding:0;margin-bottom:6px}
+.clubpick{border-top:1px solid var(--line)!important;padding-top:14px!important}
+.seg-choice{display:flex;flex-direction:column;gap:8px}
+.photo-pick{display:flex;align-items:center;gap:14px}
+.photo-pick .btn{align-self:flex-start}
+.photo-pick .photo{width:64px;height:64px;border-radius:12px;font-size:1.4rem;object-fit:cover;flex:none}
+.club-hit{padding:10px 12px;border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}
+.club-results{display:flex;flex-direction:column;gap:8px}
+button.team-pick.hit{border-color:var(--accent)}
+button.team-pick[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+button.team-pick[aria-pressed="true"] .muted{color:#fde3d6}
+p.picked{margin:0;padding:8px 12px;border-radius:8px;background:var(--blue-soft);color:var(--blue-deep)}
+
 </style>
 </head>
 <body>
