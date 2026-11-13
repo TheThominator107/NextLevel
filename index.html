@@ -55,6 +55,10 @@ body{background-color:var(--field-a);background-image:repeating-linear-gradient(
 /* soccer field behind every page: mowed stripes (body) + pitch markings (fixed layer) */
 body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:var(--field-lines);background:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1050 680%22 preserveAspectRatio=%22xMidYMid slice%22%3E%3Cg fill=%22none%22 stroke=%22%23ffffff%22 stroke-width=%224%22%3E%0A%3Crect x=%2225%22 y=%2225%22 width=%221000%22 height=%22630%22/%3E%3Cline x1=%22525%22 y1=%2225%22 x2=%22525%22 y2=%22655%22/%3E%3Ccircle cx=%22525%22 cy=%22340%22 r=%2291.5%22/%3E%0A%3Crect x=%2225%22 y=%22138.5%22 width=%22165%22 height=%22403%22/%3E%3Crect x=%2225%22 y=%22248.5%22 width=%2255%22 height=%22183%22/%3E%3Cpath d=%22M190 267 A91.5 91.5 0 0 1 190 413%22/%3E%0A%3Crect x=%22860%22 y=%22138.5%22 width=%22165%22 height=%22403%22/%3E%3Crect x=%22970%22 y=%22248.5%22 width=%2255%22 height=%22183%22/%3E%3Cpath d=%22M860 267 A91.5 91.5 0 0 0 860 413%22/%3E%0A%3Cpath d=%22M25 35 A10 10 0 0 0 35 25%22/%3E%3Cpath d=%22M1015 25 A10 10 0 0 0 1025 35%22/%3E%3Cpath d=%22M25 645 A10 10 0 0 1 35 655%22/%3E%3Cpath d=%22M1025 645 A10 10 0 0 0 1015 655%22/%3E%0A%3C/g%3E%3Cg fill=%22%23ffffff%22%3E%3Ccircle cx=%22525%22 cy=%22340%22 r=%225%22/%3E%3Ccircle cx=%22135%22 cy=%22340%22 r=%225%22/%3E%3Ccircle cx=%22915%22 cy=%22340%22 r=%225%22/%3E%3C/g%3E%3C/svg%3E") center/cover no-repeat}
 #app,#modal,#toast{position:relative;z-index:1}
+/* the page fills at least the screen, so the footer always sits at the bottom */
+#app{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
+#app>main{flex:1 0 auto;width:100%;box-sizing:border-box}
+#app>.site-foot{flex-shrink:0}
 #modal,#toast{z-index:20}
 h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:0;text-wrap:balance;line-height:1.1}
 h1{font-size:2.1rem} h2{font-size:1.45rem} h3{font-size:1.15rem}
