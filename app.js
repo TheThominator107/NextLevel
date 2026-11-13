@@ -64,6 +64,7 @@ function timelineHtml(rs, opts={}){
       ${r.summary ? `<p class="tl-sum">“${esc(r.summary)}”</p>` : ""}
       ${ch.length ? `<div class="chips">${ch.map(changeChip).join("")}</div>` : (prev && reviewForm(prev)===reviewForm(r) ? `<span class="small muted">No rating changes</span>` : "")}
       ${r.note ? `<details><summary class="small">Coach's full note</summary><p class="small" style="margin-top:4px;white-space:pre-wrap">${esc(r.note)}</p></details>` : ""}
+      ${opts.discuss && S.me ? `<div><button class="btn sm" data-act="discussReview" data-player="${esc(r.playerId)}" data-review="${esc(r.id)}">💬 Discuss this review</button></div>` : ""}
       ${admin ? `<div><button class="btn ghost sm" data-act="delReview" data-id="${esc(r.id)}" aria-label="Delete review from ${esc(fmtDate(r.date))}">Delete (admin)</button></div>` : ""}
     </div>`; }).join("")}</div>`;
 }
@@ -132,7 +133,7 @@ const S = {
   view:null, playerId:null, childId:null, teamFilter:"all", catFilter:"All",
   chartSkill:"overall", preview:false, loading:true, noDb:false, notice:null, subClubId:undefined,
   profiles:[], comments:[], ptab:"dev", assets:null, publicSlug:null, pub:null,
-  messages:[], chatTeam:null
+  messages:[], chatTeam:null, pmessages:[], meetings:[], pmPlayer:null, pmTab:"chat", meetingId:null
 };
 const APP_URL = location.origin + location.pathname;
 const FIELD_POSITIONS = [["GK","Goalkeeper"],["RB","Right back"],["CB","Center back"],["LB","Left back"],["WB","Wing back"],["CDM","Defensive mid"],["CM","Central mid"],["CAM","Attacking mid"],["RM","Right mid"],["LM","Left mid"],["RW","Right wing"],["LW","Left wing"],["CF","Center forward"],["ST","Striker"]];
@@ -293,7 +294,8 @@ async function save(fn, ok){
 /* ---------- data (Supabase) ---------- */
 let sb = null, channel = null, loadTimer;
 const TABLE = {clubs:"clubs", teams:"teams", players:"players", reviews:"reviews", assignments:"assignments", drills:"drills",
-  members:"members", profiles:"player_profiles", comments:"comments", messages:"messages"};
+  members:"members", profiles:"player_profiles", comments:"comments", messages:"messages",
+  pmessages:"private_messages", meetings:"meetings"};
 const PK = {profiles:"player_id"};
 const TABLE_TO_KEY = Object.fromEntries(Object.entries(TABLE).map(([k,v]) => [v,k]));
 TABLE_TO_KEY.clubs = "club"; TABLE_TO_KEY.family_links = "links";
@@ -403,6 +405,7 @@ async function loadKey(key){
   let q;
   if(key === "club") q = sb.from("clubs").select("*").eq("id", cid).maybeSingle();
   else if(key === "messages") q = sb.from("messages").select("*").eq("club_id", cid).order("created_at", {ascending:false}).limit(600);
+  else if(key === "pmessages") q = sb.from("private_messages").select("*").eq("club_id", cid).order("created_at", {ascending:false}).limit(1500);
   else if(key === "links") q = sb.from("family_links").select("*");
   else if(TABLE[key]) q = sb.from(TABLE[key]).select("*").eq("club_id", cid);
   else return;
@@ -410,7 +413,7 @@ async function loadKey(key){
   if(cid !== S.subClubId) return;
   if(error){ console.error(key, error); S.notice = "Some data couldn't load. Reload the page to try again."; render(); return; }
   if(key === "club"){ const before = S.club && S.club.familyAccess; S.club = data ? camel(data) : null; S.clubLoaded = true; if(S.club && before !== undefined && before !== S.club.familyAccess) loadSteps(); }
-  else if(key === "messages") S.messages = data.map(camel).reverse();
+  else if(key === "messages" || key === "pmessages") S[key] = data.map(camel).reverse();
   else if(key === "links") S.links = data;
   else S[key] = data.map(camel);
   if(key === "members" || key === "links"){
@@ -423,9 +426,9 @@ function subscribeClub(cid){
   if(channel){ sb.removeChannel(channel); channel = null; }
   S.subClubId = cid; S.clubLoaded = false;
   S.club = null; S.teams = []; S.players = []; S.reviews = []; S.assignments = []; S.drills = []; S.members = []; S.links = [];
-  S.profiles = []; S.comments = []; S.messages = [];
+  S.profiles = []; S.comments = []; S.messages = []; S.pmessages = []; S.meetings = [];
   if(!cid) return;
-  ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages"].forEach(k => loadKey(k));
+  ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","meetings"].forEach(k => loadKey(k));
   channel = sb.channel("club-" + cid)
     .on("postgres_changes", {event:"*", schema:"public"}, payload => {
       const key = TABLE_TO_KEY[payload.table];
@@ -436,7 +439,7 @@ function subscribeClub(cid){
     .subscribe();
 }
 function fixView(){
-  const staffViews = ["roster","player","chat","drills","plans","club"], famViews = ["home","chat","drills","plans","account"];
+  const staffViews = ["roster","player","chat","messages","drills","plans","club"], famViews = ["home","chat","messages","drills","plans","account"];
   if(!S.me) { S.view = null; return; }
   const ok = isStaff() ? staffViews : famViews;
   if(!ok.includes(S.view)) S.view = isStaff() ? "roster" : "home";
@@ -451,10 +454,11 @@ function topbar(){
   let tabs = "";
   if(S.me && S.club){
     const items = isStaff()
-      ? [["roster","Players"],["chat","Team chat"],["drills","Drill library"],["plans","Plans"],["club","Club"]]
-      : [["home","My player"],["chat","Team chat"],["drills","Home drills"],["plans","Plans"],["account","Account"]];
+      ? [["roster","Players"],["chat","Team chat"],["messages","Messages"],["drills","Drill library"],["plans","Plans"],["club","Club"]]
+      : [["home","My player"],["chat","Team chat"],["messages","Messages"],["drills","Home drills"],["plans","Plans"],["account","Account"]];
+    const pmu = totalPmUnread();
     const un = totalUnread();
-    tabs = `<nav class="tabs" aria-label="Main">${items.map(([v,l]) => `<button data-act="go" data-view="${v}" ${!S.publicPage && (S.view===v || (v==="roster" && S.view==="player")) ? 'aria-current="page"' : ""}>${l}${v==="chat" && un ? `<span class="badge" aria-label="${un} unread">${un>99?"99+":un}</span>` : ""}</button>`).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>`;
+    tabs = `<nav class="tabs" aria-label="Main">${items.map(([v,l]) => `<button data-act="go" data-view="${v}" ${!S.publicPage && (S.view===v || (v==="roster" && S.view==="player")) ? 'aria-current="page"' : ""}>${l}${v==="chat" && un ? `<span class="badge" aria-label="${un} unread">${un>99?"99+":un}</span>` : ""}${v==="messages" && pmu ? `<span class="badge" aria-label="${pmu} unread">${pmu>99?"99+":pmu}</span>` : ""}</button>`).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>`;
   }
   return `<header class="top"><div class="top-in">
     <a href="#" class="brand" data-act="home" aria-label="${APP_NAME} home">${logoHtml()}</a>
@@ -481,6 +485,9 @@ function render(){
   const th = document.getElementById("thread");
   const atBottom = !th || (th.scrollHeight - th.scrollTop - th.clientHeight < 60);
   const prevScroll = th ? th.scrollTop : 0, prevTeam = S._renderedChatTeam;
+  const pi = document.getElementById("pm-input"), pt = document.getElementById("pm-thread");
+  const pkeep = pi ? {v:pi.value, f:document.activeElement===pi, s:pi.selectionStart, e:pi.selectionEnd, key:pt ? pt.dataset.key : ""} : null;
+  const pAtBottom = !pt || (pt.scrollHeight - pt.scrollTop - pt.clientHeight < 60), pPrevScroll = pt ? pt.scrollTop : 0, pPrevKey = pt ? pt.dataset.key : null;
   app.innerHTML = topbar() + `<main>${banners}${body}</main>` + (!S.uid || S.publicPage ? siteFooter() : "");
   const ci2 = document.getElementById("chat-input");
   if(ci2 && keep && prevTeam === S.chatTeam){ ci2.value = keep.v; const a = document.getElementById("chat-ann"); if(a) a.checked = !!keep.ann; if(keep.f){ ci2.focus(); try{ ci2.setSelectionRange(keep.s, keep.e); }catch(_){} } }
@@ -488,6 +495,10 @@ function render(){
   if(th2){ th2.scrollTop = (atBottom || prevTeam !== S.chatTeam) ? th2.scrollHeight : prevScroll; }
   S._renderedChatTeam = S.view === "chat" ? S.chatTeam : null;
   if(S.view === "chat") markRead();
+  const pt2 = document.getElementById("pm-thread"), pi2 = document.getElementById("pm-input");
+  if(pi2 && pkeep && pt2 && pkeep.key === pt2.dataset.key){ pi2.value = pkeep.v; if(pkeep.f){ pi2.focus(); try{ pi2.setSelectionRange(pkeep.s, pkeep.e); }catch(_){} } }
+  if(pt2){ pt2.scrollTop = (pAtBottom || pPrevKey !== pt2.dataset.key) ? pt2.scrollHeight : pPrevScroll; }
+  if(S.view === "messages") markPmRead();
 }
 
 function viewBody(){
@@ -498,6 +509,7 @@ function viewBody(){
       case "plans": return plansView();
       case "club": return clubView();
       case "chat": return chatView();
+      case "messages": return messagesView();
       default: return rosterView();
     }
   }
@@ -506,6 +518,7 @@ function viewBody(){
     case "plans": return plansView();
     case "account": return accountView();
     case "chat": return chatView();
+    case "messages": return messagesView();
     default: return familyHome();
   }
 }
@@ -752,7 +765,7 @@ function playerDetail(p, mode){
   }
 
   const progressCard = home ? `<div class="card stack"><h2>Progress over time</h2>${chartHtml(rs)}</div>` : "";
-  const historyCard = (home || !fam) ? `<div class="card stack"><h2>Progress & review timeline</h2>${progressSummary(rs)}${timelineHtml(rs, {staff:!fam})}</div>` : `<div class="locked"><h2>Review timeline</h2><p>Every past review is saved. See each update, what changed and progress since the first review with Home Training.</p><button class="btn primary" data-act="go" data-view="plans">See Home Training plan</button></div>`;
+  const historyCard = (home || !fam) ? `<div class="card stack"><h2>Progress & review timeline</h2>${progressSummary(rs)}${timelineHtml(rs, {staff:!fam, discuss:!preview})}</div>` : `<div class="locked"><h2>Review timeline</h2><p>Every past review is saved. See each update, what changed and progress since the first review with Home Training.</p><button class="btn primary" data-act="go" data-view="plans">See Home Training plan</button></div>`;
 
   return `<div class="grid2">
     <div class="stack" style="gap:20px">${reviewCard}${drillsCard}${recommendCard(p, {staff:!fam, family:fam, preview, locked: fam && !home, title: fam ? "Recommended for you" : "Suggested home drills"})}</div>
@@ -771,6 +784,7 @@ function playerView(){
       <p class="small">Family code: <span class="code">${esc(p.inviteCode)}</span> <button class="btn ghost sm" data-act="copy" data-text="${esc(p.inviteCode)}">Copy</button> <span class="pill ${st.cls}">${st.txt}</span></p></div></div>
     <div class="row">
       <button class="btn" data-act="preview">${S.preview?"Back to coach view":"See what the family sees"}</button>
+      <button class="btn" data-act="messageFamily" data-id="${esc(p.id)}">Message family</button>
       <button class="btn" data-act="modal" data-m="editPlayer" data-player="${esc(p.id)}">Edit</button>
       <button class="btn primary" data-act="modal" data-m="review" data-player="${esc(p.id)}">${reviewsFor(p.id).length ? "Update review" : "First review"}</button>
     </div>
@@ -1456,7 +1470,7 @@ document.addEventListener("click", ev => {
 });
 document.addEventListener("keydown", ev => {
   if(ev.key === "Escape" && document.getElementById("modal").innerHTML) closeModal();
-  if(ev.key === "Enter" && !ev.shiftKey && !ev.isComposing && ev.target.id === "chat-input"){ ev.preventDefault(); const f = ev.target.form; if(f) f.requestSubmit(); return; }
+  if(ev.key === "Enter" && !ev.shiftKey && !ev.isComposing && (ev.target.id === "chat-input" || ev.target.id === "pm-input")){ ev.preventDefault(); const f = ev.target.form; if(f) f.requestSubmit(); return; }
   if((ev.key === "Enter" || ev.key === " ") && ev.target.matches && ev.target.matches("tr[data-act]")){ ev.preventDefault(); ACTS.open(ev.target.dataset); }
 });
 document.addEventListener("submit", async ev => {
@@ -1515,6 +1529,7 @@ document.addEventListener("change", ev => {
     return;
   }
   if(ev.target.dataset && ev.target.dataset.change === "skillFilter"){ S.skillFilter = ev.target.value || null; render(); const el = document.getElementById("skill-filter"); if(el) el.focus(); return; }
+  if(ev.target.dataset && ev.target.dataset.change === "pmPlayer"){ S.pmPlayer = ev.target.value; S.meetingId = null; render(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "chatTeam"){ S.chatTeam = ev.target.value; render(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "chartSkill"){ S.chartSkill = ev.target.value; render(); const s = document.getElementById("chart-skill"); if(s) s.focus(); }
 });
@@ -1727,6 +1742,243 @@ FORMS.contact = async (fd, form) => {
 };
 ACTS.menu = () => { S.menuOpen = !S.menuOpen; render(); };
 ACTS.home = () => { S.publicPage = null; S.menuOpen = false; try { history.replaceState(null, "", location.pathname + location.search); } catch(_){} render(); window.scrollTo(0,0); };
+
+
+/* ---------- private messages: coach / player / parent, plus a meeting room per player ---------- */
+const MEETING_TOPICS = ["Discuss a review","Progress and goals","Playing time","Position","Training at home","Something else"];
+const MEETING_STATUS = {requested:{label:"Requested",cls:"warn"}, scheduled:{label:"Scheduled",cls:"good"}, done:{label:"Done",cls:"plain"}, cancelled:{label:"Cancelled",cls:"plain"}};
+
+function pmPlayers(){
+  const list = isStaff() ? S.players.slice() : S.players.filter(p => (S.me.playerIds||[]).includes(p.id));
+  const last = pid => { const m = S.pmessages.filter(x => x.playerId === pid); return m.length ? m[m.length-1].createdAt : 0; };
+  return list.sort((a,b) => (last(b.id) - last(a.id)) || String(a.name).localeCompare(String(b.name)));
+}
+const pmThread = (pid, mid = null) => S.pmessages.filter(m => m.playerId === pid && (mid ? m.meetingId === mid : !m.meetingId));
+const meetingsFor = pid => S.meetings.filter(m => m.playerId === pid);
+const readKey = (pid, mid) => mid ? "m:" + mid : "p:" + pid;
+function unreadIn(pid, mid){
+  const lr = (S.me && S.me.lastRead && S.me.lastRead[readKey(pid, mid)]) || 0;
+  return pmThread(pid, mid).filter(m => m.createdAt > lr && m.authorId !== S.uid).length;
+}
+function pmUnreadFor(pid){ return unreadIn(pid, null) + meetingsFor(pid).reduce((n, mt) => n + unreadIn(pid, mt.id), 0); }
+function totalPmUnread(){ if(!S.me) return 0; return pmPlayers().reduce((n, p) => n + pmUnreadFor(p.id), 0); }
+const openMeetings = pid => meetingsFor(pid).filter(m => m.status === "requested" || m.status === "scheduled").length;
+
+let pmReadPending = false;
+async function markPmRead(){
+  const pid = S.pmPlayer; if(!pid || pmReadPending) return;
+  const mid = S.pmTab === "meetings" ? S.meetingId : null;
+  if(S.pmTab === "meetings" && !mid) return;
+  const ms = pmThread(pid, mid); if(!ms.length) return;
+  const newest = ms[ms.length-1].createdAt || 0, key = readKey(pid, mid);
+  const lr = (S.me.lastRead && S.me.lastRead[key]) || 0;
+  if(newest <= lr || document.hidden) return;
+  pmReadPending = true;
+  try { await S.db.doc("members/" + S.uid).update({lastRead:{...(S.me.lastRead||{}), [key]:newest}}); } catch(_){}
+  pmReadPending = false;
+}
+document.addEventListener("visibilitychange", () => { if(!document.hidden && S.view === "messages") markPmRead(); });
+
+function bubblesHtml(ms, emptyText){
+  if(!ms.length) return `<div class="muted" style="margin:auto;text-align:center;max-width:44ch">${emptyText}</div>`;
+  let lastDay = "", lastAuthor = "", lastTs = 0, out = "";
+  for(const m of ms){
+    const dl = dayLabel(m.createdAt);
+    if(dl !== lastDay){ out += `<div class="day">${esc(dl)}</div>`; lastDay = dl; lastAuthor = ""; }
+    const mine = m.authorId === S.uid, grouped = m.authorId === lastAuthor && m.createdAt - lastTs < 5*60*1000;
+    const canDel = mine || (S.me && S.me.role === "admin");
+    const tag = (m.role === "coach" || m.role === "admin") ? `<span class="pill good">Coach</span>` : `<span class="pill plain">Family</span>`;
+    out += `<div class="msg${mine?" mine":""}">${grouped?"":`<div class="who">${mine?"":`<b>${esc(m.authorName||"Someone")}</b>${tag}`}<span>${msgTime(m.createdAt)}</span></div>`}<div class="bubble">${esc(m.text)}</div>${canDel?`<button class="btn ghost sm del" data-act="delPm" data-id="${esc(m.id)}" aria-label="Delete message">Delete</button>`:""}</div>`;
+    lastAuthor = m.authorId; lastTs = m.createdAt;
+  }
+  return out;
+}
+function composerHtml(placeholder, form, extra = ""){
+  return `<form class="composer" data-form="${form}">
+    <label for="pm-input" class="small muted">${placeholder}</label>
+    <textarea id="pm-input" name="text" maxlength="2000" rows="2" placeholder="Write a message. Enter sends, Shift+Enter adds a line."></textarea>
+    <div class="row"><span class="small muted">🔒 Private: only this player's family and the club's coaches can read this.</span>${extra}<button class="btn primary" type="submit">Send</button></div>
+  </form>`;
+}
+function fmtWhen(ts){
+  if(!ts) return "";
+  const d = new Date(ts);
+  return d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}) + " at " + d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+}
+function locationHtml(loc){
+  if(!loc) return "";
+  return /^https:\/\/\S+$/i.test(loc) ? `<a class="btn primary sm" href="${esc(loc)}" target="_blank" rel="noopener noreferrer">Join video call</a> <span class="small muted">${esc(hostOf(loc))}</span>` : esc(loc);
+}
+function reviewMini(r){
+  if(!r) return "";
+  const rs = reviewsFor(r.playerId), i = rs.findIndex(x => x.id === r.id), prev = i > 0 ? rs[i-1] : null;
+  const o = overall(r), po = overall(prev), ch = changesBetween(prev, r);
+  return `<div class="review-mini stack" style="gap:6px">
+    <div class="row between"><b>Review from ${fmtDate(r.date)}</b><span class="row"><span class="score num">${o!=null?fix1(o):"–"}</span>${o!=null&&po!=null?deltaHtml(o-po):""}</span></div>
+    ${r.summary ? `<p class="tl-sum">“${esc(r.summary)}”</p>` : ""}
+    ${ch.length ? `<div class="chips">${ch.map(changeChip).join("")}</div>` : ""}
+    ${(r.improve||[]).length ? `<div class="chips">${r.improve.map(t=>`<span class="chip imp">Work on: ${esc(t)}</span>`).join("")}</div>` : ""}
+  </div>`;
+}
+
+function messagesView(){
+  const players = pmPlayers();
+  if(!players.length) return `<h1>Messages</h1><div class="locked"><h2>No players yet</h2><p>${isStaff() ? "Add players first. Each player gets a private chat with their family." : "Connect to your player first, using the code from your coach."}</p></div>`;
+  if(!players.find(p => p.id === S.pmPlayer)) S.pmPlayer = players[0].id;
+  const p = players.find(x => x.id === S.pmPlayer);
+  const fams = S.members.filter(m => m.role === "family" && (m.playerIds||[]).includes(p.id));
+  const famNames = fams.map(m => m.name).filter(Boolean);
+  const nOpen = openMeetings(p.id), mUnread = meetingsFor(p.id).reduce((n, mt) => n + unreadIn(p.id, mt.id), 0), cUnread = unreadIn(p.id, null);
+  const side = `<aside class="chat-side" aria-label="Private conversations"><h3>${isStaff() ? "Players" : "Your player"}</h3>
+    ${players.map(pl => { const last = pmThread(pl.id).slice(-1)[0], u = pmUnreadFor(pl.id), om = openMeetings(pl.id);
+      return `<button data-act="pmPlayer" data-id="${esc(pl.id)}" aria-current="${pl.id===p.id}"><span class="tn"><span>${esc(pl.name)}${om?` <span class="pill warn" style="font-size:.68rem">${om} meeting${om>1?"s":""}</span>`:""}</span><span class="tp">${last ? esc((last.authorName||"") + ": " + last.text) : isStaff() ? esc(teamName(pl.teamId)) : "No messages yet"}</span></span>${u?`<span class="badge">${u}</span>`:""}</button>`; }).join("")}
+  </aside>`;
+  const head = `<div class="chat-head">
+    <div class="stack" style="gap:0"><h2>${esc(p.name)}</h2><span class="small muted">🔒 Coaches · ${famNames.length ? esc(famNames.join(", ")) : "family (not connected yet)"}</span></div>
+    <select class="chat-pick" aria-label="Choose player" data-change="pmPlayer">${players.map(pl=>`<option value="${esc(pl.id)}" ${pl.id===p.id?"selected":""}>${esc(pl.name)}</option>`).join("")}</select>
+  </div>
+  <div class="subtabs pm-tabs" role="tablist">
+    <button role="tab" data-act="pmTab" data-id="chat" aria-selected="${S.pmTab!=="meetings"}">Private chat${cUnread?` <span class="badge">${cUnread}</span>`:""}</button>
+    <button role="tab" data-act="pmTab" data-id="meetings" aria-selected="${S.pmTab==="meetings"}">Meeting room${nOpen?` · ${nOpen} open`:""}${mUnread?` <span class="badge">${mUnread}</span>`:""}</button>
+  </div>`;
+  let main;
+  if(S.pmTab !== "meetings"){
+    main = `<div class="thread" id="pm-thread" data-key="${esc(readKey(p.id,null))}" aria-live="polite">${bubblesHtml(pmThread(p.id), isStaff() ? `Start a private conversation with ${esc(p.name)}'s family. Only they and the club's coaches can see it.` : `Message your coaches privately. Only your family and the club's coaches can see this.`)}</div>
+      ${composerHtml("Message about " + esc(p.name), "pm")}`;
+  } else if(S.meetingId && meetingsFor(p.id).some(m => m.id === S.meetingId)){
+    main = meetingRoom(p, S.meetings.find(m => m.id === S.meetingId));
+  } else {
+    S.meetingId = null;
+    main = meetingList(p);
+  }
+  return `<div class="chat pm">${side}<section class="chat-main" aria-label="Private conversation about ${esc(p.name)}">${head}${main}</section></div>`;
+}
+
+function meetingList(p){
+  const ms = meetingsFor(p.id).slice().sort((a,b) => (b.scheduledAt||b.createdAt) - (a.scheduledAt||a.createdAt));
+  const open = ms.filter(m => m.status === "requested" || m.status === "scheduled"), past = ms.filter(m => !(m.status === "requested" || m.status === "scheduled"));
+  const card = m => { const st = MEETING_STATUS[m.status] || MEETING_STATUS.requested, u = unreadIn(p.id, m.id), r = S.reviews.find(x => x.id === m.reviewId);
+    return `<button class="meeting-card" data-act="openMeeting" data-id="${esc(m.id)}">
+      <span class="row between"><b>${esc(m.topic)}</b><span class="row" style="gap:6px">${u?`<span class="badge">${u}</span>`:""}<span class="pill ${st.cls}">${st.label}</span></span></span>
+      <span class="small muted">${m.status==="scheduled" && m.scheduledAt ? "🗓 " + esc(fmtWhen(m.scheduledAt)) + (m.location && !/^https:/i.test(m.location) ? " · " + esc(m.location) : m.location ? " · video call" : "") : m.status==="requested" ? "Requested by " + esc(m.createdByName||"someone") + (m.preferredTimes ? " · prefers " + esc(m.preferredTimes) : "") : fmtDate(new Date(m.updatedAt||m.createdAt).toLocaleDateString("en-CA"))}</span>
+      ${r ? `<span class="small">About the review from ${fmtDate(r.date)}</span>` : ""}
+    </button>`; };
+  return `<div class="meetings stack">
+    <div class="row between"><div class="stack" style="gap:2px"><h3>Meeting room</h3><span class="small muted">Talk through a review or anything else, privately, then meet in person, by phone or on a video call.</span></div>
+      <button class="btn primary sm" data-act="modal" data-m="meetingNew" data-player="${esc(p.id)}">${isStaff() ? "Set up a meeting" : "Request a meeting"}</button></div>
+    ${open.length ? `<div class="stack" style="gap:10px">${open.map(card).join("")}</div>` : `<p class="muted">No open meetings.${isStaff() ? "" : " Want to talk through a review with your coach? Request a meeting."}</p>`}
+    ${past.length ? `<details><summary class="small">Past meetings (${past.length})</summary><div class="stack" style="gap:10px;margin-top:10px">${past.map(card).join("")}</div></details>` : ""}
+  </div>`;
+}
+
+function meetingRoom(p, m){
+  const st = MEETING_STATUS[m.status] || MEETING_STATUS.requested, r = S.reviews.find(x => x.id === m.reviewId);
+  const staff = isStaff(), mineReq = m.createdBy === S.uid, active = m.status === "requested" || m.status === "scheduled";
+  return `<div class="meeting-room">
+    <div class="meeting-info stack">
+      <button class="btn ghost sm back" data-act="closeMeeting">← All meetings</button>
+      <div class="row between"><h3>${esc(m.topic)}</h3><span class="pill ${st.cls}">${st.label}</span></div>
+      <div class="meeting-facts">
+        <div><span class="small muted">When</span><div>${m.scheduledAt ? esc(fmtWhen(m.scheduledAt)) : m.preferredTimes ? "Not set yet · prefers " + esc(m.preferredTimes) : "Not set yet"}</div></div>
+        <div><span class="small muted">Where</span><div>${m.location ? locationHtml(m.location) : "Not set yet"}</div></div>
+        <div><span class="small muted">Requested by</span><div>${esc(m.createdByName || "—")}</div></div>
+      </div>
+      ${m.details ? `<p style="white-space:pre-wrap">${esc(m.details)}</p>` : ""}
+      ${r ? reviewMini(r) : ""}
+      ${m.notes ? `<div class="note"><b>Meeting notes</b><p style="white-space:pre-wrap;margin-top:4px">${esc(m.notes)}</p></div>` : ""}
+      <div class="row">
+        ${staff && active ? `<button class="btn primary sm" data-act="modal" data-m="meetingSchedule" data-id="${esc(m.id)}">${m.status === "scheduled" ? "Change time or place" : "Schedule it"}</button>` : ""}
+        ${staff && m.status !== "cancelled" ? `<button class="btn sm" data-act="modal" data-m="meetingNotes" data-id="${esc(m.id)}">${m.status === "done" ? "Edit notes" : "Add notes & mark done"}</button>` : ""}
+        ${active && (staff || mineReq) ? `<button class="btn ghost sm" data-act="cancelMeeting" data-id="${esc(m.id)}">Cancel meeting</button>` : ""}
+      </div>
+    </div>
+    <div class="thread" id="pm-thread" data-key="${esc(readKey(p.id, m.id))}" aria-live="polite">${bubblesHtml(pmThread(p.id, m.id), "This is the meeting room. Share questions or an agenda before you meet, and follow up afterwards.")}</div>
+    ${composerHtml("Meeting room: " + esc(m.topic), "pmMeeting")}
+  </div>`;
+}
+
+/* modals */
+MODALS.meetingNew = ds => {
+  const p = S.players.find(x => x.id === ds.player); if(!p) return "<p>Player not found.</p>";
+  const rs = reviewsFor(p.id).slice().reverse(), pre = ds.review || "";
+  const topic = pre ? "Discuss a review" : "";
+  return `<h2>${isStaff() ? "Set up a meeting" : "Request a meeting"} about ${esc(p.name)}</h2>
+  <form data-form="meetingNew" data-player="${esc(p.id)}">
+    <label class="f" for="mt-topic">Topic<select id="mt-topic" name="topic">${MEETING_TOPICS.map(t=>`<option ${t===topic?"selected":""}>${t}</option>`).join("")}</select></label>
+    <label class="f" for="mt-review">Review to discuss (optional)<select id="mt-review" name="reviewId"><option value="">None</option>${rs.map(r=>`<option value="${esc(r.id)}" ${r.id===pre?"selected":""}>${fmtDate(r.date)}${r.summary?" · " + esc(String(r.summary).slice(0,60)):""}</option>`).join("")}</select></label>
+    <label class="f" for="mt-details">What would you like to talk about?<textarea id="mt-details" name="details" maxlength="2000" required placeholder="${isStaff() ? "e.g. I'd like to go through the latest review and set goals for the spring." : "e.g. We'd like to understand the shooting rating and what to work on at home."}"></textarea></label>
+    ${isStaff() ? `<div class="grid2" style="gap:14px">
+        <label class="f" for="mt-when">When (optional)<input type="datetime-local" id="mt-when" name="when"></label>
+        <label class="f" for="mt-where">Where or video link (optional)<input type="text" id="mt-where" name="where" maxlength="300" placeholder="Field 2, phone, or https://meet…"></label></div>`
+      : `<label class="f" for="mt-times">Times that work for you (optional)<input type="text" id="mt-times" name="times" maxlength="300" placeholder="e.g. Weekday evenings after 6, or before Saturday practice"></label>`}
+    <div class="row"><button class="btn primary" type="submit">${isStaff() ? "Create meeting" : "Send request"}</button><button class="btn" type="button" data-act="close">Cancel</button></div>
+  </form>`;
+};
+const toLocalInput = ts => { if(!ts) return ""; const d = new Date(ts); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,16); };
+MODALS.meetingSchedule = ds => {
+  const m = S.meetings.find(x => x.id === ds.id); if(!m) return "<p>Meeting not found.</p>";
+  return `<h2>Schedule: ${esc(m.topic)}</h2>${m.preferredTimes ? `<p class="small muted">They prefer: ${esc(m.preferredTimes)}</p>` : ""}
+  <form data-form="meetingSchedule" data-id="${esc(m.id)}">
+    <label class="f" for="ms-when">Date and time<input type="datetime-local" id="ms-when" name="when" required value="${toLocalInput(m.scheduledAt)}"></label>
+    <label class="f" for="ms-where">Where<input type="text" id="ms-where" name="where" maxlength="300" value="${esc(m.location||"")}" placeholder="e.g. Oakley field after practice, by phone, or a video link (https://…)"></label>
+    <p class="small muted">Paste a Google Meet, Zoom or Teams link to give everyone a "Join video call" button.</p>
+    <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div>
+  </form>`;
+};
+MODALS.meetingNotes = ds => {
+  const m = S.meetings.find(x => x.id === ds.id); if(!m) return "<p>Meeting not found.</p>";
+  return `<h2>Meeting notes: ${esc(m.topic)}</h2>
+  <form data-form="meetingNotes" data-id="${esc(m.id)}">
+    <label class="f" for="mn-notes">What did you agree?<textarea id="mn-notes" name="notes" maxlength="4000" required style="min-height:160px" placeholder="e.g. Agreed 3 shooting sessions a week at home; re-review in 6 weeks; try a new position in the next two games.">${esc(m.notes||"")}</textarea></label>
+    <p class="small muted">The family sees these notes in the meeting room.</p>
+    <div class="row"><button class="btn primary" type="submit">Save & mark done</button><button class="btn" type="button" data-act="close">Cancel</button></div>
+  </form>`;
+};
+
+/* actions */
+ACTS.pmPlayer = ds => { S.pmPlayer = ds.id; S.meetingId = null; render(); };
+ACTS.pmTab = ds => { S.pmTab = ds.id; S.meetingId = null; render(); };
+ACTS.openMeeting = ds => { S.meetingId = ds.id; render(); };
+ACTS.closeMeeting = () => { S.meetingId = null; render(); };
+ACTS.delPm = async ds => { await save(() => S.db.doc("pmessages/" + ds.id).delete(), "Message deleted"); };
+ACTS.cancelMeeting = async (ds, el) => {
+  if(!el.dataset.armed){ el.dataset.armed = "1"; el.textContent = "Click again to cancel"; return; }
+  await save(() => S.db.doc("meetings/" + ds.id).update({status:"cancelled", updatedAt:Date.now()}), "Meeting cancelled");
+};
+ACTS.messageFamily = ds => { S.view = "messages"; S.pmPlayer = ds.id; S.pmTab = "chat"; S.meetingId = null; window.scrollTo(0,0); render(); };
+ACTS.discussReview = ds => {
+  S.view = "messages"; S.pmPlayer = ds.player; S.pmTab = "meetings"; S.meetingId = null; window.scrollTo(0,0); render();
+  openModal(MODALS.meetingNew({player:ds.player, review:ds.review}));
+};
+
+/* forms */
+async function sendPm(fd, form, meetingId){
+  const text = String(fd.get("text")||"").trim(); if(!text || !S.pmPlayer) return;
+  const ta = form.querySelector("#pm-input"); if(ta) ta.value = "";
+  const ok = await save(() => S.db.collection("pmessages").doc().set({clubId:S.me.clubId, playerId:S.pmPlayer, meetingId: meetingId || null, authorId:S.uid, authorName:S.me.name||"", role:S.me.role, text:text.slice(0,2000), createdAt:Date.now()}));
+  const t2 = document.getElementById("pm-input"); if(t2){ if(!ok && !t2.value) t2.value = text; t2.focus(); }
+}
+FORMS.pm = (fd, form) => sendPm(fd, form, null);
+FORMS.pmMeeting = (fd, form) => sendPm(fd, form, S.meetingId);
+FORMS.meetingNew = async (fd, form) => {
+  const pid = form.dataset.player, when = fd.get("when"), where = String(fd.get("where")||"").trim();
+  const id = crypto.randomUUID();
+  const row = {clubId:S.me.clubId, playerId:pid, topic:String(fd.get("topic")||"Meeting"), reviewId: fd.get("reviewId") || null,
+    details:String(fd.get("details")||"").trim(), preferredTimes:String(fd.get("times")||"").trim(),
+    status: when ? "scheduled" : "requested", scheduledAt: when ? new Date(when).getTime() : null, location: where,
+    createdBy:S.uid, createdByName:S.me.name||"", createdAt:Date.now(), updatedAt:Date.now()};
+  closeModal();
+  const ok = await save(() => S.db.collection("meetings").doc(id).set(row), isStaff() ? "Meeting created" : "Meeting requested. Your coach will see it in the meeting room.");
+  if(ok){ await loadKey("meetings"); S.view = "messages"; S.pmPlayer = pid; S.pmTab = "meetings"; S.meetingId = id; render(); }
+};
+FORMS.meetingSchedule = async (fd, form) => {
+  const when = fd.get("when"); closeModal();
+  await save(() => S.db.doc("meetings/" + form.dataset.id).update({status:"scheduled", scheduledAt:new Date(when).getTime(), location:String(fd.get("where")||"").trim(), updatedAt:Date.now()}), "Meeting scheduled");
+};
+FORMS.meetingNotes = async (fd, form) => {
+  closeModal();
+  await save(() => S.db.doc("meetings/" + form.dataset.id).update({status:"done", notes:String(fd.get("notes")||"").trim(), updatedAt:Date.now()}), "Notes saved");
+};
 
 /* ---------- sign-in screens ---------- */
 function setupView(){
