@@ -520,7 +520,7 @@ SCRIPTS["g-w-catch"] = () => {
 
 export const hasAnim = id => !!SCRIPTS[id];
 const cache = {};
-function getScript(id){ if(!cache[id]){ const f = SCRIPTS[id]; if(!f) return null; cache[id] = prep(f()); } return cache[id]; }
+function getScript(id){ if(!cache[id]){ const f = SCRIPTS[id]; if(!f) return null; cache[id] = prep({...f(), id}); } return cache[id]; }
 
 /* split keys per actor once */
 function prep(s){
@@ -528,7 +528,7 @@ function prep(s){
   s.keys.sort((a, b) => a.t - b.t).forEach(k => Object.entries(k.pos).forEach(([a, v]) => { if(tracks[a]) tracks[a].push([k.t, v]); }));
   const caps = s.keys.filter(k => k.cap).map(k => [k.t, k.cap]);
   const says = []; s.keys.forEach(k => k.say && Object.entries(k.say).forEach(([a, txt]) => says.push([k.t, a, txt])));
-  return {...s, tracks, caps, says};
+  const out = {...s, tracks, caps, says}; out.cam = camFor(s.id, out); return out;
 }
 function at(track, t){
   if(!track.length) return null;
@@ -540,7 +540,61 @@ function at(track, t){
   return track[track.length - 1][1];
 }
 
-/* ---------- drawing ---------- */
+/* ---------- which way the camera looks ----------
+   The camera stands in front of the player, looking back at them. "top" = camera beyond the top edge
+   looking down the field, "right" = beyond the right edge looking left, and so on. "flat" keeps the
+   whiteboard / notebook drills as drawings. */
+const CAM = {
+  "b-5-10-5": "bottom", "b-first-step": "right", "b-accel-decel": "right", "b-quick-feet": "right", "b-recovery": "left",
+  "b-color-gates": "bottom", "b-switch-play": "top", "b-jockey": "bottom", "b-stance": "right", "b-block-tackle": "right",
+  "b-press-cover": "bottom", "b-1v1-line": "left", "b-defend-2v1": "left", "b-shield": "bottom", "b-aerial": "top",
+  "b-call-ball": "left", "b-lead-warmup": "bottom", "b-one-two": "right"
+};
+function camFor(id, s){
+  if(s.scene.some(e => ["board", "screen", "paper"].includes(e[0]))) return {flat: true};
+  if(s.zoom) return {side: "top", u0: -120, lc: 0, f: 340, hc: 34, hz: 12, H: 30, close: true};
+  let side = CAM[id];
+  if(!side){
+    if(id.startsWith("g-")) side = "bottom";
+    else if(s.scene.some(e => e[0] === "goalRight")) side = "right";
+    else if(s.scene.some(e => e[0] === "wall" && e[2] < 20)) side = "top";
+    else if(Object.values(s.actors).includes("keeper")) side = "bottom";
+    else side = "right";
+  }
+  return fitCam(side, s);
+}
+/* frame the camera on where the action happens */
+const UL = (side, x, y) => side === "top" ? [y, -(x - 80)] : side === "bottom" ? [90 - y, x - 80] : side === "right" ? [160 - x, -(y - 45)] : [x, y - 45];
+function fitCam(side, s){
+  const P = [], people = [];
+  Object.entries(s.tracks).forEach(([a, tr]) => tr.forEach(([, v]) => { P.push(v); if(s.actors[a] !== "ball") people.push(UL(side, v[0], v[1])[0]); }));
+  s.scene.forEach(e => { const [k, ...a] = e;
+    if(k === "cone") P.push([a[0], a[1]]);
+    else if(k === "gate" || k === "spot" || k === "tape") P.push([a[0], a[1]]);
+    else if(k === "box") P.push([a[0], a[1]], [a[0] + a[2], a[1] + a[3]]);
+    else if(k === "goalTop") P.push([a[0] - a[2] / 2, a[1]], [a[0] + a[2] / 2, a[1]]);
+    else if(k === "goalRight") P.push([a[0], a[1] - a[2] / 2], [a[0], a[1] + a[2] / 2]);
+    else if(k === "goalLeft") P.push([8, 30], [8, 60]);
+    else if(k === "ladder") P.push([a[0], a[1]], [a[0] + a[2] * a[3], a[1] + a[4]]); });
+  const UL2 = P.map(v => UL(side, v[0], v[1]));
+  const uMin = Math.min(...UL2.map(q => q[0])), lMin = Math.min(...UL2.map(q => q[1])), lMax = Math.max(...UL2.map(q => q[1]));
+  // goalkeeper and chip drills: step the camera to one side so the shooter doesn't hide the keeper
+  const shift = s.id && (s.id.startsWith("g-") || s.id === "b-chip") && s.id !== "g-roll-out" && s.id !== "g-goal-kicks" && s.id !== "g-distribution" ? -15 : 0;
+  const dNear = 50, u0 = uMin - dNear, lc = (lMin + lMax) / 2 + shift;
+  let f = 400; UL2.forEach(([u, l]) => { const depth = u - u0, off = Math.abs(l - lc) + 6; f = Math.min(f, 72 * depth / off); });
+  // no player taller than about half the frame
+  const nearest = Math.min(...people) - u0; f = Math.min(f, 46 * nearest / 14);
+  f = Math.max(f, 40);
+  const hz = 22, hc = (84 - hz) * dNear / f;
+  return {side, u0, lc, f, hc, hz, H: 14, uPeople: Math.min(...people)};
+}
+function proj(c, x, y, z = 0){
+  const [u, l] = UL(c.side, x, y);
+  const depth = Math.max(u - c.u0, 4), L = l - c.lc, k = c.f / depth;
+  return {x: 80 + L * k, y: c.hz + (c.hc - z) * k, k, depth};
+}
+
+/* ---------- drawing: flat (whiteboard, notebook) ---------- */
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 function sceneSvg(scene){
   return scene.map(e => {
@@ -594,8 +648,132 @@ function actorSvg(id, kind){
   return "";
 }
 
+
+/* ---------- drawing: front camera ---------- */
+const f2 = n => n.toFixed(2);
+const pts = arr => arr.map(p => f2(p.x) + "," + f2(p.y)).join(" ");
+function groundPoly(c, corners, attrs){ return `<polygon points="${pts(corners.map(q => proj(c, q[0], q[1], q[2] || 0)))}" ${attrs}/>`; }
+function groundLine(c, a, b, attrs, z1 = 0, z2 = 0){ const p = proj(c, a[0], a[1], z1), q = proj(c, b[0], b[1], z2); return `<line x1="${f2(p.x)}" y1="${f2(p.y)}" x2="${f2(q.x)}" y2="${f2(q.y)}" ${attrs}/>`; }
+function cone3(c, x, y, col = ORANGE, big){ const p = proj(c, x, y), h = (big ? 3.4 : 2.4) * p.k, w = (big ? 1.6 : 1.2) * p.k;
+  return {d: p.depth, svg: `<path d="M${f2(p.x)} ${f2(p.y - h)} L${f2(p.x + w)} ${f2(p.y)} L${f2(p.x - w)} ${f2(p.y)}Z" fill="${col}" stroke="#7a2d12" stroke-width="${f2(0.15 * p.k)}"/>`}; }
+function goal3(c, a, b, back){ // posts at ground points a and b; back = offset vector of the net
+  const H = 9, A = proj(c, a[0], a[1]), B = proj(c, b[0], b[1]), At = proj(c, a[0], a[1], H), Bt = proj(c, b[0], b[1], H);
+  const Ab = proj(c, a[0] + back[0], a[1] + back[1]), Bb = proj(c, b[0] + back[0], b[1] + back[1]), Abt = proj(c, a[0] + back[0], a[1] + back[1], H * 0.7), Bbt = proj(c, b[0] + back[0], b[1] + back[1], H * 0.7);
+  const w = f2(Math.max(0.35, 0.45 * (A.k + B.k) / 2));
+  const net = `<polygon points="${pts([A, At, Bt, B])}" fill="#ffffff22"/><polygon points="${pts([At, Abt, Bbt, Bt])}" fill="#ffffff30"/><polygon points="${pts([A, Ab, Abt, At])}" fill="#ffffff26"/><polygon points="${pts([B, Bb, Bbt, Bt])}" fill="#ffffff26"/>`
+    + `<polyline points="${pts([Ab, Abt, Bbt, Bb])}" fill="none" stroke="#ffffffaa" stroke-width="${f2(w * 0.4)}"/>`;
+  const frame = `<polyline points="${pts([A, At, Bt, B])}" fill="none" stroke="#fff" stroke-width="${w * 2}" stroke-linejoin="round"/>`;
+  return {d: Math.min(A.depth, B.depth), svg: net + frame};
+}
+function scene3(c, scene){
+  const back = [], front = []; let bg = "";
+  const add = (o) => (o.d < c.d + 30 ? front : back).push(o);
+  scene.forEach(e => {
+    const [kind, ...a] = e;
+    switch(kind){
+      case "grass": {
+        const far = proj(c, 80, 45, 0); // sky, then grass from the horizon down
+        bg += `<rect width="${W}" height="${H}" fill="#cfe6f7"/><rect y="${f2(c.hz)}" width="${W}" height="${H}" fill="#6fbf7a"/>`;
+        bg += `<rect y="${f2(c.hz - 3)}" width="${W}" height="3" fill="#9fb8c9"/>`;
+        for(let i = 0; i < 8; i += 2) bg += groundPoly(c, [[i * 20 + 20, -40], [i * 20 + 40, -40], [i * 20 + 40, 130], [i * 20 + 20, 130]], `fill="#66b671"`);
+        if(!c.close) bg += `<polygon points="${pts([[2, 2], [158, 2], [158, 88], [2, 88]].map(q => proj(c, q[0], q[1])))}" fill="none" stroke="#ffffffaa" stroke-width=".5"/>`;
+        break; }
+      case "cone": add(cone3(c, a[0], a[1], a[2], a[3])); break;
+      case "gate": { const v = a[4], col = a[3] || ORANGE, p1 = v ? [a[0], a[1] - a[2] / 2] : [a[0] - a[2] / 2, a[1]], p2 = v ? [a[0], a[1] + a[2] / 2] : [a[0] + a[2] / 2, a[1]];
+        bg += groundLine(c, p1, p2, `stroke="${col}" stroke-dasharray="1.5 1.2" stroke-width=".6"`); add(cone3(c, p1[0], p1[1], col)); add(cone3(c, p2[0], p2[1], col)); break; }
+      case "box": bg += groundPoly(c, [[a[0], a[1]], [a[0] + a[2], a[1]], [a[0] + a[2], a[1] + a[3]], [a[0], a[1] + a[3]]], `fill="#ffffff2a" stroke="#fff" stroke-dasharray="1.6 1.2" stroke-width=".5"`); break;
+      case "spot": { const p = proj(c, a[0], a[1]); bg += `<ellipse cx="${f2(p.x)}" cy="${f2(p.y)}" rx="${f2(0.8 * p.k)}" ry="${f2(0.3 * p.k)}" fill="#fff"/>`; break; }
+      case "ladder": { for(let i = 0; i <= a[2]; i++) bg += groundLine(c, [a[0] + i * a[3], a[1]], [a[0] + i * a[3], a[1] + a[4]], `stroke="#fff" stroke-width=".6"`);
+        bg += groundLine(c, [a[0], a[1]], [a[0] + a[2] * a[3], a[1]], `stroke="#fff" stroke-width=".6"`) + groundLine(c, [a[0], a[1] + a[4]], [a[0] + a[2] * a[3], a[1] + a[4]], `stroke="#fff" stroke-width=".6"`); break; }
+      case "channel": bg += groundLine(c, [a[0], a[2]], [a[1], a[2]], `stroke="#ffffffcc" stroke-width=".6"`) + groundLine(c, [a[0], a[3]], [a[1], a[3]], `stroke="#ffffffcc" stroke-width=".6"`); break;
+      case "finish": bg += groundLine(c, [a[0], a[1]], [a[0], a[2]], `stroke="#fff" stroke-width="1" stroke-dasharray="2 1"`); break;
+      case "line": bg += groundLine(c, [a[0], a[1]], [a[2], a[3]], `stroke="#ffffffaa" stroke-width=".6"`); break;
+      case "label": { const p = proj(c, a[0], a[1]); bg += `<text x="${f2(p.x)}" y="${f2(p.y)}" font-size="${f2(Math.min(4.5, 1.6 * p.k))}" fill="#1f2b3d" text-anchor="middle">${esc(a[2])}</text>`; break; }
+      case "path": { let q = a[0];
+        if(a[1] === "curve" && q.length === 4){ const out = []; for(let i = 0; i <= 16; i++){ const t = i / 16, u = 1 - t; out.push([u*u*u*q[0][0] + 3*u*u*t*q[1][0] + 3*u*t*t*q[2][0] + t*t*t*q[3][0], u*u*u*q[0][1] + 3*u*u*t*q[1][1] + 3*u*t*t*q[2][1] + t*t*t*q[3][1]]); } q = out; }
+        bg += `<polyline points="${pts(q.map(r => proj(c, r[0], r[1])))}" fill="none" stroke="#ffffffcc" stroke-width=".5" stroke-dasharray="1.6 1.2"/>`; break; }
+      case "tape": { const p = proj(c, a[0], a[1], 8.4); add({d: p.depth - 0.1, svg: `<rect x="${f2(p.x - 0.9 * p.k)}" y="${f2(p.y - 0.9 * p.k)}" width="${f2(1.8 * p.k)}" height="${f2(1.8 * p.k)}" fill="#e0b400"/>`}); break; }
+      case "goalTop": add(goal3(c, [a[0] - a[2] / 2, a[1]], [a[0] + a[2] / 2, a[1]], [0, -5])); break;
+      case "goalRight": add(goal3(c, [a[0], a[1] - a[2] / 2], [a[0], a[1] + a[2] / 2], [5, 0])); break;
+      case "goalLeft": add(goal3(c, [8, 30], [8, 60], [-5, 0])); break;
+      case "wall": { if(UL(c.side, (a[0] + a[2]) / 2, (a[1] + a[3]) / 2)[0] < (c.uPeople ?? 0) - 2) break; const Hh = 4, A = proj(c, a[0], a[1]), B = proj(c, a[2], a[3]), At = proj(c, a[0], a[1], Hh), Bt = proj(c, a[2], a[3], Hh);
+        add({d: Math.min(A.depth, B.depth), svg: `<polygon points="${pts([A, At, Bt, B])}" fill="#9aa1ab" stroke="#6f7680" stroke-width=".3"/>`}); break; }
+    }
+  });
+  const sortFar = arr => arr.sort((x, y) => y.d - x.d).map(o => o.svg).join("");
+  return {bg: bg + sortFar(back), front: sortFar(front)};
+}
+
+/* a front-facing player figure; feet at screen point p */
+const SKIN = "#c68f62";
+function figure(c, p, o){
+  const k = c.H / 20 * p.k; // 20 local units tall
+  const col = o.kind === "helper" ? ORANGE : o.kind === "keeper" ? KEEPER : BLUE;
+  const lift = o.lift || 0, crouch = o.crouch || 0, ph = o.phase || 0, moving = o.moving || 0;
+  const hipY = -9 + crouch * 3.2, sh = hipY - 7 + crouch * 0.8;
+  let lf = o.feet ? o.feet[0] : [-2 + Math.sin(ph) * 0.6 * moving, -Math.max(0, Math.sin(ph)) * 2.2 * moving];
+  let rf = o.feet ? o.feet[1] : [2 - Math.sin(ph) * 0.6 * moving, -Math.max(0, -Math.sin(ph)) * 2.2 * moving];
+  if(crouch){ lf = [lf[0] - crouch * 1.2, lf[1]]; rf = [rf[0] + crouch * 1.2, rf[1]]; }
+  const sw = Math.sin(ph) * 1.6 * moving, kneeOut = crouch * 1.4;
+  const leg = (h, f, side) => `<polyline points="${side * 1.3},${hipY} ${f2((side * 1.3 + f[0]) / 2 + side * kneeOut)},${f2((hipY + f[1]) / 2)} ${f2(f[0])},${f2(f[1])}" fill="none" stroke="${SKIN}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`
+    + `<ellipse cx="${f2(f[0])}" cy="${f2(f[1])}" rx="1.3" ry=".8" fill="${NAVY}"/>`;
+  const gloves = o.kind === "keeper";
+  const armR = o.reach ? [6, sh - 3] : [4.6, hipY + 0.5 - sw], armL = o.reach ? [-6, sh - 3] : [-4.6, hipY + 0.5 + sw];
+  const body = `${leg(0, lf, -1)}${leg(0, rf, 1)}
+    <rect x="-3" y="${f2(hipY - 1.6)}" width="6" height="2.8" rx=".8" fill="${NAVY}"/>
+    <path d="M-3.4 ${f2(sh + 1)} Q-3.6 ${f2(sh)} -2 ${f2(sh - 0.2)} H2 Q3.6 ${f2(sh)} 3.4 ${f2(sh + 1)} L3.1 ${f2(hipY - 1.2)} H-3.1Z" fill="${col}" stroke="#fff" stroke-width=".35"/>
+    <polyline points="-3.1,${f2(sh + 0.8)} ${f2(armL[0])},${f2(armL[1])}" stroke="${SKIN}" stroke-width="1.2" stroke-linecap="round"/>
+    <polyline points="3.1,${f2(sh + 0.8)} ${f2(armR[0])},${f2(armR[1])}" stroke="${SKIN}" stroke-width="1.2" stroke-linecap="round"/>
+    ${gloves ? `<circle cx="${f2(armL[0])}" cy="${f2(armL[1])}" r=".95" fill="#e0b400"/><circle cx="${f2(armR[0])}" cy="${f2(armR[1])}" r=".95" fill="#e0b400"/>` : ""}
+    <circle cx="0" cy="${f2(sh - 2.4)}" r="2.3" fill="${SKIN}"/><path d="M-2.3 ${f2(sh - 2.6)} Q0 ${f2(sh - 5.6)} 2.3 ${f2(sh - 2.6)} Q0 ${f2(sh - 3.6)} -2.3 ${f2(sh - 2.6)}Z" fill="#3b2a20"/>`;
+  const rot = o.dive ? `rotate(${f2(o.dive * 72 * (o.diveDir || 1))} 0 ${hipY})` : "";
+  const shadow = `<ellipse cx="${f2(p.x)}" cy="${f2(p.y)}" rx="${f2(3.2 * k)}" ry="${f2(0.9 * k)}" fill="#0000002e"/>`;
+  return shadow + `<g transform="translate(${f2(p.x)} ${f2(p.y - lift * k)}) scale(${f2(k)}) ${rot}">${body}</g>`;
+}
+function ball3(c, x, y, z){
+  const g = proj(c, x, y), p = proj(c, x, y, z * 10), r = (c.close ? 0.06 : 0.1) * c.H * p.k;
+  return `<ellipse cx="${f2(g.x)}" cy="${f2(g.y)}" rx="${f2(r * 1.05)}" ry="${f2(r * 0.35)}" fill="#00000035"/>`
+    + `<g transform="translate(${f2(p.x)} ${f2(p.y - r)})"><circle r="${f2(r)}" fill="#fff" stroke="#1f2b3d" stroke-width="${f2(r * 0.18)}"/><path d="M${f2(-0.45 * r)} ${f2(-0.3 * r)} L0 ${f2(-0.65 * r)} L${f2(0.45 * r)} ${f2(-0.3 * r)} L${f2(0.3 * r)} ${f2(0.25 * r)} L${f2(-0.3 * r)} ${f2(0.25 * r)}Z" fill="#1f2b3d"/></g>`;
+}
+function draw3(el, st, t){
+  const s = st.s, c = s.cam, items = [];
+  const feet = s.tracks.lf && s.tracks.rf ? [at(s.tracks.lf, t), at(s.tracks.rf, t)] : null;
+  for(const [a, tr] of Object.entries(s.tracks)){
+    const kind = s.actors[a], v = at(tr, t); if(!v) continue;
+    if(kind === "foot") continue;
+    if(kind === "ball"){ const g = proj(c, v[0], v[1]); items.push({d: g.depth - 0.5, svg: ball3(c, v[0], v[1], Math.max(0, v[2] || 0))}); continue; }
+    const p = proj(c, v[0], v[1]);
+    // stride: distance travelled since the last frame
+    const prev = st.prev[a]; const moved = prev ? Math.hypot(v[0] - prev[0], v[1] - prev[1]) : 0; st.prev[a] = [v[0], v[1]];
+    st.dist[a] = (st.dist[a] || 0) + moved; st.mov[a] = (st.mov[a] || 0) * 0.85 + Math.min(1, moved * 3) * 0.15;
+    const o = {kind: kind === "body" || kind === "dot" ? "player" : kind, phase: st.dist[a] * 0.9, moving: st.mov[a]};
+    if(kind === "body"){
+      const z = v[2] || 0; if(z > 0) o.crouch = Math.min(1, z * 2.4); if(z < 0) o.lift = -z * 14;
+      if(feet && feet[0] && feet[1]){ const kk = c.H / 20 * p.k; o.feet = feet.map(f => { const q = proj(c, f[0], f[1]); return [(q.x - p.x) / kk, (q.y - p.y) / kk]; }); }
+    }
+    if(kind === "keeper" && v[2]){ o.dive = v[2]; o.diveDir = p.x < 80 ? -1 : 1; o.lift = v[2] * 3; o.reach = true; }
+    if(kind === "keeper" && !v[2]) o.reach = (s.tracks.b && (() => { const bv = at(s.tracks.b, t); return bv && (bv[2] || 0) > 0.3 && Math.hypot(bv[0] - v[0], bv[1] - v[1]) < 12; })());
+    items.push({d: p.depth, svg: figure(c, p, o)});
+  }
+  items.sort((x, y) => y.d - x.d);
+  st.actEl.innerHTML = items.map(i => i.svg).join("");
+  let cap = ""; for(const [ct, cc] of s.caps){ if(ct <= t + 0.001) cap = cc; else break; }
+  if(cap !== st.cap){ st.cap = cap; st.capEl.textContent = cap; }
+  const says = s.says.filter(([t0]) => t >= t0 && t < t0 + 1.2);
+  st.sayEl.innerHTML = says.map(([, a, txt]) => { const v = at(s.tracks[a] || [], t) || [80, 45]; const hp = proj(c, v[0], v[1], c.H * 1.15);
+    const w = txt.length * 2.3 + 5, x = Math.min(W - w - 1, Math.max(1, hp.x - w / 2)), y = Math.max(1, hp.y - 9);
+    return `<g><rect x="${f2(x)}" y="${f2(y)}" width="${f2(w)}" height="7" rx="3.5" fill="#fff" stroke="${NAVY}" stroke-width=".4"/><text x="${f2(x + w / 2)}" y="${f2(y + 4.9)}" font-size="4.2" text-anchor="middle" fill="${NAVY}" font-weight="700">${esc(txt)}</text></g>`; }).join("");
+}
+
 export function animSvg(id, title){
   const s = getScript(id); if(!s) return "";
+  const lbl = `role="img" aria-label="${esc((title ? title + ": " : "") + "animated demonstration")}" tabindex="0" title="Tap to pause or play"`;
+  if(!s.cam.flat){
+    const sc = scene3(s.cam, s.scene);
+    return `<div class="drill-anim" data-anim="${esc(id)}" data-act="animToggle" ${lbl}>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${sc.bg}<g data-actors3d></g>${sc.front}<g data-say></g></svg>
+    <div class="anim-cap" aria-hidden="true"></div><span class="anim-state" aria-hidden="true"></span></div>`;
+  }
   const actors = Object.entries(s.actors).sort((a, b) => (a[1] === "ball") - (b[1] === "ball")).map(([a, k]) => actorSvg(a, k)).join("");
   const bgKinds = ["grass", "board"], bg = sceneSvg(s.scene.filter(e => bgKinds.includes(e[0]))), fg = sceneSvg(s.scene.filter(e => !bgKinds.includes(e[0])));
   const z = s.zoom ? `translate(${s.zoom[0]} ${s.zoom[1]}) scale(${s.zoom[2]}) translate(${-s.zoom[0]} ${-s.zoom[1]})` : "";
@@ -637,7 +815,7 @@ function loop(now){
     if(!st.visible || st.paused) return;
     any = true; if(st.last == null) st.last = now;
     st.t = (st.t + (now - st.last) / 1000) % (st.s.dur + 0.8); st.last = now;
-    draw(el, st, Math.min(st.t, st.s.dur));
+    (st.s.cam.flat ? draw : draw3)(el, st, Math.min(st.t, st.s.dur));
   });
   if(any) rafId = requestAnimationFrame(loop);
 }
@@ -647,9 +825,10 @@ function attach(el){
   if(live.has(el)) return;
   const s = getScript(el.dataset.anim); if(!s) return;
   const nodes = {}; el.querySelectorAll("[data-a]").forEach(n => nodes[n.dataset.a] = n);
-  const st = {s, nodes, t: 0, last: null, paused: reduced(), visible: false, cap: null, capEl: el.querySelector(".anim-cap"), sayEl: el.querySelector("[data-say]"), sayKey: null};
+  const st = {s, nodes, t: 0, last: null, paused: reduced(), visible: false, cap: null, capEl: el.querySelector(".anim-cap"), sayEl: el.querySelector("[data-say]"), sayKey: null,
+    actEl: el.querySelector("[data-actors3d]"), prev: {}, dist: {}, mov: {}};
   live.set(el, st); el.classList.toggle("paused", st.paused);
-  draw(el, st, reduced() ? Math.min(s.dur, 1.2) : 0);
+  (s.cam.flat ? draw : draw3)(el, st, reduced() ? Math.min(s.dur, 1.2) : 0);
   if(io) io.observe(el); else { st.visible = true; kick(); }
 }
 export function animScan(root = document){
