@@ -1535,26 +1535,27 @@ function plansView(){
   let status;
   if(staff) status = included ? "Your club includes Home Training for every family." : "Families in your club subscribe to Home Training on their own.";
   else if(included) status = "Your club includes Home Training, so you already have it.";
-  else status = fp ? "You're on a Home Training trial." : (S.clubs || []).length ? "Your club doesn't include Home Training. You can add it for your family." : "You can add Home Training for your family. Some clubs include it once you join their team.";
+  else status = fp ? "You're on a Home Training trial." : (S.clubs || []).length ? "Your club doesn't include Home Training. You can add it for " + PRICES.family + " " + PRICES.familyPer + "." : "You can add Home Training for " + PRICES.family + " " + PRICES.familyPer + ". Some clubs include it once you join their team.";
   return `<div class="stack" style="gap:4px"><h1>Plans</h1><p class="muted">${status}</p></div>
   <div class="grid2">
     <div class="card plan">
       <span class="pill plain" style="align-self:flex-start">For clubs & coaches</span>
       <h2>Club plan</h2>
-      <div><span class="price">$39</span> <span class="muted">/ month per club · example price</span></div>
-      <ul><li>Unlimited players, teams and coaches</li><li>Skill reviews with strengths and areas to work on</li><li>Progress tracking over the season</li><li>Drill library and your own club drills</li><li>Option to include Home Training for every family</li></ul>
+      <div><span class="price">${PRICES.club}</span> <span class="muted">${PRICES.clubPer} you register</span></div>
+      <ul><li>Unlimited players and coaches on each team</li><li>Skill reviews with strengths and areas to work on</li><li>Progress tracking over the season</li><li>Drill library and your own club drills</li><li>Option to include Home Training for every player</li></ul>
       ${staff ? `<div><button class="btn" data-act="modal" data-m="clubSettings">${included?"Families included: change":"Change family access"}</button></div>` : ""}
     </div>
     <div class="card plan featured">
       <span class="pill good" style="align-self:flex-start">For players & parents</span>
       <h2>Home Training</h2>
-      <div><span class="price">$6.99</span> <span class="muted">/ month per family · example price</span></div>
+      <div><span class="price">${PRICES.family}</span> <span class="muted">${PRICES.familyPer}</span></div>
+      <p class="small">At-home drills for players whose club or team doesn't include Home Training.</p>
       <ul><li>Drills your coach assigns, with step-by-step instructions</li><li>Full home drill library</li><li>Progress charts and full review history</li><li>Weekly drill tracking your coach can see</li></ul>
       <p class="small muted">Free with every club: the coach's latest review and skill ratings.</p>
       ${!staff && !included ? (fp ? `<div class="row"><span class="pill good">Trial active</span><button class="btn ghost sm" data-act="cancelPlan">Cancel trial</button></div>` : `<div><button class="btn primary" data-act="startPlan">Start 14-day free trial</button></div>`) : ""}
     </div>
   </div>
-  <p class="small muted">Prices are placeholders, and payments aren't connected in this version: starting a trial unlocks Home Training without charging anything.</p>`;
+  <p class="small muted">Payments aren't connected in this version: starting a trial unlocks Home Training without charging anything.</p>`;
 }
 
 function clubView(){
@@ -2168,7 +2169,7 @@ document.addEventListener("change", ev => {
 
 
 /* ---------- public site pages (menu next to the logo) ---------- */
-const PRICES = {club:"$39", clubPer:"per month, per club", family:"$6.99", familyPer:"per month, per family"};
+const PRICES = {club:"$19.99", clubPer:"per month, per team", family:"$4.99", familyPer:"per month, per player"};
 const PUBLIC_PAGES = [
   ["how-it-works","How it works"], ["drills","Drills"], ["clubs","Clubs & Teams"], ["recruiting","Recruiting"],
   ["for-parents","For Parents"], ["pricing","Pricing"], ["contact","Contact Us"]
@@ -2323,19 +2324,21 @@ function pageParents(){
 function pagePricing(){
   return `<section class="page-hero stack"><span class="eyebrow">Pricing</span>
     <h1>Simple plans for clubs and families</h1>
-    <p class="lead">Clubs choose whether Home Training is included for every family, or whether families add it themselves.</p></section>
+    <p class="lead">Clubs pay ${PRICES.club} a month for each team they register, and choose whether Home Training is included for their players. Players without it can add the at-home drills for ${PRICES.family} a month.</p></section>
   <div class="grid2">
     <div class="card plan">
       <span class="pill plain" style="align-self:flex-start">For clubs & coaches</span>
       <h2>Club plan</h2>
-      <div><span class="price">${PRICES.club}</span> <span class="muted">${PRICES.clubPer}</span></div>
-      <ul><li>Unlimited players, teams and coaches</li><li>Field player and goalkeeper reviews with update notes</li><li>Progress timeline for every player</li><li>Drill library, recommendations and your own club drills</li><li>Team chat with announcements</li><li>Option to include Home Training for every family</li></ul>
+      <div><span class="price">${PRICES.club}</span> <span class="muted">${PRICES.clubPer} you register</span></div>
+      <p class="small muted">For example, a club with 5 teams pays $99.95 a month.</p>
+      <ul><li>Unlimited players and coaches on each team</li><li>Field player and goalkeeper reviews with update notes</li><li>Progress timeline for every player</li><li>Drill library, recommendations and your own club drills</li><li>Team chat with announcements</li><li>Option to include Home Training for every player</li></ul>
       <button type="button" class="btn primary" data-act="pickPortal" data-id="coach" style="align-self:flex-start">Start your club</button>
     </div>
     <div class="card plan featured">
       <span class="pill good" style="align-self:flex-start">For parents & players</span>
       <h2>Home Training</h2>
       <div><span class="price">${PRICES.family}</span> <span class="muted">${PRICES.familyPer}</span></div>
+      <p class="small">At-home drills for players whose club or team doesn't include Home Training.</p>
       <ul><li>Drills recommended from the coach's review</li><li>Full home drill library</li><li>Progress charts and full review timeline</li><li>Weekly drill tracking your coach can see</li></ul>
       <p class="small muted">Free with every club: the coach's latest review, skill ratings, player profile and team chat.</p>
       <button type="button" class="btn" data-act="pickPortal" data-id="family" style="align-self:flex-start">Sign up as a family</button>
@@ -2349,7 +2352,9 @@ function pagePricing(){
   </div>
   <div class="card stack"><h2>Questions</h2>
     <div class="faq"><b>Do college coaches pay?</b><p class="muted">No. Searching for players, the shortlist and messaging families are free once you create a college coach account with your school .edu email.</p></div>
-    <div class="faq"><b>Is Home Training free if my club includes it?</b><p class="muted">Yes. If your club includes Home Training, every connected family gets it at no extra cost.</p></div>
+    <div class="faq"><b>How is the Club plan charged?</b><p class="muted">${PRICES.club} a month for each team you register, with unlimited players and coaches on every team.</p></div>
+    <div class="faq"><b>Is Home Training free if my club includes it?</b><p class="muted">Yes. If your club includes Home Training, every player on the club's teams gets it at no extra cost.</p></div>
+    <div class="faq"><b>We have two children. Do we pay twice?</b><p class="muted">Home Training is ${PRICES.family} a month for each player who doesn't get it through their club.</p></div>
     <div class="faq"><b>Do players need their own account?</b><p class="muted">No. One parent account can hold every child's profile.</p></div>
     <div class="faq"><b>What happens if we change clubs?</b><p class="muted">The profile belongs to your family, not the club. Leave the old team and ask to join the new one. You keep every past review and reference; the old club's coaches lose access.</p></div>
     <div class="faq"><b>Something else?</b><p class="muted"><a href="#contact">Contact us</a> and we'll get back to you.</p></div>
