@@ -141,7 +141,7 @@ const OLD_POSITIONS = {WB:"Wingback"}; /* positions saved before the list change
 const positionLabel = k => (FIELD_POSITIONS.find(x => x[0] === k) || [k, OLD_POSITIONS[k] || k])[1];
 const posChip = (k, main) => `<span class="chip${main?" str":""}" title="${esc(positionLabel(k))}">${esc(k)}${main?" · main":""}</span>`;
 const VIS = {
-  public:{label:"Public",cls:"good",icon:"🌐",help:"Anyone with the link sees the Recruitment Profile: photo, positions, recruiting details, career highlights, stats, highlight videos, club history and coach references. Great for college, academy and club coaches."},
+  public:{label:"Public",cls:"good",icon:"🌐",help:"Anyone with the link sees the Recruitment Profile: photo, positions, academics, recruiting details, career highlights, stats, highlight videos, club history and coach references. Made for college coaches."},
   private:{label:"Private",cls:"plain",icon:"🔒",help:"Anyone with the link only sees the player's name, club and age. Everything else stays with your family and coaches."}
 };
 const visOf = pr => (pr && pr.visibility === "public") ? "public" : "private";
@@ -277,7 +277,11 @@ const outsideClub = pr => ((pr && pr.history || []).find(h => h.to === "Present"
 const posText = p => p.position && p.position !== "Not set" ? p.position : (((profileFor(p.id) || {}).positions || [])[0] ? positionLabel(profileFor(p.id).positions[0]) : "");
 const pendingFor = pid => (S.requests || []).find(r => r.playerId === pid && r.status === "pending");
 const pendingRequests = () => (S.requests || []).filter(r => r.status === "pending");
-const pendingInvites = () => isStaff() ? [] : (S.invites || []).filter(i => i.status === "pending");
+const isCollege = () => !!(S.me && S.me.role === "college");
+const newInterest = () => isStaff() || isCollege() ? [] : (S.interest || []).filter(i => i.status === "new");
+const RECRUIT_AGE = 16;
+const DIVISIONS = ["NCAA D1","NCAA D2","NCAA D3","NAIA","NJCAA"];
+const LEAGUES = ["MLS NEXT","ECNL","ECNL Regional League","Girls Academy","USYS National League","NPL","US Club Soccer","High school only","Other"];
 function reviewStatus(pid){
   const rs = reviewsFor(pid);
   if(!rs.length) return {cls:"bad",txt:"Not reviewed"};
@@ -316,7 +320,7 @@ async function save(fn, ok){
 let sb = null, channel = null, loadTimer;
 const TABLE = {clubs:"clubs", teams:"teams", players:"players", reviews:"reviews", assignments:"assignments", drills:"drills",
   members:"members", profiles:"player_profiles", comments:"comments", messages:"messages",
-  pmessages:"private_messages", meetings:"meetings", requests:"join_requests", invites:"club_invites", shortlist:"recruit_shortlist"};
+  pmessages:"private_messages", meetings:"meetings", requests:"join_requests", interest:"recruit_interest", shortlist:"college_shortlist", college:"college_coaches"};
 const PK = {profiles:"player_id"};
 const TABLE_TO_KEY = Object.fromEntries(Object.entries(TABLE).map(([k,v]) => [v,k]));
 TABLE_TO_KEY.clubs = "club"; TABLE_TO_KEY.family_links = "links"; TABLE_TO_KEY.team_coaches = "teamCoaches";
@@ -410,7 +414,7 @@ async function loadMe(){
   S.me = m ? {...camel(m), playerIds:(links||[]).map(l => l.player_id)} : null;
   S.loading = false; clearTimeout(loadTimer); S.notice = null;
   /* coaches load their club; parent / player accounts load whatever their own players can see */
-  const cid = S.me ? (S.me.role === "family" ? "fam:" + S.uid : S.me.clubId) : null;
+  const cid = S.me ? (S.me.role === "family" ? "fam:" + S.uid : S.me.role === "college" ? "college:" + S.uid : S.me.clubId) : null;
   if(cid !== S.subClubId) subscribeClub(cid);
   fixView(); render();
   loadSteps();
@@ -424,15 +428,19 @@ function schedule(key){
 }
 async function loadKey(key){
   const cid = S.subClubId; if(!cid) return;
-  const fam = cid.startsWith("fam:");
+  const fam = cid.startsWith("fam:"), col = cid.startsWith("college:");
+  /* college coaches only load their own profile, shortlist and messages */
+  if(col && !["college","shortlist","interest"].includes(key)) return;
+  if(!col && (key === "college" || key === "shortlist")) return;
   const byClub = t => fam ? sb.from(t).select("*") : sb.from(t).select("*").eq("club_id", cid);
   let q;
   if(key === "club") q = fam ? sb.rpc("family_clubs") : sb.from("clubs").select("*").eq("id", cid).maybeSingle();
   else if(key === "messages") q = byClub("messages").order("created_at", {ascending:false}).limit(600);
   else if(key === "pmessages") q = byClub("private_messages").order("created_at", {ascending:false}).limit(1500);
   else if(key === "requests") q = byClub("join_requests").order("created_at", {ascending:false}).limit(300);
-  else if(key === "invites") q = byClub("club_invites").order("created_at", {ascending:false}).limit(300);
-  else if(key === "shortlist"){ if(fam){ S.shortlist = []; return; } q = sb.rpc("my_shortlist"); }
+  else if(key === "interest"){ if(!fam && !col) return; q = sb.from("recruit_interest").select("*").order("created_at", {ascending:false}).limit(300); }
+  else if(key === "shortlist") q = sb.rpc("college_shortlist_view");
+  else if(key === "college") q = sb.from("college_coaches").select("*").eq("id", S.uid).maybeSingle();
   else if(key === "links") q = sb.from("family_links").select("*");
   else if(key === "teamCoaches") q = sb.from("team_coaches").select("*");
   /* the database's privacy rules pick the rows: profiles and family drills follow the player, not a club */
@@ -447,6 +455,7 @@ async function loadKey(key){
   else if(key === "messages" || key === "pmessages") S[key] = data.map(camel).reverse();
   else if(key === "links") S.links = data;
   else if(key === "shortlist") S.shortlist = (Array.isArray(data) ? data : []).map(camel);
+  else if(key === "college") S.college = data ? camel(data) : null;
   else if(key === "teamCoaches") S.teamCoaches = data || [];
   else S[key] = data.map(camel);
   if(key === "members" || key === "links"){
@@ -459,7 +468,7 @@ function subscribeClub(cid){
   if(channel){ sb.removeChannel(channel); channel = null; }
   S.subClubId = cid; S.clubLoaded = false;
   S.club = null; S.teams = []; S.players = []; S.reviews = []; S.assignments = []; S.drills = []; S.members = []; S.links = [];
-  S.profiles = []; S.comments = []; S.messages = []; S.pmessages = []; S.meetings = []; S.teamCoaches = []; S.clubs = []; S.requests = []; S.invites = []; S.shortlist = []; S.scout = null;
+  S.profiles = []; S.comments = []; S.messages = []; S.pmessages = []; S.meetings = []; S.teamCoaches = []; S.clubs = []; S.requests = []; S.interest = []; S.shortlist = []; S.scout = null; S.college = null;
   if(!cid) return;
   ALL_KEYS.forEach(k => loadKey(k));
   channel = sb.channel("club-" + cid)
@@ -468,16 +477,17 @@ function subscribeClub(cid){
       if(payload.table === "members" || payload.table === "family_links") loadMe();
       if(payload.table === "family_links") schedule("members");
       /* a player joining or leaving a club changes what else is visible */
-      if(payload.table === "players" || payload.table === "join_requests" || payload.table === "club_invites") ["club","teams","players","messages","members","drills","profiles","assignments","reviews","comments","requests","invites","shortlist"].forEach(schedule);
+      if(payload.table === "players" || payload.table === "join_requests" || payload.table === "recruit_interest") ["club","teams","players","messages","members","drills","profiles","assignments","reviews","comments","requests","interest"].forEach(schedule);
       schedule(key);
     })
     .subscribe();
 }
-const ALL_KEYS = ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","meetings","teamCoaches","requests","invites","shortlist"];
+const ALL_KEYS = ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","meetings","teamCoaches","requests","interest","shortlist","college"];
 function refreshAll(){ ALL_KEYS.forEach(schedule); }
 function fixView(){
-  const staffViews = ["roster","player","chat","messages","drills","scout","plans","club"], famViews = ["home","chat","messages","drills","recruit","plans","account"];
+  const staffViews = ["roster","player","chat","messages","drills","plans","club"], famViews = ["home","chat","messages","drills","recruit","plans","account"];
   if(!S.me) { S.view = null; return; }
+  if(isCollege()){ if(!["scout","shortlist","account"].includes(S.view)) S.view = "scout"; return; }
   const ok = isStaff() ? staffViews : famViews;
   if(!ok.includes(S.view)) S.view = isStaff() ? "roster" : "home";
 }
@@ -491,13 +501,14 @@ function topbar(){
   let tabs = "";
   if(S.me && (S.club || !isStaff())){
     const items = isStaff()
-      ? [["roster","Players"],["chat","Team chat"],["messages","Messages"],["drills","Drill library"],["scout","Recruiting"],["plans","Plans"],["club","Club"]]
+      ? [["roster","Players"],["chat","Team chat"],["messages","Messages"],["drills","Drill library"],["plans","Plans"],["club","Club"]]
+      : isCollege() ? [["scout","Find players"],["shortlist","Shortlist"],["account","Account"]]
       : [["home","My player"],["chat","Team chat"],["messages","Messages"],["drills","Home drills"],["recruit","Recruiting"],["plans","Plans"],["account","Account"]];
     const pmu = totalPmUnread();
     const un = totalUnread();
     const allUnread = un + pmu;
     tabs = `<button type="button" class="menu-btn app-menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="app-nav">${S.menuOpen ? "Close" : "Menu"}${!S.menuOpen && allUnread ? `<span class="badge">${allUnread>99?"99+":allUnread}</span>` : ""}</button>
-    <nav id="app-nav" class="tabs app-tabs${S.menuOpen ? " open" : ""}" aria-label="Main">${items.map(([v,l]) => `<button data-act="go" data-view="${v}" ${!S.publicPage && (S.view===v || (v==="roster" && S.view==="player")) ? 'aria-current="page"' : ""}>${l}${v==="roster" && pendingRequests().length ? `<span class="badge" aria-label="${pendingRequests().length} join requests">${pendingRequests().length}</span>` : ""}${v==="recruit" && pendingInvites().length ? `<span class="badge" aria-label="${pendingInvites().length} invitations">${pendingInvites().length}</span>` : ""}${v==="chat" && un ? `<span class="badge" aria-label="${un} unread">${un>99?"99+":un}</span>` : ""}${v==="messages" && pmu ? `<span class="badge" aria-label="${pmu} unread">${pmu>99?"99+":pmu}</span>` : ""}</button>`).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>`;
+    <nav id="app-nav" class="tabs app-tabs${S.menuOpen ? " open" : ""}" aria-label="Main">${items.map(([v,l]) => `<button data-act="go" data-view="${v}" ${!S.publicPage && (S.view===v || (v==="roster" && S.view==="player")) ? 'aria-current="page"' : ""}>${l}${v==="roster" && pendingRequests().length ? `<span class="badge" aria-label="${pendingRequests().length} join requests">${pendingRequests().length}</span>` : ""}${v==="recruit" && newInterest().length ? `<span class="badge" aria-label="${newInterest().length} new messages from colleges">${newInterest().length}</span>` : ""}${v==="chat" && un ? `<span class="badge" aria-label="${un} unread">${un>99?"99+":un}</span>` : ""}${v==="messages" && pmu ? `<span class="badge" aria-label="${pmu} unread">${pmu>99?"99+":pmu}</span>` : ""}</button>`).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>`;
   }
   return `<header class="top"><div class="top-in">
     <a href="#" class="brand" data-act="home" aria-label="${APP_NAME} home">${logoHtml()}</a>
@@ -516,6 +527,7 @@ function render(){
   else if(S.recovery && S.uid) body = newPasswordView();
   else if(!S.uid) body = authView();
   else if(S.me === null) body = onboarding();
+  else if(S.me && isCollege()) body = collegeBody();
   else if(S.me && isStaff() && !S.club) body = S.clubLoaded ? clubMissing() : `<div class="card"><p>Loading your club…</p></div>`;
   else body = viewBody();
   const banners = (S.notice && !S.loading ? `<div class="banner">${esc(S.notice)}</div>` : "");
@@ -547,7 +559,6 @@ function viewBody(){
       case "drills": return drillsView();
       case "plans": return plansView();
       case "club": return clubView();
-      case "scout": return scoutView();
       case "chat": return chatView();
       case "messages": return messagesView();
       default: return rosterView();
@@ -583,6 +594,19 @@ function clubMissing(){
 function onboarding(){
   const portal = S.portal;
   if(!portal) return `<div class="stack" style="gap:6px"><h1>Welcome to ${APP_NAME}</h1><p class="muted">You're signed in. Which best describes you?</p></div>${portalCards("setPortal")}`;
+  if(portal === "college"){
+    const edu = /\.edu$/i.test(S.email || "");
+    return `<section class="hero">
+    <div class="stack">
+      <span class="pill plain" style="align-self:flex-start">College coach</span>
+      <h1>Set up your program</h1>
+      <p style="max-width:52ch">Tell families who you are. They'll see this with every message you send. College recruiting on ${APP_NAME} is free.</p>
+      <button type="button" class="btn ghost sm" data-act="setPortal" data-id="" style="align-self:flex-start">I'm not a college coach</button>
+    </div>
+    <div class="stack">${edu ? `<form class="card stack auth-coach" data-form="collegeStart"><h2>Your program</h2>${collegeFields()}<div><button class="btn primary" type="submit">Start recruiting</button></div></form>`
+      : `<div class="card stack"><h2>Use your school email</h2><p>College coach accounts need an email address ending in <b>.edu</b>. You're signed in as <b>${esc(S.email || "")}</b>.</p><p class="small muted">Sign out and create a new account with your school email.</p><div><button class="btn primary" data-act="signOut">Sign out</button></div></div>`}</div>
+  </section>`;
+  }
   const switcher = `<button type="button" class="btn ghost sm" data-act="setPortal" data-id="${portal==="coach"?"family":"coach"}">${portal==="coach"?"I'm actually a parent or player":"I'm actually a coach"}</button>`;
   if(portal === "family") return `<section class="hero">
     <div class="stack">
@@ -642,7 +666,8 @@ function portalCards(act){
       <span class="pdesc">See your coach's feedback, do your home drills, build your player profile and chat with the team.</span>
       <span class="pgo">Continue as a parent or player →</span>
     </button>
-  </div>`;
+  </div>
+  <p class="college-link">College coach? <button type="button" class="linkbtn" data-act="${act}" data-id="college">Find players aged ${RECRUIT_AGE}+, free →</button></p>`;
 }
 
 /* roster */
@@ -1110,13 +1135,24 @@ function recruitHtml(p, opts){
   </div>`;
 
 
+  const age = playerAge(p);
+  if(!pub && (age == null || age < RECRUIT_AGE)){
+    const d16 = p.birthDate ? new Date(new Date(p.birthDate + "T00:00:00").setFullYear(new Date(p.birthDate + "T00:00:00").getFullYear() + RECRUIT_AGE)) : null;
+    const when = d16 ? d16.toLocaleDateString(undefined, {year:"numeric", month:"long", day:"numeric"}) : "";
+    const msg = age == null ? (ed ? "Add the date of birth under Account → Edit first." : "The family hasn't added a date of birth yet.")
+      : ed ? `${esc(p.name)} can create one from ${esc(when || "their 16th birthday")}. Until then, keep building the player profile and collecting coach references.`
+      : `${esc(p.name)} turns ${RECRUIT_AGE} on ${esc(when || "their 16th birthday")}. References you write now will be ready for it.`;
+    return `<div class="card stack recruit-intro"><h2>Recruitment Profiles open at ${RECRUIT_AGE}</h2><p>${msg}</p>
+      <p class="small muted">College recruiting on ${APP_NAME} is for players aged ${RECRUIT_AGE} and over.${R.created ? " An earlier Recruitment Profile is hidden until then." : ""}</p></div>${staff ? comCard : ""}`;
+  }
   if(!R.created && !pub){
     if(ed) return `<div class="card stack recruit-intro">
       <h2>Create ${esc(p.name)}'s Recruitment Profile</h2>
-      <p style="max-width:62ch">One link to send to college programs, academies and new clubs. It brings together everything a coach looks for:</p>
+      <p style="max-width:62ch">One link for college coaches, and an opt-in listing in ${APP_NAME}'s college coach search. It brings together everything a college program looks for:</p>
       <ul class="ticks">
-        <li>Recruiting summary, graduation year, height, weight, stronger foot, school and GPA</li>
-        <li>A contact email for coaches</li>
+        <li>Class of, high school, GPA, SAT / ACT, intended major and NCAA Eligibility Center ID</li>
+        <li>Club league, divisions you're interested in and commitment status</li>
+        <li>Height, weight, stronger foot, location and a contact email for coaches</li>
         <li>Career highlights and season stats</li>
         <li>Highlight videos</li>
         <li>Club history</li>
@@ -1128,7 +1164,8 @@ function recruitHtml(p, opts){
     return `<div class="card stack"><h2>Recruitment Profile</h2><p class="muted">${esc(p.name)}'s family hasn't created a Recruitment Profile yet. References you write now will show on it once it's public.</p></div>${comCard}`;
   }
 
-  const facts = [["Class of", R.gradYear], ["Location", R.location], ["Height", R.height], ["Weight", R.weight], ["Stronger foot", pr.foot], ["School", R.school], ["GPA", R.gpa]].filter(x => x[1]);
+  const facts = [["Class of", R.gradYear], ["GPA", R.gpa], ["SAT / ACT", R.test], ["High school", R.school], ["Club league", R.league], ["Height", R.height], ["Weight", R.weight],
+    ["Stronger foot", pr.foot], ["Location", R.location], ["Intended major", R.major], ["NCAA ID", R.ncaaId]].filter(x => x[1]);
   const head = `<div class="card pcard recruit-head">
     <div class="photo-wrap">${photoHtml(pr, p)}</div>
     <div class="stack">
@@ -1137,12 +1174,13 @@ function recruitHtml(p, opts){
           <p class="muted">${[R.gradYear ? "Class of " + R.gradYear : "", clubName, p.teamId && p.clubId && !pub ? teamName(p.teamId) : "", playerAge(p) != null ? "Age " + playerAge(p) : ""].filter(Boolean).map(esc).join(" · ")}</p></div>
         ${pub ? "" : ed ? visSwitch(p, pr) : `<div class="vis"><span class="pill ${VIS[visOf(pr)].cls}">${VIS[visOf(pr)].icon} ${VIS[visOf(pr)].label}</span></div>`}
       </div>
-      ${positions.length || R.open ? `<div class="chips">${positions.map((k,i) => posChip(k, i===0)).join("")}${R.open ? `<span class="chip open-badge">🔎 Looking for a club</span>` : ""}</div>` : ""}
-      ${ed ? `<p class="small ${R.searchable && visOf(pr) === "public" ? "" : "muted"}">${R.searchable ? (visOf(pr) === "public" ? "✓ Club coaches can find this profile in " + APP_NAME + " search." : "Coach search is on, but the profile is Private, so coaches can't find it yet.") : "Coach search is off. Turn it on under Edit recruiting details to let clubs find and invite " + esc(p.name) + "."}</p>` : ""}
+      ${positions.length || true ? `<div class="chips">${positions.map((k,i) => posChip(k, i===0)).join("")}${R.committed ? `<span class="chip str">✅ Committed${R.committedTo ? " to " + esc(R.committedTo) : ""}</span>` : `<span class="chip open-badge">Uncommitted</span>`}${(R.divisions || []).map(d => `<span class="chip">${esc(d)}</span>`).join("")}</div>` : ""}
+      ${R.colleges ? `<p class="small"><b>Interested in:</b> ${esc(R.colleges)}</p>` : ""}
+      ${ed ? `<p class="small ${R.searchable && visOf(pr) === "public" ? "" : "muted"}">${R.searchable ? (visOf(pr) === "public" ? "✓ College coaches can find this profile in " + APP_NAME + " search." : "College coach search is on, but the profile is Private, so coaches can't find it yet.") : "College coach search is off. Turn it on under Edit recruiting details so college coaches can find " + esc(p.name) + " and get in touch."}</p>` : ""}
       ${facts.length ? `<div class="facts">${facts.map(([k,v]) => `<div class="fact"><span class="small muted">${k}</span><b>${esc(v)}</b></div>`).join("")}</div>` : ed ? `<p class="small muted">Add graduation year, height, school and more under Edit recruiting details.</p>` : ""}
       ${R.summary || pr.bio ? `<p style="max-width:65ch">${esc(R.summary || pr.bio)}</p>` : ""}
       ${strengths.length ? `<div class="chips">${strengths.map(t => `<span class="chip">${esc(t)}</span>`).join("")}</div>` : ""}
-      ${R.contact ? `<p class="small">📧 Coaches can contact the family at <a href="mailto:${esc(R.contact)}">${esc(R.contact)}</a></p>` : ""}
+      ${R.contact ? `<p class="small">📧 College coaches can contact the family at <a href="mailto:${esc(R.contact)}">${esc(R.contact)}</a></p>` : ""}
       ${ed ? `<div class="row"><button class="btn" data-act="modal" data-m="recruitDetails" data-player="${esc(p.id)}">Edit recruiting details</button>${pr.slug ? `<button class="btn ghost sm" data-act="copy" data-text="${esc(APP_URL + "#profile-" + pr.slug)}">Copy profile link</button><a class="btn ghost sm" href="#profile-${esc(pr.slug)}" data-act="previewPublic" data-slug="${esc(pr.slug)}">See what coaches see</a>` : ""}</div>
         <p class="small muted">Photo, positions, strengths and the short bio come from the player profile.</p>` : ""}
     </div>
@@ -1167,16 +1205,21 @@ function recruitHtml(p, opts){
   return `${head}<div class="grid2"><div class="stack" style="gap:20px">${vidCard}${hlCard}${statCard}</div><div class="stack" style="gap:20px">${comCard}${histCard}</div></div>`;
 }
 
-/* coaches: find players, shortlist, invite */
-const SL_STATUS = [["watching","Watching"],["contacted","Contacted"],["trial","Trial"],["offered","Offered"],["signed","Signed"],["passed","Passed"]];
-const slStatusLabel = k => (SL_STATUS.find(x => x[0] === k) || [k, k])[1];
+/* ---------- college coaches: find players, shortlist, send interest ---------- */
+const SL_STATUS = [["watching","Watching"],["contacted","Contacted"],["evaluating","Evaluating"],["offered","Offered"],["committed","Committed"],["passed","Passed"]];
+function collegeBody(){
+  if(!S.college && !S.collegeLoaded){ S.collegeLoaded = true; schedule("college"); }
+  if(S.view === "shortlist") return shortlistHtml();
+  if(S.view === "account") return collegeAccount();
+  return scoutView();
+}
 function markScout(pid, ch){ if(S.scout && S.scout.res){ S.scout.res = S.scout.res.map(r => r.playerId === pid ? {...r, ...ch} : r); render(); } }
 async function runScout(){
   const f = (S.scout && S.scout.f) || {};
   S.scout = {...(S.scout || {}), f, loading:true}; render();
   try {
-    const data = await rpc("search_recruits", {q:f.q || "", p_positions: f.pos ? [f.pos] : [], age_min:f.ageMin ?? null, age_max:f.ageMax ?? null, grad:f.grad ?? null,
-      p_foot:f.foot || "", p_location:f.loc || "", open_only:!!f.open, video_only:!!f.video});
+    const data = await rpc("search_recruits", {q:f.q || "", p_positions: f.pos ? [f.pos] : [], grad:f.grad ?? null, gpa_min:f.gpa ?? null,
+      p_division:f.div || "", p_league:f.league || "", p_foot:f.foot || "", p_location:f.loc || "", uncommitted_only:!!f.uncommitted, video_only:!!f.video});
     S.scout = {...S.scout, res:(data || []).map(camel), loading:false, error:false};
   } catch(e){ console.error(e); S.scout = {...S.scout, res:[], loading:false, error:true}; }
   render();
@@ -1186,94 +1229,108 @@ function scoutCard(r){
   return `<div class="card scout-card">
     <div class="scout-top">${scoutPhoto(r)}
       <div class="stack" style="gap:2px;min-width:0"><b class="scout-name">${esc(r.name)}</b>
-        <span class="small muted">${[r.age != null ? "Age " + r.age : "", r.gradYear ? "Class of " + r.gradYear : "", r.location || ""].filter(Boolean).map(esc).join(" · ")}</span>
-        <span class="small">${esc([r.clubName, r.teamName].filter(Boolean).join(" · ") || "No current club")}</span></div></div>
-    <div class="chips">${(r.positions || []).slice(0,4).map((k,i) => posChip(k, i===0)).join("")}${r.open ? `<span class="chip open-badge">🔎 Looking for a club</span>` : ""}${r.videos ? `<span class="chip">🎥 ${r.videos}</span>` : ""}${r.highlights ? `<span class="chip">🏆 ${r.highlights}</span>` : ""}${r.mine ? `<span class="chip str">On your club</span>` : ""}</div>
+        <span class="small muted">${[r.gradYear ? "Class of " + r.gradYear : "", r.age != null ? "Age " + r.age : "", r.gpa ? "GPA " + r.gpa : "", r.location || ""].filter(Boolean).map(esc).join(" · ")}</span>
+        <span class="small">${esc([r.clubName, r.league].filter(Boolean).join(" · ") || "No current club")}</span></div></div>
+    <div class="chips">${(r.positions || []).slice(0,4).map((k,i) => posChip(k, i===0)).join("")}${r.committed ? `<span class="chip str">✅ Committed${r.committedTo ? " to " + esc(r.committedTo) : ""}</span>` : `<span class="chip open-badge">Uncommitted</span>`}${(r.divisions || []).map(d => `<span class="chip">${esc(d)}</span>`).join("")}${r.videos ? `<span class="chip">🎥 ${r.videos}</span>` : ""}${r.highlights ? `<span class="chip">🏆 ${r.highlights}</span>` : ""}</div>
     ${r.summary ? `<p class="small">${esc(r.summary)}</p>` : ""}
     <div class="row scout-actions">
       <a class="btn sm" href="#profile-${esc(r.slug)}">View profile</a>
-      ${r.shortlisted ? `<button class="btn ghost sm" data-act="stab" data-id="list">★ Shortlisted</button>` : `<button class="btn sm" data-act="shortlistAdd" data-player="${esc(r.playerId)}">☆ Shortlist</button>`}
-      ${r.mine ? "" : r.invited ? `<span class="pill warn">Invitation sent</span>` : `<button class="btn primary sm" data-act="modal" data-m="invite" data-player="${esc(r.playerId)}">Invite to a team</button>`}
+      ${r.shortlisted ? `<button class="btn ghost sm" data-act="go" data-view="shortlist">★ Shortlisted</button>` : `<button class="btn sm" data-act="shortlistAdd" data-player="${esc(r.playerId)}">☆ Shortlist</button>`}
+      ${r.contacted ? `<span class="pill good">Message sent</span>` : `<button class="btn primary sm" data-act="modal" data-m="interest" data-player="${esc(r.playerId)}">I'm interested</button>`}
     </div>
   </div>`;
 }
 function scoutView(){
-  const tab = S.stab === "list" ? "list" : "find";
-  const nList = (S.shortlist || []).length;
-  const head = `<div class="stack" style="gap:4px"><h1>Recruiting</h1><p class="muted small">Find players for your upcoming seasons. Only families who make their Recruitment Profile public and opt in to coach search appear here.</p></div>
-  <div class="subtabs" role="tablist" aria-label="Recruiting">
-    <button role="tab" data-act="stab" data-id="find" aria-selected="${tab==="find"}">Find players</button>
-    <button role="tab" data-act="stab" data-id="list" aria-selected="${tab==="list"}">Shortlist${nList ? ` <span class="badge">${nList}</span>` : ""}</button>
-  </div>`;
-  if(tab === "list") return head + shortlistHtml();
   if(!S.scout || (!S.scout.res && !S.scout.loading)) setTimeout(runScout, 0);
-  const f = (S.scout && S.scout.f) || {}, y = new Date().getFullYear();
+  const f = (S.scout && S.scout.f) || {}, y = new Date().getFullYear(), c = S.college || {};
+  const head = `<div class="stack" style="gap:4px"><h1>Find players</h1><p class="muted small">${c.school ? esc(c.school) + (c.program ? " · " + esc(c.program) : "") + (c.division ? " · " + esc(c.division) : "") + ". " : ""}Players aged ${RECRUIT_AGE}+ whose families made their Recruitment Profile public and opted in to college coach search.</p></div>`;
   const filters = `<form class="card scout-filters" data-form="scoutSearch">
-    <label class="f" for="sc-q">Search<input type="search" id="sc-q" name="q" maxlength="60" value="${esc(f.q || "")}" placeholder="Name, school or keywords"></label>
+    <label class="f" for="sc-q">Search<input type="search" id="sc-q" name="q" maxlength="60" value="${esc(f.q || "")}" placeholder="Name, high school, major…"></label>
     <label class="f" for="sc-pos">Position<select id="sc-pos" name="pos" data-autosubmit="1"><option value="">Any position</option>${FIELD_POSITIONS.map(([k,l]) => `<option value="${k}" ${f.pos===k?"selected":""}>${k} – ${l}</option>`).join("")}</select></label>
     <div class="grid2" style="gap:10px">
-      <label class="f" for="sc-amin">Age from<input type="number" id="sc-amin" name="ageMin" min="5" max="25" value="${esc(f.ageMin ?? "")}"></label>
-      <label class="f" for="sc-amax">to<input type="number" id="sc-amax" name="ageMax" min="5" max="25" value="${esc(f.ageMax ?? "")}"></label>
+      <label class="f" for="sc-grad">Class of<input type="number" id="sc-grad" name="grad" min="${y - 1}" max="${y + 4}" value="${esc(f.grad ?? "")}" placeholder="Any"></label>
+      <label class="f" for="sc-gpa">Min GPA<input type="number" id="sc-gpa" name="gpa" min="0" max="5" step="0.1" value="${esc(f.gpa ?? "")}" placeholder="Any"></label>
     </div>
-    <label class="f" for="sc-grad">Class of<input type="number" id="sc-grad" name="grad" min="${y - 2}" max="${y + 16}" value="${esc(f.grad ?? "")}" placeholder="Any"></label>
+    <label class="f" for="sc-div">Interested in<select id="sc-div" name="div" data-autosubmit="1"><option value="">Any division</option>${DIVISIONS.map(d => `<option ${f.div===d?"selected":""}>${d}</option>`).join("")}</select></label>
+    <label class="f" for="sc-league">Club league<select id="sc-league" name="league" data-autosubmit="1"><option value="">Any league</option>${LEAGUES.map(l => `<option ${f.league===l?"selected":""}>${l}</option>`).join("")}</select></label>
     <label class="f" for="sc-foot">Stronger foot<select id="sc-foot" name="foot" data-autosubmit="1">${[["","Any"],["Right","Right"],["Left","Left"],["Both","Both"]].map(([v,l]) => `<option value="${v}" ${f.foot===v?"selected":""}>${l}</option>`).join("")}</select></label>
     <label class="f" for="sc-loc">Location<input type="text" id="sc-loc" name="loc" maxlength="60" value="${esc(f.loc || "")}" placeholder="City or state"></label>
-    <label class="check" for="sc-open"><input type="checkbox" id="sc-open" name="open" data-autosubmit="1" ${f.open?"checked":""}> Looking for a club</label>
+    <label class="check" for="sc-unc"><input type="checkbox" id="sc-unc" name="uncommitted" data-autosubmit="1" ${f.uncommitted?"checked":""}> Uncommitted only</label>
     <label class="check" for="sc-video"><input type="checkbox" id="sc-video" name="video" data-autosubmit="1" ${f.video?"checked":""}> Has highlight video</label>
     <div class="row"><button class="btn primary" type="submit">Search</button>${Object.values(f).some(v => v !== "" && v != null && v !== false) ? `<button class="btn ghost sm" type="button" data-act="scoutClear">Clear filters</button>` : ""}</div>
   </form>`;
   const sc = S.scout || {};
   const results = sc.loading && !sc.res ? `<div class="card"><p class="muted">Searching…</p></div>`
-    : sc.error ? `<div class="card stack"><p>Search didn't work. If you just set up ${APP_NAME}, ask whoever manages it to run database update 012.</p></div>`
-    : !(sc.res || []).length ? `<div class="locked"><h3>No players match</h3><p class="muted">Try fewer filters. Players appear here once their family makes the Recruitment Profile public and turns on coach search.</p></div>`
+    : sc.error ? `<div class="card stack"><p>Search didn't work. Try again in a moment.</p></div>`
+    : !(sc.res || []).length ? `<div class="locked"><h3>No players match</h3><p class="muted">Try fewer filters. Players appear once they're ${RECRUIT_AGE} or older and their family makes the Recruitment Profile public and opts in to college coach search.</p></div>`
     : `<p class="small muted">${sc.res.length} player${sc.res.length===1?"":"s"}${sc.res.length >= 60 ? " (showing the 60 most recently updated; narrow your filters)" : ""}</p><div class="scout-grid">${sc.res.map(scoutCard).join("")}</div>`;
   return head + `<div class="scout-layout">${filters}<div class="stack" style="gap:12px">${results}</div></div>`;
 }
 function shortlistHtml(){
   const all = S.shortlist || [];
-  if(!all.length) return `<div class="locked"><h3>Your shortlist is empty</h3><p class="muted">Use ☆ Shortlist on any player in Find players. Everyone on your club's staff shares this list.</p><button class="btn primary" data-act="stab" data-id="find">Find players</button></div>`;
+  const head = `<div class="stack" style="gap:4px"><h1>Shortlist</h1><p class="muted small">Your private list. Other coaches, even at your school, don't see it.</p></div>`;
+  if(!all.length) return head + `<div class="locked"><h3>Your shortlist is empty</h3><p class="muted">Use ☆ Shortlist on any player in Find players.</p><button class="btn primary" data-act="go" data-view="scout">Find players</button></div>`;
   const fl = S.slFilter || "all";
   const list = all.filter(x => fl === "all" || x.status === fl);
   const counts = Object.fromEntries(SL_STATUS.map(([k]) => [k, all.filter(x => x.status === k).length]));
-  return `<div class="filters" role="group" aria-label="Filter by status"><button data-act="slFilter" data-id="all" aria-pressed="${fl==="all"}">All ${all.length}</button>${SL_STATUS.filter(([k]) => counts[k]).map(([k,l]) => `<button data-act="slFilter" data-id="${k}" aria-pressed="${fl===k}">${l} ${counts[k]}</button>`).join("")}</div>
-  <div class="stack" style="gap:12px">${list.map(x => { const inv = x.invite;
-    return `<div class="card sl-item">
+  return head + `<div class="filters" role="group" aria-label="Filter by status"><button data-act="slFilter" data-id="all" aria-pressed="${fl==="all"}">All ${all.length}</button>${SL_STATUS.filter(([k]) => counts[k]).map(([k,l]) => `<button data-act="slFilter" data-id="${k}" aria-pressed="${fl===k}">${l} ${counts[k]}</button>`).join("")}</div>
+  <div class="stack" style="gap:12px">${list.map(x => `<div class="card sl-item">
       <div class="scout-top">${scoutPhoto(x)}
         <div class="stack" style="gap:2px;min-width:0"><b class="scout-name">${esc(x.name)}</b>
-          ${x.shared ? `<span class="small muted">${[x.age != null ? "Age " + x.age : "", x.gradYear ? "Class of " + x.gradYear : "", x.location || "", x.clubName || ""].filter(Boolean).map(esc).join(" · ")}</span>
-          <div class="chips">${(x.positions || []).slice(0,4).map((k,i) => posChip(k, i===0)).join("")}${x.mine ? `<span class="chip str">On your club</span>` : ""}</div>`
-          : `<span class="small muted">The family has stopped sharing this profile with coaches, so details are hidden.${x.mine ? " They're on your club now." : ""}</span>`}
-          <span class="small muted">Added by ${esc(x.addedByName || "a coach")} · ${esc(relDays(new Date(x.createdAt).toLocaleDateString("en-CA")))}${inv ? ` · Invitation to ${esc(inv.team_name || "a team")}: <b>${esc(inv.status)}</b>` : ""}</span>
+          ${x.shared ? `<span class="small muted">${[x.gradYear ? "Class of " + x.gradYear : "", x.age != null ? "Age " + x.age : "", x.gpa ? "GPA " + x.gpa : "", x.location || ""].filter(Boolean).map(esc).join(" · ")}</span>
+          <div class="chips">${(x.positions || []).slice(0,4).map((k,i) => posChip(k, i===0)).join("")}${x.committed ? `<span class="chip str">✅ Committed</span>` : ""}</div>`
+          : `<span class="small muted">The family has stopped sharing this profile with college coaches, so details are hidden.</span>`}
+          <span class="small muted">Added ${esc(relDays(new Date(x.createdAt).toLocaleDateString("en-CA")).toLowerCase())}${x.contacted ? " · You sent a message" : ""}</span>
         </div>
         <div class="row" style="margin-left:auto;align-self:flex-start">${x.shared && x.slug ? `<a class="btn sm" href="#profile-${esc(x.slug)}">View profile</a>` : ""}
-          ${inv && inv.status === "pending" ? `<button class="btn ghost sm" data-act="withdrawInvite" data-id="${esc(inv.id)}">Withdraw invitation</button>` : x.shared && !x.mine ? `<button class="btn primary sm" data-act="modal" data-m="invite" data-player="${esc(x.playerId)}">Invite to a team</button>` : ""}</div>
+          ${x.shared && !x.contacted ? `<button class="btn primary sm" data-act="modal" data-m="interest" data-player="${esc(x.playerId)}">I'm interested</button>` : ""}</div>
       </div>
-      <form class="sl-form" data-form="slSave" data-id="${esc(x.id)}">
+      <form class="sl-form college" data-form="slSave" data-id="${esc(x.id)}">
         <label class="f" for="sl-st-${esc(x.id)}">Status<select id="sl-st-${esc(x.id)}" name="status">${SL_STATUS.map(([k,l]) => `<option value="${k}" ${x.status===k?"selected":""}>${l}</option>`).join("")}</select></label>
-        <label class="f" for="sl-se-${esc(x.id)}">Season<input type="text" id="sl-se-${esc(x.id)}" name="season" maxlength="40" value="${esc(x.season || "")}" placeholder="e.g. Fall 2027"></label>
-        <label class="f" for="sl-tm-${esc(x.id)}">For team<select id="sl-tm-${esc(x.id)}" name="teamId"><option value="">Not decided</option>${teamOptions(x.teamId)}</select></label>
-        <label class="f sl-note" for="sl-no-${esc(x.id)}">Notes<input type="text" id="sl-no-${esc(x.id)}" name="note" maxlength="1000" value="${esc(x.note || "")}" placeholder="e.g. Watched at the fall showcase; strong left foot"></label>
+        <label class="f sl-note" for="sl-no-${esc(x.id)}">Notes<input type="text" id="sl-no-${esc(x.id)}" name="note" maxlength="1000" value="${esc(x.note || "")}" placeholder="e.g. Watched at the ECNL showcase; strong in the air"></label>
         <div class="row"><button class="btn sm" type="submit">Save</button><button class="btn ghost sm" type="button" data-act="shortlistRemove" data-id="${esc(x.id)}">Remove</button></div>
       </form>
-    </div>`; }).join("") || `<p class="muted">No players with this status.</p>`}</div>`;
+    </div>`).join("") || `<p class="muted">No players with this status.</p>`}</div>`;
 }
+function collegeAccount(){
+  const c = S.college || {};
+  const sent = (S.interest || []);
+  return `<div class="stack" style="gap:4px"><h1>Account</h1></div>
+  <div class="grid2">
+    <form class="card stack" data-form="collegeEdit"><h2>Your program</h2>
+      ${collegeFields(c)}
+      <p class="small muted">Families see your name, title, school, program, division and school email (${esc(c.email || "")}) when you message them.</p>
+      <div><button class="btn primary" type="submit">Save</button></div></form>
+    <div class="card stack"><h2>Messages you've sent</h2>
+      ${sent.length ? `<div class="list">${sent.map(i => `<div class="req"><div class="stack" style="gap:4px"><span><b>${esc(i.playerName)}</b> <span class="small muted">${esc(relDays(new Date(i.createdAt).toLocaleDateString("en-CA")))}</span></span><span class="small">“${esc(i.message)}”</span><span class="small muted">${i.status === "new" ? "Not read yet" : "Read by the family"}</span></div></div>`).join("")}</div>` : `<p class="muted">None yet. Families reply to your school email.</p>`}
+    </div>
+  </div>`;
+}
+const collegeFields = (c = {}) => `<label class="f" for="cl-name">Your name<input type="text" id="cl-name" name="name" required maxlength="60" autocomplete="name" value="${esc(c.name || "")}"></label>
+      <label class="f" for="cl-title">Title<input type="text" id="cl-title" name="title" maxlength="80" value="${esc(c.title || "")}" placeholder="e.g. Assistant Coach"></label>
+      <label class="f" for="cl-school">College or university<input type="text" id="cl-school" name="school" required maxlength="100" value="${esc(c.school || "")}" placeholder="e.g. State University"></label>
+      <div class="grid2" style="gap:14px">
+        <label class="f" for="cl-program">Program<select id="cl-program" name="program">${["Men's Soccer","Women's Soccer","Men's & Women's Soccer"].map(x => `<option ${c.program===x?"selected":""}>${x}</option>`).join("")}</select></label>
+        <label class="f" for="cl-div">Division<select id="cl-div" name="division" required><option value="">Choose…</option>${[...DIVISIONS, "Other"].map(d => `<option ${c.division===d?"selected":""}>${d}</option>`).join("")}</select></label>
+      </div>`;
 
 /* family: the Recruiting tab */
 function recruitView(){
   const kids = S.players.filter(p => (S.me.playerIds || []).includes(p.id));
-  const intro = `<div class="stack" style="gap:4px"><h1>Recruiting</h1><p class="muted small">A public profile for college, academy and club coaches, separate from the player profile your team sees.</p></div>`;
+  const intro = `<div class="stack" style="gap:4px"><h1>College recruiting</h1><p class="muted small">A Recruitment Profile for college coaches, for players aged ${RECRUIT_AGE} and over. It's separate from the player profile your team sees.</p></div>`;
   if(!kids.length) return intro + `<div class="card stack"><h2>Add your player first</h2><div><button class="btn primary" data-act="modal" data-m="addChild">Add player</button></div></div>`;
   const p = kids.find(k => k.id === S.childId) || kids[0];
-  const inv = pendingInvites();
-  const invCard = inv.length ? `<div class="card stack invites"><h2>Invitations <span class="badge">${inv.length}</span></h2>
-    <p class="small muted">Clubs found a Recruitment Profile and invited your player to a team. Accepting puts the player on that team.</p>
-    <div class="list">${inv.map(i => { const k = kids.find(x => x.id === i.playerId);
-      return `<div class="req"><div class="stack" style="gap:4px"><span><b>${esc(i.clubName)}</b> invited <b>${esc(i.playerName)}</b> to <b>${esc(i.teamName)}</b>${i.season ? ` for ${esc(i.season)}` : ""}</span>
-        <span class="small muted">From ${esc(i.sentByName || "a coach")} · ${esc(relDays(new Date(i.createdAt).toLocaleDateString("en-CA")))}${k && k.clubId ? ` · ${esc(k.name)} is currently on ${esc(teamName(k.teamId))} at ${esc(clubNameOf(k))}` : ""}</span>
-        ${i.message ? `<span class="small">“${esc(i.message)}”</span>` : ""}</div>
-        <div class="row"><button class="btn primary sm" data-act="modal" data-m="acceptInvite" data-id="${esc(i.id)}">Accept</button><button class="btn ghost sm" data-act="declineInvite" data-id="${esc(i.id)}">Decline</button></div></div>`; }).join("")}</div></div>` : "";
+  const msgs = (S.interest || []).filter(i => i.status !== "archived");
+  const intCard = msgs.length ? `<div class="card stack invites"><h2>Interest from colleges${newInterest().length ? ` <span class="badge">${newInterest().length} new</span>` : ""}</h2>
+    <p class="small muted">College coaches found a Recruitment Profile and want to hear from you. Reply from your own email; ${APP_NAME} never shares your contact details unless you added them to the profile.</p>
+    <div class="list">${msgs.map(i => `<div class="req${i.status === "new" ? " is-new" : ""}"><div class="stack" style="gap:4px">
+        <span><b>${esc(i.school)}</b>${i.program ? ` · ${esc(i.program)}` : ""}${i.division ? ` <span class="chip">${esc(i.division)}</span>` : ""} → <b>${esc(i.playerName)}</b></span>
+        <span class="small muted">${esc(i.coachName)}${i.coachTitle ? ", " + esc(i.coachTitle) : ""} · ${esc(relDays(new Date(i.createdAt).toLocaleDateString("en-CA")))}</span>
+        <span class="small">“${esc(i.message)}”</span>
+        <span class="small">✉️ <a href="mailto:${esc(i.coachEmail)}?subject=${encodeURIComponent("Re: " + i.playerName + " – " + APP_NAME)}">${esc(i.coachEmail)}</a></span></div>
+      <div class="row">${i.status === "new" ? `<button class="btn sm" data-act="markInterest" data-id="${esc(i.id)}" data-status="seen">Mark as read</button>` : ""}<button class="btn ghost sm" data-act="markInterest" data-id="${esc(i.id)}" data-status="archived">Archive</button></div></div>`).join("")}</div></div>` : "";
   return `<div class="row between">${intro}${kids.length > 1 ? `<div class="filters" role="group" aria-label="Choose player">${kids.map(k => `<button data-act="child" data-id="${esc(k.id)}" aria-pressed="${k.id===p.id}">${esc(k.name)}</button>`).join("")}</div>` : ""}</div>
-  ${invCard}
+  ${intCard}
   ${recruitHtml(p, {editable:canEditProfile(p)})}`;
 }
 function visSwitch(p, pr){
@@ -1403,7 +1460,7 @@ function readHash(){
   const h = location.hash.slice(1);
   if(PAGE_IDS.includes(h)){ S.publicPage = h; S.menuOpen = false; S.publicSlug = null; S.pub = null; if(h !== "contact") S.contactSent = null; render(); window.scrollTo(0,0); return; }
   if(h === "signin" || h === ""){ S.publicPage = null; S.menuOpen = false; if(S.publicSlug){ S.publicSlug = null; S.pub = null; } render(); window.scrollTo(0,0); return; }
-  if(h === "coach" || h === "parent"){ savePortal(h === "coach" ? "coach" : "family"); if(S.publicSlug){ S.publicSlug = null; S.pub = null; } if(!S.uid){ S.authMode = "signin"; } render(); return; }
+  if(h === "coach" || h === "parent" || h === "college"){ savePortal(h === "coach" ? "coach" : h === "college" ? "college" : "family"); S.publicPage = null; if(S.publicSlug){ S.publicSlug = null; S.pub = null; } if(!S.uid){ S.authMode = "signin"; } render(); return; }
   const m = /^profile-([a-z0-9]+)$/.exec(h);
   const slug = m ? m[1] : null;
   if(slug !== S.publicSlug){ S.publicSlug = slug; S.pub = null; if(slug && S.authChecked) loadPublic(slug); else render(); }
@@ -1622,40 +1679,43 @@ const MODALS = {
       <p class="small muted">You can switch any time. Your family, your team's coaches and the club admin always see your full profile.</p>
       <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`;
   },
-  acceptInvite: ds => { const i = (S.invites || []).find(x => x.id === ds.id); if(!i) return "<p>Invitation not found.</p>";
-    const k = S.players.find(x => x.id === i.playerId);
-    return `<h2>Join ${esc(i.teamName)} at ${esc(i.clubName)}?</h2>
-      <p>${esc(i.playerName)} will be added to <b>${esc(i.teamName)}</b>${i.season ? ` for ${esc(i.season)}` : ""}. You'll see the club's reviews, home drills and team chat.</p>
-      ${k && k.clubId ? `<p class="note small">${esc(k.name)} will leave ${esc(teamName(k.teamId))} at ${esc(clubNameOf(k))}. You keep every past review and message; that club's coaches lose access.</p>` : ""}
-      <div class="row"><button class="btn primary" data-act="acceptInvite" data-id="${esc(i.id)}">Accept and join</button><button class="btn" data-act="close">Not yet</button></div>`; },
-  invite: ds => { const r = (S.scout && S.scout.res || []).find(x => x.playerId === ds.player) || (S.shortlist || []).find(x => x.playerId === ds.player) || {};
-    if(!S.teams.length) return `<h2>Add a team first</h2><p>Invitations are for one of your club's teams.</p><div class="row"><button class="btn primary" data-act="modal" data-m="team">Add team</button><button class="btn" data-act="close">Cancel</button></div>`;
-    const sl = (S.shortlist || []).find(x => x.playerId === ds.player) || {};
-    return `<h2>Invite ${esc(r.name || "player")} to a team</h2><form data-form="invite" data-player="${esc(ds.player)}">
-      <div class="grid2" style="gap:14px">
-        <label class="f" for="iv-team">Team<select id="iv-team" name="teamId" required>${teamOptions(sl.teamId || S.teamFilter)}</select></label>
-        <label class="f" for="iv-season">Season<input type="text" id="iv-season" name="season" maxlength="40" value="${esc(sl.season || "")}" placeholder="e.g. Fall 2027"></label>
-      </div>
-      <label class="f" for="iv-msg">Message to the family<textarea id="iv-msg" name="message" maxlength="1000" rows="4" placeholder="Introduce your club, the team and next steps, e.g. a training session or tryout date."></textarea></label>
-      <p class="small muted">The family sees the invitation in their Recruiting tab. If they accept, the player joins this team and appears on your roster.</p>
-      <div class="row"><button class="btn primary" type="submit">Send invitation</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`; },
+  interest: ds => { const r = (S.scout && S.scout.res || []).find(x => x.playerId === ds.player) || (S.shortlist || []).find(x => x.playerId === ds.player) || {}; const c = S.college || {};
+    return `<h2>Message ${esc(r.name || "the family")}</h2><form data-form="interest" data-player="${esc(ds.player)}">
+      <label class="f" for="in-msg">Message<textarea id="in-msg" name="message" required maxlength="1500" rows="6" placeholder="Introduce yourself and your program, what you liked in the profile, and next steps such as an ID camp, a visit or a call."></textarea></label>
+      <p class="small muted">The family sees your message with your name, title, ${esc(c.school || "school")} and your school email (${esc(c.email || "")}), and replies by email. Please follow the recruiting contact rules for your division.</p>
+      <div class="row"><button class="btn primary" type="submit">Send</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`; },
   recruitDetails: ds => { const p = S.players.find(x => x.id === ds.player); if(!p) return "<p>Player not found.</p>";
-    const pr = profileFor(p.id) || {}, R = pr.recruit || {}, y = new Date().getFullYear();
+    const pr = profileFor(p.id) || {}, R = pr.recruit || {}, y = new Date().getFullYear(), divs = R.divisions || [];
     return `<h2>Recruiting details</h2><form data-form="recruitDetails" data-id="${esc(p.id)}">
-      <label class="f" for="rd-sum">Recruiting summary<textarea id="rd-sum" name="summary" maxlength="800" rows="4" placeholder="What makes ${esc(p.name)} stand out: playing style, strengths, goals, what level you're aiming for.">${esc(R.summary || "")}</textarea></label>
+      <label class="f" for="rd-sum">Recruiting summary<textarea id="rd-sum" name="summary" maxlength="800" rows="4" placeholder="What makes ${esc(p.name)} stand out: playing style, strengths and the kind of college program you're looking for.">${esc(R.summary || "")}</textarea></label>
+      <h3 class="form-sec">Academics</h3>
       <div class="grid2" style="gap:14px">
-        <label class="f" for="rd-grad">Graduation year (class of)<input type="number" id="rd-grad" name="gradYear" min="${y - 2}" max="${y + 16}" value="${esc(R.gradYear || "")}" placeholder="e.g. ${y + 5}"></label>
-        <label class="f" for="rd-foot">Stronger foot<select id="rd-foot" name="foot">${["","Right","Left","Both"].map(f => `<option value="${f}" ${pr.foot===f?"selected":""}>${f || "Not set"}</option>`).join("")}</select></label>
-        <label class="f" for="rd-h">Height<input type="text" id="rd-h" name="height" maxlength="20" value="${esc(R.height || "")}" placeholder="e.g. 5'6&quot; or 168 cm"></label>
-        <label class="f" for="rd-w">Weight (optional)<input type="text" id="rd-w" name="weight" maxlength="20" value="${esc(R.weight || "")}" placeholder="e.g. 120 lb"></label>
-        <label class="f" for="rd-school">School<input type="text" id="rd-school" name="school" maxlength="80" value="${esc(R.school || "")}"></label>
-        <label class="f" for="rd-gpa">GPA (optional)<input type="text" id="rd-gpa" name="gpa" maxlength="10" value="${esc(R.gpa || "")}" placeholder="e.g. 3.8"></label>
+        <label class="f" for="rd-grad">Class of (high school graduation)<input type="number" id="rd-grad" name="gradYear" min="${y - 1}" max="${y + 4}" value="${esc(R.gradYear || "")}" placeholder="e.g. ${y + 2}"></label>
+        <label class="f" for="rd-school">High school<input type="text" id="rd-school" name="school" maxlength="80" value="${esc(R.school || "")}"></label>
+        <label class="f" for="rd-gpa">GPA<input type="text" id="rd-gpa" name="gpa" maxlength="10" value="${esc(R.gpa || "")}" placeholder="e.g. 3.8"></label>
+        <label class="f" for="rd-sat">SAT / ACT (optional)<input type="text" id="rd-sat" name="test" maxlength="30" value="${esc(R.test || "")}" placeholder="e.g. SAT 1320 or ACT 29"></label>
+        <label class="f" for="rd-major">Intended major (optional)<input type="text" id="rd-major" name="major" maxlength="60" value="${esc(R.major || "")}"></label>
+        <label class="f" for="rd-ncaa">NCAA Eligibility Center ID (optional)<input type="text" id="rd-ncaa" name="ncaaId" maxlength="20" value="${esc(R.ncaaId || "")}"></label>
       </div>
+      <h3 class="form-sec">Soccer</h3>
+      <div class="grid2" style="gap:14px">
+        <label class="f" for="rd-league">Club league<select id="rd-league" name="league">${["", ...LEAGUES].map(l => `<option value="${l}" ${R.league===l?"selected":""}>${l || "Not set"}</option>`).join("")}</select></label>
+        <label class="f" for="rd-foot">Stronger foot<select id="rd-foot" name="foot">${["","Right","Left","Both"].map(f => `<option value="${f}" ${pr.foot===f?"selected":""}>${f || "Not set"}</option>`).join("")}</select></label>
+        <label class="f" for="rd-h">Height<input type="text" id="rd-h" name="height" maxlength="20" value="${esc(R.height || "")}" placeholder="e.g. 5'10&quot;"></label>
+        <label class="f" for="rd-w">Weight (optional)<input type="text" id="rd-w" name="weight" maxlength="20" value="${esc(R.weight || "")}" placeholder="e.g. 160 lb"></label>
+      </div>
+      <fieldset class="plain"><legend class="small"><b>College divisions you're interested in</b></legend>
+        <div class="chips">${DIVISIONS.map((d,i) => `<label class="chipbox"><input type="checkbox" name="div" value="${d}" id="rd-div-${i}" ${divs.includes(d)?"checked":""}><span>${d}</span></label>`).join("")}</div></fieldset>
+      <label class="f" for="rd-colleges">Colleges you're interested in (optional)<input type="text" id="rd-colleges" name="colleges" maxlength="200" value="${esc(R.colleges || "")}" placeholder="e.g. Ohio State, Xavier, Dayton"></label>
+      <div class="grid2" style="gap:14px">
+        <label class="f" for="rd-commit">Commitment<select id="rd-commit" name="committed"><option value="">Uncommitted</option><option value="yes" ${R.committed?"selected":""}>Committed</option></select></label>
+        <label class="f" for="rd-commit-to">Committed to (if committed)<input type="text" id="rd-commit-to" name="committedTo" maxlength="80" value="${esc(R.committedTo || "")}"></label>
+      </div>
+      <h3 class="form-sec">Contact & visibility</h3>
       <label class="f" for="rd-loc">Location<input type="text" id="rd-loc" name="location" maxlength="60" value="${esc(R.location || "")}" placeholder="City and state, e.g. Cincinnati, OH"></label>
-      <label class="choice" for="rd-open"><input type="checkbox" id="rd-open" name="open" ${R.open ? "checked" : ""}><span><b>Open to a new club next season</b><br><span class="small muted">Shows a “Looking for a club” badge so coaches know you're open to offers.</span></span></label>
-      <label class="choice" for="rd-search"><input type="checkbox" id="rd-search" name="searchable" ${R.searchable ? "checked" : ""}><span><b>Let club coaches find this profile in ${APP_NAME}</b><br><span class="small muted">Coaches on ${APP_NAME} can search for it and invite ${esc(p.name)} to a team. Only works while the profile is Public. Turn it off any time.</span></span></label>
-      <label class="f" for="rd-mail">Contact email for coaches (optional)<input type="email" id="rd-mail" name="contact" maxlength="120" value="${esc(R.contact || "")}" placeholder="A parent's email is best"></label>
-      <p class="small muted">Everything here shows on the Recruitment Profile when it's public, including the contact email.</p>
+      <label class="f" for="rd-mail">Contact email for college coaches (optional)<input type="email" id="rd-mail" name="contact" maxlength="120" value="${esc(R.contact || "")}" placeholder="A parent's email is best"></label>
+      <label class="choice" for="rd-search"><input type="checkbox" id="rd-search" name="searchable" ${R.searchable ? "checked" : ""}><span><b>Let college coaches find this profile in ${APP_NAME}</b><br><span class="small muted">Verified college coaches (school .edu email) can search for it and send you a message. Only works while the profile is Public. Turn it off any time.</span></span></label>
+      <p class="small muted">Everything above shows on the Recruitment Profile when it's public, including the contact email.</p>
       <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`; },
   highlight: ds => `<h2>Add a career highlight</h2><form data-form="highlight" data-id="${esc(ds.player)}">
     <label class="f" for="hl-t">Highlight<input type="text" id="hl-t" name="title" required maxlength="100" placeholder="e.g. State Cup champions, ODP selection, team captain"></label>
@@ -1762,16 +1822,10 @@ const ACTS = {
   delMsg: async ds => { await save(() => S.db.doc("messages/" + ds.id).delete(), "Message deleted"); },
   exitPublic: () => { try { history.replaceState(null, "", location.pathname + location.search); } catch(_){ try { location.hash = ""; } catch(__){} } S.publicSlug = null; S.pub = null; render(); },
   delPhoto: async ds => { const p = S.players.find(x=>x.id===ds.id); if(p) await saveProfile(p, {photo:null}, "Photo removed"); },
-  acceptInvite: async ds => { closeModal(); let club;
-    const ok = await save(async () => { club = await rpc("answer_invite", {iid:ds.id, accept:true}); });
-    if(ok){ toast("Welcome to " + club + "!"); S.view = "home"; refreshAll(); } },
-  declineInvite: async (ds, el) => {
-    if(!el.dataset.armed){ el.dataset.armed = "1"; el.textContent = "Click again to decline"; return; }
-    const ok = await save(() => rpc("answer_invite", {iid:ds.id, accept:false}), "Invitation declined"); if(ok) refreshAll(); },
-  stab: ds => { S.stab = ds.id; render(); },
   slFilter: ds => { S.slFilter = ds.id; render(); },
+  scoutClear: () => { S.scout = {f:{}}; runScout(); },
   shortlistAdd: async ds => {
-    const ok = await save(() => S.db.collection("shortlist").doc().set({clubId:S.me.clubId, playerId:ds.player, status:"watching", season:"", note:"", addedBy:S.uid, addedByName:S.me.name || "", createdAt:Date.now(), updatedAt:Date.now()}), "Added to your shortlist");
+    const ok = await save(() => S.db.collection("shortlist").doc().set({coachId:S.uid, playerId:ds.player, status:"watching", note:"", createdAt:Date.now(), updatedAt:Date.now()}), "Added to your shortlist");
     if(ok){ markScout(ds.player, {shortlisted:true}); schedule("shortlist"); }
   },
   shortlistRemove: async (ds, el) => {
@@ -1779,11 +1833,6 @@ const ACTS = {
     const sl = (S.shortlist || []).find(x => x.id === ds.id); if(!sl) return;
     const ok = await save(() => S.db.doc("shortlist/" + ds.id).delete(), "Removed from shortlist");
     if(ok){ markScout(sl.playerId, {shortlisted:false}); schedule("shortlist"); }
-  },
-  withdrawInvite: async (ds, el) => {
-    if(!el.dataset.armed){ el.dataset.armed = "1"; el.textContent = "Click again to withdraw"; return; }
-    const ok = await save(() => rpc("withdraw_invite", {iid:ds.id}), "Invitation withdrawn");
-    if(ok){ refreshAll(); if(S.scout) runScout(); }
   },
   createRecruit: async ds => {
     const p = S.players.find(x => x.id === ds.id); if(!p) return;
@@ -1944,7 +1993,9 @@ const FORMS = {
     const p = S.players.find(x => x.id === form.dataset.id); if(!p) return;
     const pr = profileFor(p.id) || {}, R = pr.recruit || {}, g = k => String(fd.get(k) || "").trim();
     closeModal();
-    await saveProfile(p, {foot:g("foot"), recruit:{...R, summary:g("summary").slice(0,800), gradYear:g("gradYear"), height:g("height"), weight:g("weight"), school:g("school"), gpa:g("gpa"), contact:g("contact"), location:g("location"), open:fd.get("open") === "on", searchable:fd.get("searchable") === "on"}}, "Recruiting details saved");
+    await saveProfile(p, {foot:g("foot"), recruit:{...R, summary:g("summary").slice(0,800), gradYear:g("gradYear"), height:g("height"), weight:g("weight"), school:g("school"), gpa:g("gpa"),
+      test:g("test"), major:g("major"), ncaaId:g("ncaaId"), league:g("league"), divisions:fd.getAll("div").filter(d => DIVISIONS.includes(d)), colleges:g("colleges"),
+      committed:fd.get("committed") === "yes", committedTo:g("committedTo"), contact:g("contact"), location:g("location"), searchable:fd.get("searchable") === "on"}}, "Recruiting details saved");
   },
   highlight: async (fd, form) => {
     const p = S.players.find(x => x.id === form.dataset.id); if(!p) return;
@@ -2018,7 +2069,6 @@ document.addEventListener("change", ev => {
 document.addEventListener("change", ev => {
   const t = ev.target; if(t.dataset && t.dataset.autosubmit && t.form) t.form.requestSubmit();
 });
-ACTS.scoutClear = () => { S.scout = {f:{}}; runScout(); };
 document.addEventListener("error", ev => {
   const t = ev.target;
   if(t && t.tagName === "IMG" && t.classList.contains("photo")){
@@ -2160,7 +2210,6 @@ function pageClubs(){
     ${feature("Home training that sticks",`Assign drills or let ${APP_NAME} suggest them from the review. See who did their drills this week.`)}
     ${feature("Team chat & announcements","A chat for every team with coaches and families. Pin announcements for schedule changes.")}
     ${feature("Simple onboarding","Coaches join with your club code. Families find your club by name and ask to join a team. You approve. No spreadsheets.")}
-    ${feature("Recruit for next season","Find players whose families have opted in to coach search, keep a shared shortlist with notes and status, and invite them to a team.")}
     ${feature("Private by design","Families only see their own child. Reviews never appear on public profiles.")}
   </div>
   <div class="card stack callout"><h2>Set up your club in 5 minutes</h2>
@@ -2168,35 +2217,42 @@ function pageClubs(){
     <div class="row cta-row"><button type="button" class="btn primary" data-act="pickPortal" data-id="coach">Start your club</button><a class="btn" href="#contact">Talk to us first</a></div></div>`;
 }
 
+/* a made-up 17-year-old for the public Recruiting page */
+const RECRUIT_EXAMPLE = {name:"Jordan Reyes", initials:"JR", clubLine:"Example FC · U17 ECNL", gradYear:"2027", age:17,
+  facts:[["GPA","3.7"],["SAT / ACT","SAT 1310"],["Height","5'10\""],["Stronger foot","Left"],["Club league","ECNL"],["Intended major","Kinesiology"]],
+  positions:["CDM","CM"], divisions:["NCAA D1","NCAA D2"],
+  highlights:[{title:"ECNL Midwest conference all-conference", year:"2026"},{title:"Team captain", year:"2026"},{title:"High school all-district first team", year:"2025"}],
+  stats:[{season:"2025–26", team:"U17 ECNL", games:24, goals:5, assists:11}],
+  reference:{text:"Jordan controls the tempo of our games and is the first to organize the team when things get hard. A coachable, high-character player who will add value to a college program.", author:"Coach Rivera", title:"Director of Coaching, Example FC"}};
 function pageRecruiting(){
-  const E = EXAMPLE;
-  return `<section class="page-hero stack"><span class="eyebrow">Recruiting</span>
-    <h1>A Recruitment Profile you can send to coaches</h1>
-    <p class="lead">Families create an optional Recruitment Profile, separate from the player profile their team sees, and share one link with college programs, academies or a new club.</p></section>
+  const J = RECRUIT_EXAMPLE;
+  return `<section class="page-hero stack"><span class="eyebrow">College recruiting</span>
+    <h1>Get seen by college coaches</h1>
+    <p class="lead">Players aged ${RECRUIT_AGE} and over can create a Recruitment Profile: one link with everything a college program looks for. Families choose whether verified college coaches can find it in ${APP_NAME}.</p></section>
   <div class="grid2">
     <div class="stack" style="gap:16px">
-      ${feature("The details coaches ask for","Graduation year, height, stronger foot, school, GPA, positions and a recruiting summary, plus a contact email for coaches.")}
-      ${feature("Career highlights and stats","Trophies, selections and awards, and games, goals, assists and clean sheets for each season.")}
-      ${feature("Highlight videos","Upload clips or link YouTube, Hudl or Veo.")}
-      ${feature("Coach references","Coaches write references in their own words, right from the player's page.")}
-      ${feature("Club history","Every club and team, with years and notes.")}
-      ${feature("You choose who sees it","It starts private. Make it public when you're ready, and separately choose whether club coaches can find it in search. Coach reviews, ratings and messages are never on it.")}
-      ${feature("For club coaches: find players","Search opted-in players by position, age, class, foot and location, keep a shared shortlist for next season, and invite players to a team.")}
+      ${feature("Academics up front","Class of, high school, GPA, SAT / ACT, intended major and NCAA Eligibility Center ID.")}
+      ${feature("The soccer details coaches ask for","Positions, club league, height, stronger foot, divisions you're interested in and commitment status.")}
+      ${feature("Highlights, stats and video","Career highlights, season stats and highlight videos from YouTube, Hudl or Veo.")}
+      ${feature("References from your coaches","Club coaches write references in their own words, right from the player's page.")}
+      ${feature("You stay in control","It starts private. Make it public when you're ready, and separately choose whether college coaches can find it. Coach reviews, ratings and messages are never on it.")}
+      ${feature("Free for college coaches","Create a free account with your school .edu email. Search by position, class, GPA, league and division interest, keep a private shortlist and message families directly.")}
     </div>
     <div class="card stack">
-      <div class="row between"><h3>What a scout sees</h3><span class="pill warn">Example</span></div>
-      <div class="pcard"><div class="photo avatar-art" style="width:96px;height:96px">${GRAY_AVATAR}</div>
-        <div class="stack" style="gap:6px"><h2>${esc(E.name)}</h2><p class="muted">Class of ${esc(E.recruit.gradYear)} · ${esc(E.club)} · ${esc(E.team)}</p>
-          <div class="chips">${posChip("CM",true)}${posChip("CAM")}</div></div></div>
-      <div class="facts">${[["Height", E.recruit.height], ["Stronger foot", E.foot], ["School", E.recruit.school], ["GPA", E.recruit.gpa]].map(([k,v]) => `<div class="fact"><span class="small muted">${k}</span><b>${esc(v)}</b></div>`).join("")}</div>
-      <div class="list">${E.recruit.highlights.map(h => `<div class="hl"><div class="row between"><b>🏆 ${esc(h.title)}</b><span class="small muted num">${esc(h.year)}</span></div>${h.details ? `<p class="small muted">${esc(h.details)}</p>` : ""}</div>`).join("")}</div>
-      <div class="tbl-wrap"><table class="stats"><thead><tr><th>Season</th><th class="num">GP</th><th class="num">G</th><th class="num">A</th></tr></thead><tbody>${E.recruit.stats.map(x => `<tr><td>${esc(x.season)}</td><td class="num">${x.games}</td><td class="num">${x.goals}</td><td class="num">${x.assists}</td></tr>`).join("")}</tbody></table></div>
-      <div class="vid"><div class="vlink" style="aspect-ratio:16/7">▶ Fall 2026 highlights</div></div>
-      <div class="ref reference"><blockquote>${esc(E.reference.text)}</blockquote><span class="small"><b>${esc(E.reference.author)}</b>, ${esc(E.reference.title)}</span></div>
-      <div class="timeline">${E.history.map(h=>`<div class="titem${h.to==="Present"?" now":""}"><div class="row between"><b>${esc(h.club)}</b><span class="small muted num">${esc(h.from)} – ${esc(h.to)}</span></div><div class="small">${esc(h.team)}</div></div>`).join("")}</div>
+      <div class="row between"><h3>What a college coach sees</h3><span class="pill warn">Example</span></div>
+      <div class="pcard"><div class="photo ph" style="width:96px;height:96px;font-size:2rem" aria-hidden="true">${esc(J.initials)}</div>
+        <div class="stack" style="gap:6px"><h2>${esc(J.name)}</h2><p class="muted">Class of ${esc(J.gradYear)} · ${esc(J.clubLine)} · Age ${J.age}</p>
+          <div class="chips">${J.positions.map((k,i) => posChip(k, i===0)).join("")}<span class="chip open-badge">Uncommitted</span>${J.divisions.map(d => `<span class="chip">${esc(d)}</span>`).join("")}</div></div></div>
+      <div class="facts">${J.facts.map(([k,v]) => `<div class="fact"><span class="small muted">${k}</span><b>${esc(v)}</b></div>`).join("")}</div>
+      <div class="list">${J.highlights.map(h => `<div class="hl"><div class="row between"><b>🏆 ${esc(h.title)}</b><span class="small muted num">${esc(h.year)}</span></div></div>`).join("")}</div>
+      <div class="tbl-wrap"><table class="stats"><thead><tr><th>Season</th><th>Team</th><th class="num">GP</th><th class="num">G</th><th class="num">A</th></tr></thead><tbody>${J.stats.map(x => `<tr><td>${esc(x.season)}</td><td>${esc(x.team)}</td><td class="num">${x.games}</td><td class="num">${x.goals}</td><td class="num">${x.assists}</td></tr>`).join("")}</tbody></table></div>
+      <div class="vid"><div class="vlink" style="aspect-ratio:16/7">▶ 2026 season highlights</div></div>
+      <div class="ref reference"><blockquote>${esc(J.reference.text)}</blockquote><span class="small"><b>${esc(J.reference.author)}</b>, ${esc(J.reference.title)}</span></div>
     </div>
   </div>
-  ${cta("I'm a coach","Build my Recruitment Profile")}`;
+  <div class="row cta-row">
+    <button type="button" class="btn primary" data-act="pickPortal" data-id="family">Build a Recruitment Profile</button>
+    <button type="button" class="btn" data-act="pickPortal" data-id="college">College coach? Join free</button></div>`;
 }
 
 function pageParents(){
@@ -2208,7 +2264,7 @@ function pageParents(){
     ${feature("Progress over the season","Every review is saved, so you can see what's improving and what's next.")}
     ${feature("15 minutes at home","Drills picked from the coach's review, with step-by-step instructions. Tick them off each week.")}
     ${feature("Team chat","Schedule changes and announcements from the coach, in one place.")}
-    ${feature("A profile to be proud of","Photos, highlight videos and coach references. You decide if it's private or public.")}
+    ${feature(`College recruiting at ${RECRUIT_AGE}`,`From age ${RECRUIT_AGE}, a Recruitment Profile with academics, highlight videos and coach references for college coaches. You decide who sees it.`)}
     ${feature("Private and safe","Only your child's coaches and your family can see reviews. Other families can't.")}
   </div>
   <div class="card stack callout"><h2>How to join</h2>
@@ -2237,7 +2293,14 @@ function pagePricing(){
       <button type="button" class="btn" data-act="pickPortal" data-id="family" style="align-self:flex-start">Sign up as a family</button>
     </div>
   </div>
+  <div class="card plan college-plan">
+    <div class="row between"><div class="stack" style="gap:4px"><span class="pill plain" style="align-self:flex-start">For college coaches</span>
+      <h2>College recruiting</h2><div><span class="price">Free</span> <span class="muted">with a college coach account</span></div></div>
+      <button type="button" class="btn" data-act="pickPortal" data-id="college" style="align-self:center">Create a free account</button></div>
+    <ul><li>Search players aged ${RECRUIT_AGE}+ by position, class, GPA, league and division interest</li><li>Private shortlist with status and notes</li><li>Message families directly; they reply to your school email</li><li>Needs a school .edu email address</li></ul>
+  </div>
   <div class="card stack"><h2>Questions</h2>
+    <div class="faq"><b>Do college coaches pay?</b><p class="muted">No. Searching for players, the shortlist and messaging families are free once you create a college coach account with your school .edu email.</p></div>
     <div class="faq"><b>Is Home Training free if my club includes it?</b><p class="muted">Yes. If your club includes Home Training, every connected family gets it at no extra cost.</p></div>
     <div class="faq"><b>Do players need their own account?</b><p class="muted">No. One parent account can hold every child's profile.</p></div>
     <div class="faq"><b>What happens if we change clubs?</b><p class="muted">The profile belongs to your family, not the club. Leave the old team and ask to join the new one. You keep every past review and reference; the old club's coaches lose access.</p></div>
@@ -2544,19 +2607,29 @@ async function sendPm(fd, form, meetingId){
 }
 FORMS.pm = (fd, form) => sendPm(fd, form, null);
 FORMS.scoutSearch = async fd => {
-  const n = k => { const v = parseInt(fd.get(k), 10); return isNaN(v) ? null : v; };
-  S.scout = {...(S.scout || {}), f:{q:String(fd.get("q") || "").trim(), pos:fd.get("pos") || "", ageMin:n("ageMin"), ageMax:n("ageMax"), grad:n("grad"),
-    foot:fd.get("foot") || "", loc:String(fd.get("loc") || "").trim(), open:fd.get("open") === "on", video:fd.get("video") === "on"}};
+  const n = k => { const v = parseFloat(fd.get(k)); return isNaN(v) ? null : v; };
+  S.scout = {...(S.scout || {}), f:{q:String(fd.get("q") || "").trim(), pos:fd.get("pos") || "", grad:n("grad"), gpa:n("gpa"), div:fd.get("div") || "", league:fd.get("league") || "",
+    foot:fd.get("foot") || "", loc:String(fd.get("loc") || "").trim(), uncommitted:fd.get("uncommitted") === "on", video:fd.get("video") === "on"}};
   await runScout();
 };
-FORMS.invite = async (fd, form) => {
+FORMS.interest = async (fd, form) => {
   const pid = form.dataset.player; closeModal();
-  const ok = await save(() => rpc("send_invite", {pid, tid:fd.get("teamId"), p_season:String(fd.get("season") || "").trim(), p_message:String(fd.get("message") || "").trim()}), "Invitation sent. The family will see it in their Recruiting tab.");
-  if(ok){ markScout(pid, {invited:true}); refreshAll(); }
+  const ok = await save(() => rpc("send_interest", {pid, p_message:String(fd.get("message") || "").trim()}), "Message sent. The family will reply to your school email.");
+  if(ok){ markScout(pid, {contacted:true}); schedule("shortlist"); schedule("interest"); }
 };
 FORMS.slSave = async (fd, form) => {
-  await save(() => S.db.doc("shortlist/" + form.dataset.id).update({status:fd.get("status"), season:String(fd.get("season") || "").trim(), teamId:fd.get("teamId") || null, note:String(fd.get("note") || "").trim(), updatedAt:Date.now()}), "Shortlist updated");
+  await save(() => S.db.doc("shortlist/" + form.dataset.id).update({status:fd.get("status"), note:String(fd.get("note") || "").trim(), updatedAt:Date.now()}), "Shortlist updated");
   schedule("shortlist");
+};
+FORMS.collegeStart = async fd => {
+  const g = k => String(fd.get(k) || "").trim();
+  const ok = await save(() => rpc("start_college", {my_name:g("name"), p_title:g("title"), p_school:g("school"), p_program:g("program"), p_division:g("division")}));
+  if(ok){ toast("Welcome! Start by searching for players."); S.view = "scout"; await loadMe(); }
+};
+FORMS.collegeEdit = async fd => {
+  const g = k => String(fd.get(k) || "").trim();
+  const ok = await save(() => rpc("update_college", {my_name:g("name"), p_title:g("title"), p_school:g("school"), p_program:g("program"), p_division:g("division")}), "Saved");
+  if(ok){ schedule("college"); loadMe(); }
 };
 FORMS.editMine = async (fd, form) => {
   closeModal();
@@ -2679,10 +2752,15 @@ function authView(){
       ${exampleProfile()}
     </section>`;
   }
-  const coach = S.portal === "coach";
+  const coach = S.portal === "coach", college = S.portal === "college";
   const mode = S.authMode || "signin";
   const title = mode === "signup" ? "Create your account" : mode === "reset" ? "Reset your password" : "Sign in";
-  const side = coach
+  const side = college
+    ? `<span class="pill plain" style="align-self:flex-start">College coach</span>
+       <h1>${mode==="signup"?"Find your next recruits":"Welcome back, coach"}</h1>
+       <p style="max-width:52ch">Search Recruitment Profiles of players aged ${RECRUIT_AGE} and over by position, class, GPA, league and division interest. Keep a private shortlist and message families directly.</p>
+       <div class="card stack"><h3>Free for college coaches</h3><p class="small">Search, shortlist and messaging are free once you create an account. Use your school email address ending in <b>.edu</b>; families see it when you message them.</p></div>`
+    : coach
     ? `<span class="pill warn" style="align-self:flex-start">Coach</span>
        <h1>${mode==="signup"?"Bring your club onto "+APP_NAME:"Welcome back, coach"}</h1>
        <p style="max-width:52ch">Track every player's development, assign home drills, write references for scouts and keep your teams in the loop.</p>
@@ -2691,10 +2769,10 @@ function authView(){
        <h1>${mode==="signup"?"Follow your player's progress":"Welcome back"}</h1>
        <p style="max-width:52ch">See your coach's reviews, practice the drills they pick for you, build a highlight profile and chat with your team.</p>
        <div class="card stack"><h3>First time here?</h3><p class="small">Create an account with your email and set up your player's profile. Then find your club and ask to join your team.</p></div>`;
-  return `<button class="btn ghost back" data-act="pickPortal" data-id="">← ${coach?"Not a coach? Switch to Parent / Player":"Not a parent or player? Switch to Coach"}</button>
+  return `<button class="btn ghost back" data-act="pickPortal" data-id="">← ${college ? "Not a college coach? Go back" : coach?"Not a coach? Switch to Parent / Player":"Not a parent or player? Switch to Coach"}</button>
   <section class="hero">
     <div class="stack">${side}</div>
-    <form class="card stack auth-${coach?"coach":"family"}" data-form="auth" style="align-self:start">
+    <form class="card stack auth-${coach||college?"coach":"family"}" data-form="auth" style="align-self:start">
       <h2>${title}</h2>
       <label class="f" for="au-email">Email<input type="email" id="au-email" name="email" required autocomplete="email"></label>
       ${mode !== "reset" ? `<label class="f" for="au-pass">Password<input type="password" id="au-pass" name="password" required minlength="8" autocomplete="${mode==="signup"?"new-password":"current-password"}"></label>` : ""}
@@ -2799,12 +2877,10 @@ function exampleProfile(){
             <p class="small"><b>Coach:</b> ${esc(d.note)}</p></div>`).join("")}
         </div>
         <div class="card stack">
-          <div class="row between"><h3>Recruitment Profile</h3><span class="pill good">🌐 Public</span></div>
-          <p class="small muted">Optional, and separate from the player profile: the link the family sends to college, academy and club coaches.</p>
-          <div class="facts">${[["Class of", E.recruit.gradYear], ["Height", E.recruit.height], ["Stronger foot", E.foot], ["GPA", E.recruit.gpa]].map(([k,v]) => `<div class="fact"><span class="small muted">${k}</span><b>${esc(v)}</b></div>`).join("")}</div>
-          <div class="list">${E.recruit.highlights.map(h => `<div class="hl"><div class="row between"><b>🏆 ${esc(h.title)}</b><span class="small muted num">${esc(h.year)}</span></div></div>`).join("")}</div>
+          <div class="row between"><h3>College recruiting</h3><span class="pill plain">From age ${RECRUIT_AGE}</span></div>
+          <p class="small muted">At ${RECRUIT_AGE}, players can add a Recruitment Profile for college coaches: academics, highlights, stats, video and references like this one from their club coach.</p>
           <div class="ref reference"><blockquote>${esc(E.reference.text)}</blockquote><span class="small"><b>${esc(E.reference.author)}</b>, ${esc(E.reference.title)}</span></div>
-          <div><a class="btn sm" href="#recruiting">How recruiting works</a></div>
+          <div><a class="btn sm" href="#recruiting">How college recruiting works</a></div>
         </div>
       </div>
       <div class="stack" style="gap:20px">
@@ -2819,10 +2895,11 @@ function exampleProfile(){
   </section>`;
 }
 function savePortal(p){ S.portal = p || null; try { if(p) localStorage.setItem("np.portal", p); else localStorage.removeItem("np.portal"); } catch(_){} }
+ACTS.markInterest = async ds => { const ok = await save(() => rpc("mark_interest", {iid:ds.id, p_status:ds.status}), ds.status === "archived" ? "Archived" : null); if(ok) schedule("interest"); };
 ACTS.pickPortal = ds => {
   savePortal(ds.id); S.publicPage = null; S.menuOpen = false;
   S.authMode = "signin";
-  try { history.replaceState(null, "", location.pathname + location.search + (ds.id ? "#" + (ds.id === "coach" ? "coach" : "parent") : "")); } catch(_){}
+  try { history.replaceState(null, "", location.pathname + location.search + (ds.id ? "#" + (ds.id === "coach" ? "coach" : ds.id === "college" ? "college" : "parent") : "")); } catch(_){}
   render(); const e = document.getElementById("au-email"); if(e) e.focus();
 };
 ACTS.setPortal = ds => { savePortal(ds.id); render(); };
@@ -2840,6 +2917,7 @@ ACTS.authMode = ds => { S.authMode = ds.id; render(); const e = document.getElem
 async function onSession(session, event){
   if(event === "PASSWORD_RECOVERY") S.recovery = true;
   const uid = session && session.user ? session.user.id : null;
+  S.email = session && session.user ? (session.user.email || "") : "";
   if(S.authChecked && uid === S.uid){ render(); return; }
   S.uid = uid; S.authChecked = true;
   if(!uid){
@@ -2852,8 +2930,8 @@ async function onSession(session, event){
   S.loading = true; render();
   await loadMe();
   if(S.me && S.me.role){
-    const actual = S.me.role === "family" ? "family" : "coach";
-    if(S.portal && S.portal !== actual && event === "SIGNED_IN") toast(actual === "family" ? "This is a parent / player account, so we opened the family view." : "This is a coach account, so we opened the coach view.");
+    const actual = S.me.role === "family" ? "family" : S.me.role === "college" ? "college" : "coach";
+    if(S.portal && S.portal !== actual && event === "SIGNED_IN") toast(actual === "family" ? "This is a parent / player account, so we opened the family view." : actual === "college" ? "This is a college coach account, so we opened college recruiting." : "This is a coach account, so we opened the coach view.");
     savePortal(actual);
   }
   if(S.publicSlug && !S.pub) loadPublic(S.publicSlug);
@@ -2867,6 +2945,7 @@ async function onSession(session, event){
   if(PAGE_IDS.includes(location.hash.slice(1))) S.publicPage = location.hash.slice(1);
   if(location.hash === "#coach") savePortal("coach");
   if(location.hash === "#parent") savePortal("family");
+  if(location.hash === "#college") savePortal("college");
   if(!cfg.supabaseUrl || !cfg.supabaseKey || /YOUR_/.test(cfg.supabaseUrl + cfg.supabaseKey)){
     S.loading = false; S.noConfig = true; render(); return;
   }
