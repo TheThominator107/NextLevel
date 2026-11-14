@@ -76,55 +76,55 @@ const CATS = ["Ball mastery","Passing","Dribbling","Shooting","Defending","Aware
    Step-by-step instructions live in Supabase (drill_steps) behind Home Training; only the free samples carry steps here. */
 const BUILTIN_DRILLS = [
   /* ---- first touch & ball mastery ---- */
-  {free:true,id:"b-toe-taps",title:"Toe taps",category:"Ball mastery",minutes:5,equipment:"Ball",level:"All levels",skills:["first_touch","handling_speed"],tags:["Confidence on the ball"],steps:["Ball still in front of you, tap the top with the sole of each foot in turn.","Stay on the balls of your feet and keep your head up.","3 rounds of 30 seconds, 30 seconds rest.","Make it harder: move the ball in a circle while tapping."]},
+  {free:true,id:"b-toe-taps",title:"Toe taps",category:"Ball mastery",minutes:5,equipment:"Ball",level:"Beginner",skills:["first_touch","handling_speed"],tags:["Confidence on the ball"],steps:["Ball still in front of you, tap the top with the sole of each foot in turn.","Stay on the balls of your feet and keep your head up.","3 rounds of 30 seconds, 30 seconds rest.","Make it harder: move the ball in a circle while tapping."]},
   {id:"b-sole-roll",title:"Sole rolls and pull-backs",category:"Ball mastery",minutes:8,equipment:"Ball",level:"Beginner",skills:["first_touch","dribbling"],tags:["Confidence on the ball"]},
-  {id:"b-juggle",title:"Juggling ladder",category:"Ball mastery",minutes:10,equipment:"Ball",level:"All levels",skills:["first_touch"],tags:["First touch","Composure"]},
+  {id:"b-juggle",title:"Juggling ladder",category:"Ball mastery",minutes:10,equipment:"Ball",level:"Intermediate",skills:["first_touch"],tags:["First touch","Composure"]},
   {id:"b-first-touch",title:"Open-body first touch",category:"Passing",minutes:10,equipment:"Ball, wall, 2 cones",level:"Intermediate",skills:["first_touch","positional_awareness","decision_making"],tags:["First touch","Composure"]},
-  {id:"b-volley",title:"Volleys and half-volleys",category:"Shooting",minutes:10,equipment:"Ball, wall or goal",level:"Intermediate",skills:["first_touch","shooting"],tags:["Finishing","Composure"]},
+  {id:"b-volley",title:"Volleys and half-volleys",category:"Shooting",minutes:10,equipment:"Ball, wall or goal",level:"Advanced",skills:["first_touch","shooting"],tags:["Finishing","Composure"]},
 
   /* ---- passing ---- */
-  {free:true,id:"b-wall-pass",title:"Two-touch wall passes",category:"Passing",minutes:10,equipment:"Ball, wall",level:"All levels",skills:["passing","first_touch"],tags:["Passing range"],steps:["Stand 3 to 5 yards from a wall.","Pass with the inside of your right foot, take one touch to control, pass again.","Do 25 passes, then switch to your left foot for 25.","Make it harder: step back to 8 yards and use one touch only."]},
-  {id:"b-long-pass",title:"Long-pass targets",category:"Passing",minutes:15,equipment:"Ball(s), 4 cones",level:"Intermediate",skills:["passing","tactical_understanding"],tags:["Passing range","Crossing"]},
-  {id:"b-weak-foot",title:"Weak-foot only",category:"Ball mastery",minutes:15,equipment:"Ball",level:"All levels",skills:["passing","shooting","dribbling"],tags:["Weak foot"]},
+  {free:true,id:"b-wall-pass",title:"Two-touch wall passes",category:"Passing",minutes:10,equipment:"Ball, wall",level:"Beginner",skills:["passing","first_touch"],tags:["Passing range"],steps:["Stand 3 to 5 yards from a wall.","Pass with the inside of your right foot, take one touch to control, pass again.","Do 25 passes, then switch to your left foot for 25.","Make it harder: step back to 8 yards and use one touch only."]},
+  {id:"b-long-pass",title:"Long-pass targets",category:"Passing",minutes:15,equipment:"Ball(s), 4 cones",level:"Advanced",skills:["passing","tactical_understanding"],tags:["Passing range","Crossing"]},
+  {id:"b-weak-foot",title:"Weak-foot only",category:"Ball mastery",minutes:15,equipment:"Ball",level:"Intermediate",skills:["passing","shooting","dribbling"],tags:["Weak foot"]},
 
   /* ---- shooting ---- */
-  {id:"b-targets",title:"Target finishing",category:"Shooting",minutes:15,equipment:"Ball(s), goal or wall, tape",level:"All levels",skills:["shooting"],tags:["Finishing"]},
+  {id:"b-targets",title:"Target finishing",category:"Shooting",minutes:15,equipment:"Ball(s), goal or wall, tape",level:"Beginner",skills:["shooting"],tags:["Finishing"]},
   {id:"b-dribble-shoot",title:"Dribble, set and shoot",category:"Shooting",minutes:12,equipment:"Ball, 3 cones, goal or wall",level:"Intermediate",skills:["shooting","dribbling","decision_making"],tags:["Finishing","1v1 attacking"]},
 
   /* ---- dribbling & speed with the ball ---- */
-  {id:"b-cone-weave",title:"Cone weave dribble",category:"Dribbling",minutes:10,equipment:"Ball, 6 cones (or shoes)",level:"All levels",skills:["dribbling","handling_speed"],tags:["Confidence on the ball"]},
-  {id:"b-speed-dribble",title:"Speed dribble races",category:"Dribbling",minutes:10,equipment:"Ball, 2 cones, timer",level:"All levels",skills:["handling_speed","dribbling","separation_speed"],tags:["Speed"]},
+  {id:"b-cone-weave",title:"Cone weave dribble",category:"Dribbling",minutes:10,equipment:"Ball, 6 cones (or shoes)",level:"Beginner",skills:["dribbling","handling_speed"],tags:["Confidence on the ball"]},
+  {id:"b-speed-dribble",title:"Speed dribble races",category:"Dribbling",minutes:10,equipment:"Ball, 2 cones, timer",level:"Intermediate",skills:["handling_speed","dribbling","separation_speed"],tags:["Speed"]},
   {id:"b-change-pace",title:"Change of pace and direction",category:"Dribbling",minutes:10,equipment:"Ball, 4 cones",level:"Intermediate",skills:["separation_speed","dribbling","handling_speed"],tags:["1v1 attacking","Speed"]},
   {id:"b-shield",title:"Shield the ball",category:"Dribbling",minutes:10,equipment:"Ball, a helper",level:"Intermediate",skills:["physicality","dribbling"],tags:["Shielding"]},
-  {id:"b-1v1-line",title:"1v1 to the line",category:"Dribbling",minutes:12,equipment:"Ball, 4 cones, a helper",level:"All levels",skills:["dribbling","defending","separation_speed"],tags:["1v1 attacking","1v1 defending"]},
+  {id:"b-1v1-line",title:"1v1 to the line",category:"Dribbling",minutes:12,equipment:"Ball, 4 cones, a helper",level:"Advanced",skills:["dribbling","defending","separation_speed"],tags:["1v1 attacking","1v1 defending"]},
 
   /* ---- speed & strength ---- */
-  {id:"b-5-10-5",title:"5-10-5 shuttle",category:"Speed & agility",minutes:10,equipment:"3 cones",level:"All levels",skills:["separation_speed","physicality"],tags:["Speed"]},
-  {id:"b-first-step",title:"First-step burst",category:"Speed & agility",minutes:8,equipment:"2 cones, a helper (optional)",level:"All levels",skills:["separation_speed"],tags:["Speed","1v1 attacking"]},
-  {id:"b-strength",title:"Young player strength circuit",category:"Strength",minutes:15,equipment:"None (bodyweight only)",level:"All levels",skills:["physicality"],tags:["Shielding","Heading"]},
-  {id:"b-recovery",title:"Recovery runs",category:"Defending",minutes:10,equipment:"3 cones",level:"All levels",skills:["defending","physicality"],tags:["Work rate"]},
+  {id:"b-5-10-5",title:"5-10-5 shuttle",category:"Speed & agility",minutes:10,equipment:"3 cones",level:"Intermediate",skills:["separation_speed","physicality"],tags:["Speed"]},
+  {id:"b-first-step",title:"First-step burst",category:"Speed & agility",minutes:8,equipment:"2 cones, a helper (optional)",level:"Intermediate",skills:["separation_speed"],tags:["Speed","1v1 attacking"]},
+  {id:"b-strength",title:"Young player strength circuit",category:"Strength",minutes:15,equipment:"None (bodyweight only)",level:"Beginner",skills:["physicality"],tags:["Shielding","Heading"]},
+  {id:"b-recovery",title:"Recovery runs",category:"Defending",minutes:10,equipment:"3 cones",level:"Intermediate",skills:["defending","physicality"],tags:["Work rate"]},
 
   /* ---- defending ---- */
-  {id:"b-jockey",title:"Jockey footwork",category:"Defending",minutes:8,equipment:"2 cones",level:"All levels",skills:["defending"],tags:["1v1 defending"]},
+  {id:"b-jockey",title:"Jockey footwork",category:"Defending",minutes:8,equipment:"2 cones",level:"Beginner",skills:["defending"],tags:["1v1 defending"]},
 
   /* ---- awareness, decisions, tactics, mindset ---- */
-  {id:"b-scan",title:"Shoulder checks",category:"Awareness",minutes:8,equipment:"Ball, wall, a helper",level:"Intermediate",skills:["positional_awareness","decision_making","communication"],tags:["Scanning"]},
-  {id:"b-color-gates",title:"Colour gate decisions",category:"Awareness",minutes:10,equipment:"Ball, 6 cones in 3 colours, a helper",level:"All levels",skills:["decision_making","positional_awareness","handling_speed"],tags:["Decision making","Scanning"]},
-  {id:"b-pro-watch",title:"Watch a pro in your position",category:"Game understanding",minutes:15,equipment:"A match on TV or online",level:"All levels",skills:["tactical_understanding","positional_awareness","coachability"],tags:["Positioning","Decision making"]},
-  {id:"b-draw-shape",title:"Draw the team shape",category:"Game understanding",minutes:10,equipment:"Paper and pen",level:"All levels",skills:["tactical_understanding","positional_awareness"],tags:["Positioning"]},
-  {id:"b-talk",title:"Talk the game",category:"Mindset",minutes:8,equipment:"Ball, a helper",level:"All levels",skills:["communication","decision_making"],tags:["Communication","Leadership"]},
-  {id:"b-reflect",title:"Session reflection",category:"Mindset",minutes:5,equipment:"Notebook or phone",level:"All levels",skills:["coachability","communication"],tags:["Work rate","Leadership"]},
+  {id:"b-scan",title:"Shoulder checks",category:"Awareness",minutes:8,equipment:"Ball, wall, a helper",level:"Advanced",skills:["positional_awareness","decision_making","communication"],tags:["Scanning"]},
+  {id:"b-color-gates",title:"Colour gate decisions",category:"Awareness",minutes:10,equipment:"Ball, 6 cones in 3 colours, a helper",level:"Intermediate",skills:["decision_making","positional_awareness","handling_speed"],tags:["Decision making","Scanning"]},
+  {id:"b-pro-watch",title:"Watch a pro in your position",category:"Game understanding",minutes:15,equipment:"A match on TV or online",level:"Beginner",skills:["tactical_understanding","positional_awareness","coachability"],tags:["Positioning","Decision making"]},
+  {id:"b-draw-shape",title:"Draw the team shape",category:"Game understanding",minutes:10,equipment:"Paper and pen",level:"Intermediate",skills:["tactical_understanding","positional_awareness"],tags:["Positioning"]},
+  {id:"b-talk",title:"Talk the game",category:"Mindset",minutes:8,equipment:"Ball, a helper",level:"Beginner",skills:["communication","decision_making"],tags:["Communication","Leadership"]},
+  {id:"b-reflect",title:"Session reflection",category:"Mindset",minutes:5,equipment:"Notebook or phone",level:"Beginner",skills:["coachability","communication"],tags:["Work rate","Leadership"]},
 
   /* ---- goalkeepers ---- */
-  {id:"g-set-catch",title:"Set position and catch",category:"Goalkeeping",minutes:10,equipment:"Ball, a helper",level:"All levels",gk:true,skills:["gk_ball_handling","gk_shot_stopping","gk_positioning"],tags:[]},
+  {id:"g-set-catch",title:"Set position and catch",category:"Goalkeeping",minutes:10,equipment:"Ball, a helper",level:"Beginner",gk:true,skills:["gk_ball_handling","gk_shot_stopping","gk_positioning"],tags:[]},
   {id:"g-w-catch",title:"W-catch, basket and scoop",category:"Goalkeeping",minutes:8,equipment:"Ball, wall",level:"Beginner",gk:true,skills:["gk_ball_handling"],tags:[]},
-  {id:"g-collapse",title:"Collapse dive progression",category:"Goalkeeping",minutes:12,equipment:"Ball, soft grass or a mat, a helper",level:"All levels",gk:true,skills:["gk_diving","gk_shot_stopping"],tags:[]},
-  {id:"g-reaction",title:"Reaction saves",category:"Goalkeeping",minutes:8,equipment:"Tennis ball or ball, wall",level:"Intermediate",gk:true,skills:["gk_shot_stopping","gk_diving"],tags:[]},
-  {id:"g-angles",title:"Narrow the angle",category:"Goalkeeping",minutes:10,equipment:"4 cones or markers",level:"Intermediate",gk:true,skills:["gk_positioning","gk_decision_making"],tags:["Positioning"]},
-  {id:"g-shuffle",title:"Shuffle and set",category:"Goalkeeping",minutes:8,equipment:"2 cones, a ball",level:"All levels",gk:true,skills:["gk_positioning","gk_shot_stopping"],tags:[]},
-  {id:"g-distribution",title:"Distribution targets",category:"Goalkeeping",minutes:15,equipment:"Ball(s), 2 cones or a helper",level:"All levels",gk:true,skills:["gk_distribution"],tags:["Passing range"]},
-  {id:"g-come-stay",title:"Come or stay?",category:"Goalkeeping",minutes:10,equipment:"Ball, a helper",level:"Intermediate",gk:true,skills:["gk_decision_making","gk_communication"],tags:["Decision making","Communication"]},
-  {id:"g-organiser",title:"Organiser calls",category:"Goalkeeping",minutes:10,equipment:"A match on TV or online",level:"All levels",gk:true,skills:["gk_communication","gk_positioning"],tags:["Communication","Leadership"]}
+  {id:"g-collapse",title:"Collapse dive progression",category:"Goalkeeping",minutes:12,equipment:"Ball, soft grass or a mat, a helper",level:"Intermediate",gk:true,skills:["gk_diving","gk_shot_stopping"],tags:[]},
+  {id:"g-reaction",title:"Reaction saves",category:"Goalkeeping",minutes:8,equipment:"Tennis ball or ball, wall",level:"Advanced",gk:true,skills:["gk_shot_stopping","gk_diving"],tags:[]},
+  {id:"g-angles",title:"Narrow the angle",category:"Goalkeeping",minutes:10,equipment:"4 cones or markers",level:"Advanced",gk:true,skills:["gk_positioning","gk_decision_making"],tags:["Positioning"]},
+  {id:"g-shuffle",title:"Shuffle and set",category:"Goalkeeping",minutes:8,equipment:"2 cones, a ball",level:"Beginner",gk:true,skills:["gk_positioning","gk_shot_stopping"],tags:[]},
+  {id:"g-distribution",title:"Distribution targets",category:"Goalkeeping",minutes:15,equipment:"Ball(s), 2 cones or a helper",level:"Intermediate",gk:true,skills:["gk_distribution"],tags:["Passing range"]},
+  {id:"g-come-stay",title:"Come or stay?",category:"Goalkeeping",minutes:10,equipment:"Ball, a helper",level:"Advanced",gk:true,skills:["gk_decision_making","gk_communication"],tags:["Decision making","Communication"]},
+  {id:"g-organiser",title:"Organiser calls",category:"Goalkeeping",minutes:10,equipment:"A match on TV or online",level:"Advanced",gk:true,skills:["gk_communication","gk_positioning"],tags:["Communication","Leadership"]}
 ];
 
 const S = {
@@ -790,7 +790,7 @@ function drillCard(d, opts={}){
   }
   return `<div class="drill">
     <div class="row between"><h3>${esc(d.title)}</h3><span class="row" style="gap:6px">${d.free && !stepsLocked() ? "" : d.free ? '<span class="pill good">Free sample</span>' : ""}${a && byFamily(a) ? '<span class="pill good">Added from recommendations</span>' : ""}${d.gk?'<span class="pill warn">Goalkeeper</span>':""}${d.custom?'<span class="pill plain">Club drill</span>':""}</span></div>
-    <div class="dmeta"><span>${esc(d.category)}</span><span>· ${esc(d.minutes)} min</span><span>· ${esc(d.equipment)}</span><span>· ${esc(d.level)}</span></div>
+    <div class="dmeta"><span>${esc(d.category)}</span><span>· ${esc(d.minutes)} min</span><span>· ${esc(d.equipment)}</span><span>· ${esc(levelOf(d))}</span></div>
     ${(d.skills||[]).length ? `<div class="trains small"><span class="muted">Trains:</span> ${(d.skills).map(k => esc(SKILL_LABEL[k] || k)).join(" · ")}</div>` : ""}
     ${drillStepsHtml(d, opts)}
     ${foot}
@@ -1478,7 +1478,7 @@ function drillsView(){
   return `<div class="row between"><div class="stack" style="gap:4px"><h1>${staff?"Drill library":"Home drills"}</h1><p class="muted small">${staff?"Built-in drills plus any your club adds. Assign them to players for home practice.":"Drills you can do at home with a ball and a little space."}</p></div>
     ${staff?`<button class="btn primary" data-act="modal" data-m="drill">Add club drill</button>`:""}</div>
   ${recs}
-  <h2>${staff ? "All drills by skill" : "All home drills by skill"}</h2>
+  <h2>${staff ? "All drills by level and skill" : "All home drills by level and skill"}</h2>
   ${drillLibraryHtml(list, {assignable:staff})}`;
 }
 
@@ -1634,7 +1634,7 @@ const MODALS = {
       <label class="f" for="d-cat">Category<select id="d-cat" name="category">${CATS.map(c=>`<option>${c}</option>`).join("")}</select></label>
       <label class="f" for="d-min">Minutes<input type="number" id="d-min" name="minutes" min="1" max="120" value="10"></label>
       <label class="f" for="d-eq">Equipment<input type="text" id="d-eq" name="equipment" maxlength="80" value="Ball"></label>
-      <label class="f" for="d-lvl">Level<select id="d-lvl" name="level"><option>All levels</option><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></label>
+      <label class="f" for="d-lvl">Level<select id="d-lvl" name="level">${LEVELS.map(l => `<option ${l===(S.drillLevel||"Beginner")?"selected":""}>${l}</option>`).join("")}</select></label>
     </div>
     <label class="f" for="d-steps">Steps, one per line<textarea id="d-steps" name="steps" required maxlength="2000"></textarea></label>
     <div class="row"><button class="btn primary" type="submit">Add drill</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
@@ -1943,7 +1943,9 @@ const FORMS = {
   drill: async fd => {
     closeModal();
     const steps = String(fd.get("steps")).split("\n").map(s=>s.trim()).filter(Boolean).slice(0,15);
-    await save(() => S.db.collection("drills").doc().set({clubId:S.me.clubId, title:fd.get("title").trim(), category:fd.get("category"), minutes:Number(fd.get("minutes"))||10, equipment:fd.get("equipment").trim(), level:fd.get("level"), steps, createdBy:S.uid, createdAt:Date.now()}), "Drill added");
+    const level = LEVELS.includes(fd.get("level")) ? fd.get("level") : "Beginner";
+    const ok = await save(() => S.db.collection("drills").doc().set({clubId:S.me.clubId, title:fd.get("title").trim(), category:fd.get("category"), minutes:Number(fd.get("minutes"))||10, equipment:fd.get("equipment").trim(), level, steps, createdBy:S.uid, createdAt:Date.now()}), "Drill added to " + level);
+    if(ok){ S.drillLevel = level; render(); }
   },
   chat: async (fd, form) => {
     const text = String(fd.get("text")||"").trim(); if(!text || !S.chatTeam) return;
@@ -2194,7 +2196,7 @@ function pageDrills(){
   const list = BUILTIN_DRILLS;
   return `<section class="page-hero stack"><span class="eyebrow">Drills</span>
     <h1>${BUILTIN_DRILLS.length} drills players can do at home</h1>
-    <p class="lead">A ball, a wall and a little space. Each drill lists the skills it trains. Signed-in players get the ones that match their coach's latest review.</p></section>
+    <p class="lead">A ball, a wall and a little space. Drills are sorted into Beginner, Intermediate and Advanced, and each lists the skills it trains. Signed-in players get the ones that match their coach's latest review.</p></section>
   ${paywallBanner()}
   ${drillLibraryHtml(list)}
   <div class="card stack callout"><h2>Get drills picked for you</h2><p>When your coach reviews you on ${APP_NAME}, we recommend the drills that work on exactly what they flagged.</p>${cta("Start as a coach","Sign up as a parent or player")}</div>`;
@@ -2691,9 +2693,18 @@ function drillMatches(d, q){
   const hay = (d.title + " " + d.category + " " + (d.equipment||"") + " " + (d.skills||[]).map(k => SKILL_LABEL[k] || "").join(" ")).toLowerCase();
   return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w));
 }
+const LEVELS = ["Beginner","Intermediate","Advanced"];
+const LEVEL_NOTE = {Beginner:"Simple technique you can do on your own with a ball.", Intermediate:"Combines skills, adds speed and pressure, sometimes with a helper.", Advanced:"Game-speed decisions, harder technique and position-specific work."};
+/* every drill sits in exactly one level; older club drills marked "All levels" count as Beginner */
+const levelOf = d => LEVELS.includes(d.level) ? d.level : "Beginner";
 function drillLibraryHtml(list, opts = {}){
   const q = (S.drillSearch || "").trim();
-  const shown = list.filter(d => drillMatches(d, q));
+  const lvl = LEVELS.includes(S.drillLevel) ? S.drillLevel : "Beginner";
+  const matching = list.filter(d => drillMatches(d, q));
+  const count = l => matching.filter(d => levelOf(d) === l).length;
+  const shown = matching.filter(d => levelOf(d) === lvl);
+  const tabs = `<div class="subtabs level-tabs" role="tablist" aria-label="Drill level">${LEVELS.map(l => `<button role="tab" data-act="drillLevel" data-id="${l}" aria-selected="${l===lvl}"><span class="lvl-dot lvl-${l.toLowerCase()}" aria-hidden="true"></span>${l} <span class="small muted">${count(l)}</span></button>`).join("")}</div>
+    <p class="small muted lvl-note">${esc(LEVEL_NOTE[lvl])}</p>`;
   const section = (key, label, drills, sub) => {
     const n = drills.length; if(!n) return "";
     const free = drills.filter(d => d.free && stepsLocked()).length;
@@ -2710,13 +2721,14 @@ function drillLibraryHtml(list, opts = {}){
     if(parts) html += `<div class="skill-group"><h3 class="sg-title">${g.gk ? "🧤 Goalkeepers" : esc(g.name)}${g.gk ? "" : ` <span class="small muted">· field players</span>`}</h3>${parts}</div>`;
   }
   const total = shown.length;
-  return `<div class="lib-tools row between">
+  return `${tabs}<div class="lib-tools row between">
       <label class="f small search-f" for="drill-search">Find a drill<input type="search" id="drill-search" data-input="drillSearch" value="${esc(S.drillSearch || "")}" placeholder="Search by name, skill or equipment, e.g. wall, shooting, cones"></label>
       <div class="row" style="gap:6px"><button type="button" class="btn sm" data-act="skillsAll" data-open="1">Open all</button><button type="button" class="btn sm" data-act="skillsAll" data-open="0">Close all</button></div>
     </div>
-    <p class="small muted lib-note">${q ? `${total} drill${total===1?"":"s"} match “${esc(q)}”.` : `Pick a skill to see the drills that train it. Some drills train more than one skill, so they appear under each.`}</p>
-    ${html || `<p class="muted">No drills match “${esc(q)}”. Try another word.</p>`}`;
+    <p class="small muted lib-note">${q ? `${total} ${lvl.toLowerCase()} drill${total===1?"":"s"} match “${esc(q)}”.${matching.length > total ? ` ${matching.length - total} more in the other levels.` : ""}` : `Pick a skill to see the ${lvl.toLowerCase()} drills that train it. Some drills train more than one skill, so they appear under each.`}</p>
+    ${html || (q ? `<p class="muted">No ${lvl.toLowerCase()} drills match “${esc(q)}”.${matching.length ? " Try the other levels." : " Try another word."}</p>` : `<p class="muted">No ${lvl.toLowerCase()} drills yet.</p>`)}`;
 }
+ACTS.drillLevel = ds => { S.drillLevel = ds.id; render(); };
 ACTS.skillsAll = ds => {
   const keys = ["club"].concat(FIELD_SKILLS.map(s => s.k), GK_SKILLS.map(s => s.k));
   S.openSkills = ds.open === "1" ? new Set(keys) : new Set();
