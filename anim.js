@@ -713,6 +713,8 @@ function figure(c, p, o){
   const hipY = -9 + crouch * 3.2, sh = hipY - 7 + crouch * 0.8;
   let lf = o.feet ? o.feet[0] : [-2 + Math.sin(ph) * 0.6 * moving, -Math.max(0, Math.sin(ph)) * 2.2 * moving];
   let rf = o.feet ? o.feet[1] : [2 - Math.sin(ph) * 0.6 * moving, -Math.max(0, -Math.sin(ph)) * 2.2 * moving];
+  // facing the camera: each hip connects to the foot on its own side of the screen, so legs never cross
+  if(lf[0] > rf[0]) [lf, rf] = [rf, lf];
   if(crouch){ lf = [lf[0] - crouch * 1.2, lf[1]]; rf = [rf[0] + crouch * 1.2, rf[1]]; }
   const sw = Math.sin(ph) * 1.6 * moving, kneeOut = crouch * 1.4;
   const leg = (h, f, side) => `<polyline points="${side * 1.3},${hipY} ${f2((side * 1.3 + f[0]) / 2 + side * kneeOut)},${f2((hipY + f[1]) / 2)} ${f2(f[0])},${f2(f[1])}" fill="none" stroke="${SKIN}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`
