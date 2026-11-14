@@ -547,6 +547,16 @@ h3.form-sec{margin:6px 0 -4px;font-size:.95rem;color:var(--blue-deep)}
 .plan-summary{border-left:4px solid var(--accent)}
 .plan-summary p{margin:0}
 @media (max-width:980px){.plans3{grid-template-columns:1fr}}
+
+/* drill animations */
+.drill-anim{position:relative;border-radius:10px;overflow:hidden;background:#14213a;cursor:pointer;margin:2px 0 4px;outline-offset:2px;display:flex;flex-direction:column}
+.drill-anim svg{width:100%;aspect-ratio:16/9;height:auto;display:block;background:#6fbf7a}
+.anim-cap{min-height:2.9em;display:flex;align-items:center;padding:5px 10px;color:#fff;font-size:.8rem;font-weight:600;line-height:1.3}
+.anim-state{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:rgba(20,33,58,.7);opacity:0;transition:opacity .2s;pointer-events:none}
+.anim-state::before{content:"";position:absolute;left:8px;top:7px;width:3px;height:10px;background:#fff;box-shadow:5px 0 0 #fff}
+.drill-anim:hover .anim-state,.drill-anim:focus-visible .anim-state{opacity:1}
+.drill-anim.paused .anim-state{opacity:1;width:44px;height:44px;top:calc(50% - 1.45em);left:50%;right:auto;transform:translate(-50%,-50%)}
+.drill-anim.paused .anim-state::before{left:17px;top:13px;width:0;height:0;background:none;box-shadow:none;border-left:14px solid #fff;border-top:9px solid transparent;border-bottom:9px solid transparent}
 /* recruitment profile */
 .facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
 .fact{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--blue-soft)}

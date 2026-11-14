@@ -1,4 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
+import { animSvg, animScan, animToggle, hasAnim } from "./anim.js";
 "use strict";
 const APP_NAME = "NextPlay";
 
@@ -586,6 +587,7 @@ function render(){
   const pkeep = pi ? {v:pi.value, f:document.activeElement===pi, s:pi.selectionStart, e:pi.selectionEnd, key:pt ? pt.dataset.key : ""} : null;
   const pAtBottom = !pt || (pt.scrollHeight - pt.scrollTop - pt.clientHeight < 60), pPrevScroll = pt ? pt.scrollTop : 0, pPrevKey = pt ? pt.dataset.key : null;
   app.innerHTML = topbar() + `<main>${banners}${body}</main>` + (!S.uid || S.publicPage ? siteFooter() : "");
+  animScan(app);
   const ci2 = document.getElementById("chat-input");
   if(ci2 && keep && prevTeam === S.chatTeam){ ci2.value = keep.v; const a = document.getElementById("chat-ann"); if(a) a.checked = !!keep.ann; if(keep.f){ ci2.focus(); try{ ci2.setSelectionRange(keep.s, keep.e); }catch(_){} } }
   const th2 = document.getElementById("thread");
@@ -836,6 +838,7 @@ function drillCard(d, opts={}){
   }
   return `<div class="drill">
     <div class="row between"><h3>${esc(d.title)}</h3><span class="row" style="gap:6px">${d.free && !stepsLocked() ? "" : d.free ? '<span class="pill good">Free sample</span>' : ""}${a && byFamily(a) ? '<span class="pill good">Added from recommendations</span>' : ""}${d.gk?'<span class="pill warn">Goalkeeper</span>':""}${d.custom?'<span class="pill plain">Club drill</span>':""}</span></div>
+    ${hasAnim(d.id) ? animSvg(d.id, d.title) : ""}
     <div class="dmeta"><span>${esc(d.category)}</span><span>· ${esc(d.minutes)} min</span><span>· ${esc(d.equipment)}</span><span>· ${esc(levelOf(d))}</span></div>
     ${(d.skills||[]).length ? `<div class="trains small"><span class="muted">Trains:</span> ${(d.skills).map(k => esc(SKILL_LABEL[k] || k)).join(" · ")}</div>` : ""}
     ${drillStepsHtml(d, opts)}
@@ -2825,6 +2828,8 @@ function drillLibraryHtml(list, opts = {}){
     ${html || (q ? `<p class="muted">No ${lvl.toLowerCase()} drills match “${esc(q)}”.${matching.length ? " Try the other levels." : " Try another word."}</p>` : `<p class="muted">No ${lvl.toLowerCase()} drills yet.</p>`)}`;
 }
 ACTS.drillLevel = ds => { S.drillLevel = ds.id; render(); };
+ACTS.animToggle = (ds, el) => animToggle(el);
+document.addEventListener("keydown", ev => { const el = ev.target; if(el.classList && el.classList.contains("drill-anim") && (ev.key === "Enter" || ev.key === " ")){ ev.preventDefault(); animToggle(el); } });
 ACTS.skillsAll = ds => {
   const keys = ["club"].concat(FIELD_SKILLS.map(s => s.k), GK_SKILLS.map(s => s.k));
   S.openSkills = ds.open === "1" ? new Set(keys) : new Set();
