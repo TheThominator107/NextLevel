@@ -1537,15 +1537,11 @@ function plansView(){
   else if(included) status = "Your club includes Home Training, so you already have it.";
   else status = fp ? "You're on a Home Training trial." : (S.clubs || []).length ? "Your club doesn't include Home Training. You can add it for " + PRICES.family + " " + PRICES.familyPer + "." : "You can add Home Training for " + PRICES.family + " " + PRICES.familyPer + ". Some clubs include it once you join their team.";
   return `<div class="stack" style="gap:4px"><h1>Plans</h1><p class="muted">${status}</p></div>
-  <div class="grid2">
+  ${staff ? planSummary() : ""}
+  <div class="grid3 plans3">
+    ${clubPlanCard("team", staff)}
+    ${clubPlanCard("unlimited", staff)}
     <div class="card plan">
-      <span class="pill plain" style="align-self:flex-start">For clubs & coaches</span>
-      <h2>Club plan</h2>
-      <div><span class="price">${PRICES.club}</span> <span class="muted">${PRICES.clubPer} you register</span></div>
-      <ul><li>Unlimited players and coaches on each team</li><li>Skill reviews with strengths and areas to work on</li><li>Progress tracking over the season</li><li>Drill library and your own club drills</li><li>Option to include Home Training for every player</li></ul>
-      ${staff ? `<div><button class="btn" data-act="modal" data-m="clubSettings">${included?"Families included: change":"Change family access"}</button></div>` : ""}
-    </div>
-    <div class="card plan featured">
       <span class="pill good" style="align-self:flex-start">For players & parents</span>
       <h2>Home Training</h2>
       <div><span class="price">${PRICES.family}</span> <span class="muted">${PRICES.familyPer}</span></div>
@@ -1558,6 +1554,23 @@ function plansView(){
   <p class="small muted">Payments aren't connected in this version: starting a trial unlocks Home Training without charging anything.</p>`;
 }
 
+function clubPlanCard(k, staff){
+  const pi = staff ? planInfo() : null, cur = pi && pi.plan === k, admin = staff && isAdmin();
+  return `<div class="card plan${cur ? " featured" : ""}">
+    <div class="row between"><span class="pill ${k === "unlimited" ? "warn" : "plain"}">${k === "unlimited" ? "Best for 10+ teams" : "For clubs & coaches"}</span>${cur ? `<span class="pill good">✓ Your plan</span>` : ""}</div>
+    <h2>${planName(k)}</h2>
+    <div><span class="price">${k === "unlimited" ? PRICES.unlimited : PRICES.club}</span> <span class="muted">${k === "unlimited" ? PRICES.unlimitedPer : PRICES.clubPer + " you register"}</span></div>
+    ${pi ? `<p class="small">${k === "unlimited" ? `For your club: <b>${money(PRICE_NUM.unlimited)}</b> a month, however many teams you add.` : `For your club: ${pi.n} team${pi.n===1?"":"s"} × ${PRICES.club} = <b>${money(pi.perTeam)}</b> a month.`}</p>` : ""}
+    <ul><li>${k === "unlimited" ? "<b>Unlimited teams</b>, players and coaches" : "Unlimited players and coaches on each team"}</li>${CLUB_FEATURES}</ul>
+    ${admin && !cur ? `<div style="margin-top:auto"><button class="btn${k === "unlimited" ? " primary" : ""}" data-act="setPlan" data-id="${k}">Switch to ${planName(k)}</button></div>` : ""}
+  </div>`;
+}
+function planSummary(){
+  const pi = planInfo();
+  const tip = pi.plan === "team" && pi.save > 0 ? ` <b>Switch to Club Unlimited to save ${money(pi.save)} a month.</b>` : pi.plan === "unlimited" && pi.save < 0 ? ` With ${pi.n} team${pi.n===1?"":"s"}, the per-team plan would cost ${money(pi.perTeam)} a month.` : "";
+  return `<div class="card plan-summary"><p>Your club is on <b>${planName(pi.plan)}</b>: ${pi.plan === "unlimited" ? `${money(PRICE_NUM.unlimited)} a month for unlimited teams (${pi.n} now)` : `${pi.n} team${pi.n===1?"":"s"}, ${money(pi.perTeam)} a month`}.${tip}</p>
+    ${isAdmin() ? `<div class="row"><button class="btn sm" data-act="modal" data-m="clubSettings">Club settings</button></div>` : `<p class="small muted">Only the club admin can change the plan.</p>`}</div>`;
+}
 function clubView(){
   const admin = S.me.role === "admin";
   const coaches = S.members.filter(m => m.role === "coach" || m.role === "admin");
@@ -1568,6 +1581,7 @@ function clubView(){
       <div class="row between"><h2>${esc(S.club.name)}</h2>${admin?`<button class="btn sm" data-act="modal" data-m="clubSettings">Edit</button>`:""}</div>
       <p>Coach join code: <span class="code">${esc(S.club.code)}</span> <button class="btn ghost sm" data-act="copy" data-text="${esc(S.club.code)}">Copy</button></p>
       <p>Home Training for families: <b>${S.club.familyAccess==="subscribe"?"families subscribe themselves":"included by the club"}</b></p>
+      ${(() => { const pi = planInfo(); return `<p>Plan: <b>${planName(pi.plan)}</b> · ${pi.plan === "unlimited" ? money(PRICE_NUM.unlimited) + " a month, unlimited teams" : money(pi.perTeam) + " a month for " + pi.n + " team" + (pi.n===1?"":"s")}</p>${pi.plan === "team" && pi.save > 0 ? `<p class="small"><b>Tip:</b> Club Unlimited would save you ${money(pi.save)} a month. <button class="btn ghost sm" data-act="go" data-view="plans">Compare plans</button></p>` : ""}`; })()}
       <p class="muted small">${fams.length} famil${fams.length===1?"y":"ies"} connected.</p>
     </div>
     <div class="card stack">
@@ -1618,6 +1632,8 @@ const MODALS = {
   team: () => `<h2>Add team</h2><form data-form="team">
     <label class="f" for="t-name">Team name<input type="text" id="t-name" name="name" required maxlength="60" placeholder="e.g. U12 Boys Premier"></label>
     <label class="f" for="t-age">Age group<input type="text" id="t-age" name="age" maxlength="20" placeholder="e.g. U12"></label>
+    ${(() => { const pi = planInfo(); return pi.plan === "unlimited" ? `<p class="small muted">Included in Club Unlimited: add as many teams as you like.</p>`
+      : `<p class="small muted">Adds ${PRICES.club} a month: ${pi.n + 1} team${pi.n ? "s" : ""} = ${money((pi.n + 1) * PRICE_NUM.team)} a month.${(pi.n + 1) * PRICE_NUM.team > PRICE_NUM.unlimited ? " Club Unlimited (" + PRICES.unlimited + ") would be cheaper." : ""}</p>`; })()}
     <div class="row"><button class="btn primary" type="submit">Add team</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
   editPlayer: (ds) => { const p = S.players.find(x=>x.id===ds.player); if(!p) return "<p>Player not found.</p>"; return `<h2>Edit ${esc(p.name)}</h2><form data-form="editPlayer" data-id="${esc(p.id)}">
     <p class="small muted">${p.birthDate ? "Born " + esc(fmtDob(p.birthDate)) + ". " : p.birthYear ? "Born " + esc(p.birthYear) + ". " : ""}The family manages the name, date of birth and profile.</p>
@@ -1685,13 +1701,17 @@ const MODALS = {
     </div>
     <label class="f" for="d-steps">Steps, one per line<textarea id="d-steps" name="steps" required maxlength="2000"></textarea></label>
     <div class="row"><button class="btn primary" type="submit">Add drill</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
-  clubSettings: () => `<h2>Club settings</h2><form data-form="clubSettings">
+  clubSettings: () => { const pi = planInfo(); return `<h2>Club settings</h2><form data-form="clubSettings">
     <label class="f" for="c-name">Club name<input type="text" id="c-name" name="name" required maxlength="80" value="${esc(S.club.name)}"></label>
+    <fieldset class="stack" style="border:0;padding:0;margin:0"><legend style="font-weight:600;margin-bottom:8px">Plan</legend>
+      <label class="choice" for="pl-team"><input type="radio" id="pl-team" name="plan" value="team" ${pi.plan==="team"?"checked":""}><span><b>Club (per team): ${PRICES.club} a month per team</b><br><span class="small muted">With your ${pi.n} team${pi.n===1?"":"s"}: ${money(pi.perTeam)} a month.</span></span></label>
+      <label class="choice" for="pl-unl"><input type="radio" id="pl-unl" name="plan" value="unlimited" ${pi.plan==="unlimited"?"checked":""}><span><b>Club Unlimited: ${PRICES.unlimited} a month</b><br><span class="small muted">Unlimited teams, players and coaches.${pi.save > 0 ? " Saves you " + money(pi.save) + " a month." : " Worth it from 10 teams."}</span></span></label>
+    </fieldset>
     <fieldset class="stack" style="border:0;padding:0;margin:0"><legend style="font-weight:600;margin-bottom:8px">Home Training for families</legend>
       <label class="choice" for="fa-inc"><input type="radio" id="fa-inc" name="familyAccess" value="included" ${S.club.familyAccess!=="subscribe"?"checked":""}><span><b>Included by the club</b><br><span class="small muted">Every connected family gets home drills and progress charts. Your club plan covers it.</span></span></label>
       <label class="choice" for="fa-sub"><input type="radio" id="fa-sub" name="familyAccess" value="subscribe" ${S.club.familyAccess==="subscribe"?"checked":""}><span><b>Families subscribe themselves</b><br><span class="small muted">Families see the latest review free and can add Home Training on their own.</span></span></label>
     </fieldset>
-    <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
+    <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`; },
   addChild: () => `<h2>Add a player</h2><form data-form="addChild">
     ${playerSetupFields("ac")}
     <div class="row"><button class="btn primary" type="submit">Add player</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
@@ -1870,6 +1890,9 @@ const ACTS = {
   exitPublic: () => { try { history.replaceState(null, "", location.pathname + location.search); } catch(_){ try { location.hash = ""; } catch(__){} } S.publicSlug = null; S.pub = null; render(); },
   delPhoto: async ds => { const p = S.players.find(x=>x.id===ds.id); if(p) await saveProfile(p, {photo:null}, "Photo removed"); },
   slFilter: ds => { S.slFilter = ds.id; render(); },
+  setPlan: async ds => { if(!isAdmin()) return; const plan = ds.id === "unlimited" ? "unlimited" : "team";
+    const ok = await save(() => S.db.doc("clubs/" + S.club.id).update({plan}), "You're now on " + planName(plan));
+    if(ok){ S.club = {...S.club, plan}; render(); schedule("club"); } },
   scoutClear: () => { S.scout = {f:{}}; runScout(); },
   shortlistAdd: async ds => {
     const ok = await save(() => S.db.collection("shortlist").doc().set({coachId:S.uid, playerId:ds.player, status:"watching", note:"", createdAt:Date.now(), updatedAt:Date.now()}), "Added to your shortlist");
@@ -2070,7 +2093,10 @@ const FORMS = {
     closeModal();
     await save(() => S.db.collection("comments").doc().set({clubId:S.me.clubId, playerId:form.dataset.id, kind:fd.get("kind")==="comment"?"comment":"reference", text:String(fd.get("text")).trim(), authorId:S.uid, authorName:S.me.name||"", authorTitle:String(fd.get("title")||"").trim(), date:today(), createdAt:Date.now()}), "Posted");
   },
-  clubSettings: async fd => { closeModal(); await save(() => S.db.doc("clubs/" + S.club.id).update({name:fd.get("name").trim(), familyAccess:fd.get("familyAccess")}), "Club updated"); }
+  clubSettings: async fd => { closeModal(); const plan = fd.get("plan") === "unlimited" ? "unlimited" : "team";
+    const ch = {name:fd.get("name").trim(), familyAccess:fd.get("familyAccess"), plan};
+    const ok = await save(() => S.db.doc("clubs/" + S.club.id).update(ch), "Club updated");
+    if(ok){ S.club = {...S.club, ...ch}; render(); schedule("club"); } }
 };
 
 /* ---------- events ---------- */
@@ -2169,7 +2195,17 @@ document.addEventListener("change", ev => {
 
 
 /* ---------- public site pages (menu next to the logo) ---------- */
-const PRICES = {club:"$19.99", clubPer:"per month, per team", family:"$4.99", familyPer:"per month, per player"};
+const PRICES = {club:"$19.99", clubPer:"per month, per team", unlimited:"$199", unlimitedPer:"per month, unlimited teams", family:"$4.99", familyPer:"per month, per player"};
+const PRICE_NUM = {team:19.99, unlimited:199};
+const money = n => "$" + n.toFixed(2).replace(/\.00$/, "");
+/* the club's plan and what it costs this month */
+function planInfo(){
+  const plan = S.club && S.club.plan === "unlimited" ? "unlimited" : "team", n = (S.teams || []).length;
+  const perTeam = Math.round(n * PRICE_NUM.team * 100) / 100;
+  return {plan, n, perTeam, cost: plan === "unlimited" ? PRICE_NUM.unlimited : perTeam, save: Math.round((perTeam - PRICE_NUM.unlimited) * 100) / 100};
+}
+const planName = k => k === "unlimited" ? "Club Unlimited" : "Club (per team)";
+const CLUB_FEATURES = `<li>Field player and goalkeeper reviews with update notes</li><li>Progress timeline for every player</li><li>Drill library, recommendations and your own club drills</li><li>Team chat with announcements</li><li>Option to include Home Training for every player</li>`;
 const PUBLIC_PAGES = [
   ["how-it-works","How it works"], ["drills","Drills"], ["clubs","Clubs & Teams"], ["recruiting","Recruiting"],
   ["for-parents","For Parents"], ["pricing","Pricing"], ["contact","Contact Us"]
@@ -2324,24 +2360,32 @@ function pageParents(){
 function pagePricing(){
   return `<section class="page-hero stack"><span class="eyebrow">Pricing</span>
     <h1>Simple plans for clubs and families</h1>
-    <p class="lead">Clubs pay ${PRICES.club} a month for each team they register, and choose whether Home Training is included for their players. Players without it can add the at-home drills for ${PRICES.family} a month.</p></section>
-  <div class="grid2">
+    <p class="lead">Clubs pay ${PRICES.club} a month for each team they register, or ${PRICES.unlimited} a month for unlimited teams, and choose whether Home Training is included for their players. Players without it can add the at-home drills for ${PRICES.family} a month.</p></section>
+  <div class="grid3 plans3">
     <div class="card plan">
       <span class="pill plain" style="align-self:flex-start">For clubs & coaches</span>
-      <h2>Club plan</h2>
+      <h2>Club</h2>
       <div><span class="price">${PRICES.club}</span> <span class="muted">${PRICES.clubPer} you register</span></div>
       <p class="small muted">For example, a club with 5 teams pays $99.95 a month.</p>
-      <ul><li>Unlimited players and coaches on each team</li><li>Field player and goalkeeper reviews with update notes</li><li>Progress timeline for every player</li><li>Drill library, recommendations and your own club drills</li><li>Team chat with announcements</li><li>Option to include Home Training for every player</li></ul>
-      <button type="button" class="btn primary" data-act="pickPortal" data-id="coach" style="align-self:flex-start">Start your club</button>
+      <ul><li>Unlimited players and coaches on each team</li>${CLUB_FEATURES}</ul>
+      <button type="button" class="btn" data-act="pickPortal" data-id="coach" style="align-self:flex-start;margin-top:auto">Start your club</button>
     </div>
     <div class="card plan featured">
+      <span class="pill warn" style="align-self:flex-start">Best for 10+ teams</span>
+      <h2>Club Unlimited</h2>
+      <div><span class="price">${PRICES.unlimited}</span> <span class="muted">${PRICES.unlimitedPer}</span></div>
+      <p class="small muted">One price for the whole club. Pays for itself from 10 teams; a club with 20 teams saves $200.80 a month.</p>
+      <ul><li><b>Unlimited teams</b>, players and coaches</li>${CLUB_FEATURES}</ul>
+      <button type="button" class="btn primary" data-act="pickPortal" data-id="coach" style="align-self:flex-start;margin-top:auto">Start your club</button>
+    </div>
+    <div class="card plan">
       <span class="pill good" style="align-self:flex-start">For parents & players</span>
       <h2>Home Training</h2>
       <div><span class="price">${PRICES.family}</span> <span class="muted">${PRICES.familyPer}</span></div>
       <p class="small">At-home drills for players whose club or team doesn't include Home Training.</p>
       <ul><li>Drills recommended from the coach's review</li><li>Full home drill library</li><li>Progress charts and full review timeline</li><li>Weekly drill tracking your coach can see</li></ul>
       <p class="small muted">Free with every club: the coach's latest review, skill ratings, player profile and team chat.</p>
-      <button type="button" class="btn" data-act="pickPortal" data-id="family" style="align-self:flex-start">Sign up as a family</button>
+      <button type="button" class="btn" data-act="pickPortal" data-id="family" style="align-self:flex-start;margin-top:auto">Sign up as a family</button>
     </div>
   </div>
   <div class="card plan college-plan">
@@ -2353,6 +2397,7 @@ function pagePricing(){
   <div class="card stack"><h2>Questions</h2>
     <div class="faq"><b>Do college coaches pay?</b><p class="muted">No. Searching for players, the shortlist and messaging families are free once you create a college coach account with your school .edu email.</p></div>
     <div class="faq"><b>How is the Club plan charged?</b><p class="muted">${PRICES.club} a month for each team you register, with unlimited players and coaches on every team.</p></div>
+    <div class="faq"><b>When is Club Unlimited worth it?</b><p class="muted">From 10 teams. Ten teams on the per-team plan cost $199.90 a month; Club Unlimited is ${PRICES.unlimited} however many teams you add. You can switch plans any time from your Club page.</p></div>
     <div class="faq"><b>Is Home Training free if my club includes it?</b><p class="muted">Yes. If your club includes Home Training, every player on the club's teams gets it at no extra cost.</p></div>
     <div class="faq"><b>We have two children. Do we pay twice?</b><p class="muted">Home Training is ${PRICES.family} a month for each player who doesn't get it through their club.</p></div>
     <div class="faq"><b>Do players need their own account?</b><p class="muted">No. One parent account can hold every child's profile.</p></div>

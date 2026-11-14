@@ -1,4 +1,4 @@
--- NextPlay: ALL database updates (002 to 014) in one file.
+-- NextPlay: ALL database updates (002 to 015) in one file.
 -- Paste into Supabase -> SQL Editor -> New query -> Run.
 -- Safe to run no matter which updates you have already run, and safe to run more than once.
 -- If Supabase asks you to confirm a 'destructive operation', click 'Run this query' (it only removes old, unused parts).
@@ -1605,6 +1605,21 @@ insert into public.drill_steps (drill_id, steps) values
   ($s$g-back-pass$s$, array[$s$A helper passes back to you, then chases to press.$s$, $s$Scan first, then decide: play it short to a cone target, or clear it long and safe.$s$, $s$Use both feet. Your first touch should take you away from the pressure.$s$, $s$10 reps. Never dribble around the presser in your own box.$s$]),
   ($s$g-penalties$s$, array[$s$Watch the kicker's run-up angle, hips and plant foot. They often point where the ball goes.$s$, $s$Stay big and still on your line until the ball is struck.$s$, $s$A helper takes 10 penalties. Note what gave each one away.$s$, $s$Then try to save 10 more using those clues.$s$])
 on conflict (drill_id) do update set steps = excluded.steps;
+
+-- Done. You should see "Success. No rows returned".
+
+-- =================== 015_club_unlimited.sql ===================
+-- NextPlay update 015: Club Unlimited plan
+-- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
+--
+--  * Each club is on one of two plans: 'team' ($19.99 a month per team) or 'unlimited' ($199 a month, unlimited teams).
+--  * Club admins switch plans in the app (Club -> Edit). Payments aren't connected yet, so this only records the choice.
+
+alter table public.clubs add column if not exists plan text not null default 'team';
+
+do $$ begin
+  alter table public.clubs add constraint clubs_plan_ok check (plan in ('team','unlimited'));
+exception when duplicate_object then null; end $$;
 
 -- Done. You should see "Success. No rows returned".
 

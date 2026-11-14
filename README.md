@@ -14,7 +14,7 @@ Build command: (none). Output directory: `/`.
 ## Database updates
 New database: run `supabase/setup.sql`, then every file in `supabase/migrations/` in number order.
 
-**Not sure which database updates you've run?** Run `supabase/all_updates.sql` once in the SQL Editor. It contains every update (002 to 014), is safe whatever state your database is in, and can be run again any time. If Supabase warns about a "destructive operation", click "Run this query": it only removes old, unused parts.
+**Not sure which database updates you've run?** Run `supabase/all_updates.sql` once in the SQL Editor. It contains every update (002 to 015), is safe whatever state your database is in, and can be run again any time. If Supabase warns about a "destructive operation", click "Run this query": it only removes old, unused parts.
 Existing database: run any migration you haven't run yet. They're all safe to run more than once.
 
 ## Paywall
