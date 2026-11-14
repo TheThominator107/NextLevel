@@ -526,16 +526,41 @@ function getScript(id){ if(!cache[id]){ const f = SCRIPTS[id]; if(!f) return nul
 function prep(s){
   const tracks = {}; Object.keys(s.actors).forEach(a => tracks[a] = []);
   s.keys.sort((a, b) => a.t - b.t).forEach(k => Object.entries(k.pos).forEach(([a, v]) => { if(tracks[a]) tracks[a].push([k.t, v]); }));
+  Object.values(tracks).forEach(smooth);
   const caps = s.keys.filter(k => k.cap).map(k => [k.t, k.cap]);
+  // numbered steps for the caption bar: a new number each time the text changes
+  const capSeq = []; let n = -1, last = null;
+  caps.forEach(([t, txt]) => { if(txt !== last){ n++; last = txt; capSeq.push([t, txt, n]); } });
   const says = []; s.keys.forEach(k => k.say && Object.entries(k.say).forEach(([a, txt]) => says.push([k.t, a, txt])));
-  const out = {...s, tracks, caps, says}; out.cam = camFor(s.id, out); return out;
+  const out = {...s, tracks, caps, capSeq, capTotal: n + 1, says}; out.cam = camFor(s.id, out); return out;
+}
+/* Smooth paths: a monotone cubic through each actor's keyframes. Movement flows through waypoints
+   instead of stopping at every one, holds stay perfectly still, and nothing overshoots its mark. */
+function smooth(track){
+  const n = track.length; if(!n) return;
+  const dims = Math.max(...track.map(([, v]) => v.length));
+  track.forEach(r => { const v = r[1].slice(); while(v.length < dims) v.push(0); r[1] = v; });
+  const m = track.map(() => new Array(dims).fill(0));
+  for(let j = 0; j < dims; j++){
+    const d = []; for(let i = 0; i < n - 1; i++){ const h = track[i + 1][0] - track[i][0]; d.push(h > 1e-6 ? (track[i + 1][1][j] - track[i][1][j]) / h : 0); }
+    for(let i = 1; i < n - 1; i++){
+      const h0 = track[i][0] - track[i - 1][0], h1 = track[i + 1][0] - track[i][0], d0 = d[i - 1], d1 = d[i];
+      if(d0 * d1 <= 0 || h0 <= 1e-6 || h1 <= 1e-6) continue;
+      m[i][j] = 3 * (h0 + h1) / ((2 * h1 + h0) / d0 + (h1 + 2 * h0) / d1);
+    }
+  }
+  track.m = m;
 }
 function at(track, t){
   if(!track.length) return null;
   if(t <= track[0][0]) return track[0][1];
   for(let i = 1; i < track.length; i++){
-    if(t <= track[i][0]){ const [t0, a] = track[i - 1], [t1, b] = track[i], u = ease((t - t0) / ((t1 - t0) || 1));
-      return a.map((v, j) => v + ((b[j] ?? 0) - v) * u).concat(b.slice(a.length)); }
+    if(t <= track[i][0]){
+      const [t0, a] = track[i - 1], [t1, b] = track[i], h = t1 - t0; if(h <= 1e-6) return b;
+      const x = (t - t0) / h, x2 = x * x, x3 = x2 * x, h00 = 2 * x3 - 3 * x2 + 1, h10 = x3 - 2 * x2 + x, h01 = -2 * x3 + 3 * x2, h11 = x3 - x2;
+      const ma = track.m ? track.m[i - 1] : null, mb = track.m ? track.m[i] : null;
+      return a.map((v, j) => h00 * v + h01 * b[j] + h * (h10 * (ma ? ma[j] : 0) + h11 * (mb ? mb[j] : 0)));
+    }
   }
   return track[track.length - 1][1];
 }
@@ -631,7 +656,8 @@ function sceneSvg(scene){
   }).join("");
 }
 function actorSvg(id, kind){
-  const g = (inner) => `<g data-a="${id}">${inner}</g>`;
+  const sh = (r) => `<circle cx=".35" cy=".7" r="${r}" fill="#0a1423" fill-opacity=".28"/>`;
+  const g = (inner) => `<g data-a="${id}">${["dot", "dotMe", "oppDot", "dotA", "dotB", "dotC", "player", "helper"].includes(kind) ? sh(kind === "dot" || kind === "oppDot" ? 3.4 : 4) : ""}${inner}</g>`;
   switch(kind){
     case "player": return g(`<circle r="4" fill="${BLUE}" stroke="#fff" stroke-width="1"/>`);
     case "helper": return g(`<circle r="4" fill="${ORANGE}" stroke="#fff" stroke-width="1"/>`);
@@ -652,136 +678,250 @@ function actorSvg(id, kind){
 /* ---------- drawing: front camera ---------- */
 const f2 = n => n.toFixed(2);
 const pts = arr => arr.map(p => f2(p.x) + "," + f2(p.y)).join(" ");
+const DISPLAY_FONT = "Barlow Condensed, Arial Narrow, Arial, sans-serif";
+let UID = 0;
+
+/* every player gets their own look, picked from the drill and actor name so it never changes between frames */
+const SKINS = ["#c68f62", "#8d5524", "#e3b088", "#a86b42", "#f0c8a0", "#6b4226"];
+const HAIRS = ["#2b1d14", "#14100d", "#5a3a22", "#8a5a2b", "#c9a15a"];
+const hash = s => { let h = 2166136261; for(const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0; };
+const lookFor = (id, a) => { const h = hash(id + ":" + a); return {skin: SKINS[h % SKINS.length], hair: HAIRS[(h >>> 5) % HAIRS.length], style: (h >>> 11) % 3}; };
+
+function defs3(u, c){
+  return `<defs>
+  <linearGradient id="${u}sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fc8e8"/><stop offset="1" stop-color="#e3eff8"/></linearGradient>
+  <linearGradient id="${u}grass" gradientUnits="userSpaceOnUse" x1="0" y1="${f2(c.hz)}" x2="0" y2="${H}"><stop offset="0" stop-color="#4a925a"/><stop offset="1" stop-color="#7bc786"/></linearGradient>
+  <linearGradient id="${u}haze" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef6fb" stop-opacity=".55"/><stop offset="1" stop-color="#eef6fb" stop-opacity="0"/></linearGradient>
+  <linearGradient id="${u}shade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity=".24"/><stop offset=".4" stop-color="#fff" stop-opacity="0"/><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".32"/></linearGradient>
+  <radialGradient id="${u}ball" cx=".36" cy=".3" r=".8"><stop offset="0" stop-color="#fff"/><stop offset=".55" stop-color="#f1f3f6"/><stop offset="1" stop-color="#aeb7c4"/></radialGradient>
+  <radialGradient id="${u}sh"><stop offset="0" stop-color="#0b1a10" stop-opacity=".42"/><stop offset=".55" stop-color="#0b1a10" stop-opacity=".2"/><stop offset="1" stop-color="#0b1a10" stop-opacity="0"/></radialGradient>
+  <radialGradient id="${u}vig" cx=".5" cy=".48" r=".75"><stop offset=".6" stop-color="#0a1423" stop-opacity="0"/><stop offset="1" stop-color="#0a1423" stop-opacity=".32"/></radialGradient>
+  <pattern id="${u}net" patternUnits="userSpaceOnUse" width="1.3" height="1.3"><path d="M0 0L1.3 1.3M1.3 0L0 1.3" stroke="#fff" stroke-width=".11" stroke-opacity=".6"/></pattern>
+  </defs>`;
+}
+/* the corner badge and the progress line, shared by both kinds of scene */
+const BUG = `<g aria-hidden="true"><rect x="3" y="3" width="25.5" height="5.8" rx="1.1" fill="${NAVY}" fill-opacity=".78"/><rect x="3" y="3" width="1.1" height="5.8" fill="${ORANGE}"/><text x="16.3" y="7.35" font-size="3.9" font-weight="700" letter-spacing=".35" text-anchor="middle" fill="#fff" font-family="${DISPLAY_FONT}">NEXTPLAY</text></g>`;
+const PROGRESS = `<rect x="0" y="${H - 1}" width="${W}" height="1" fill="#0a1423" fill-opacity=".35"/><rect data-prog x="0" y="${H - 1}" width="0" height="1" fill="${ORANGE}"/>`;
+
 function groundPoly(c, corners, attrs){ return `<polygon points="${pts(corners.map(q => proj(c, q[0], q[1], q[2] || 0)))}" ${attrs}/>`; }
 function groundLine(c, a, b, attrs, z1 = 0, z2 = 0){ const p = proj(c, a[0], a[1], z1), q = proj(c, b[0], b[1], z2); return `<line x1="${f2(p.x)}" y1="${f2(p.y)}" x2="${f2(q.x)}" y2="${f2(q.y)}" ${attrs}/>`; }
-function cone3(c, x, y, col = ORANGE, big){ const p = proj(c, x, y), h = (big ? 3.4 : 2.4) * p.k, w = (big ? 1.6 : 1.2) * p.k;
-  return {d: p.depth, svg: `<path d="M${f2(p.x)} ${f2(p.y - h)} L${f2(p.x + w)} ${f2(p.y)} L${f2(p.x - w)} ${f2(p.y)}Z" fill="${col}" stroke="#7a2d12" stroke-width="${f2(0.15 * p.k)}"/>`}; }
-function goal3(c, a, b, back){ // posts at ground points a and b; back = offset vector of the net
-  const H = 9, A = proj(c, a[0], a[1]), B = proj(c, b[0], b[1]), At = proj(c, a[0], a[1], H), Bt = proj(c, b[0], b[1], H);
-  const Ab = proj(c, a[0] + back[0], a[1] + back[1]), Bb = proj(c, b[0] + back[0], b[1] + back[1]), Abt = proj(c, a[0] + back[0], a[1] + back[1], H * 0.7), Bbt = proj(c, b[0] + back[0], b[1] + back[1], H * 0.7);
-  const w = f2(Math.max(0.35, 0.45 * (A.k + B.k) / 2));
-  const net = `<polygon points="${pts([A, At, Bt, B])}" fill="#ffffff22"/><polygon points="${pts([At, Abt, Bbt, Bt])}" fill="#ffffff30"/><polygon points="${pts([A, Ab, Abt, At])}" fill="#ffffff26"/><polygon points="${pts([B, Bb, Bbt, Bt])}" fill="#ffffff26"/>`
-    + `<polyline points="${pts([Ab, Abt, Bbt, Bb])}" fill="none" stroke="#ffffffaa" stroke-width="${f2(w * 0.4)}"/>`;
-  const frame = `<polyline points="${pts([A, At, Bt, B])}" fill="none" stroke="#fff" stroke-width="${w * 2}" stroke-linejoin="round"/>`;
+function cone3(c, u, x, y, col = ORANGE, big){
+  const p = proj(c, x, y), h = (big ? 3.4 : 2.5) * p.k, w = (big ? 1.6 : 1.25) * p.k, X = p.x, Y = p.y;
+  const body = `M${f2(X - w)} ${f2(Y)} L${f2(X - w * 0.2)} ${f2(Y - h)} Q${f2(X)} ${f2(Y - h * 1.04)} ${f2(X + w * 0.2)} ${f2(Y - h)} L${f2(X + w)} ${f2(Y)} Q${f2(X)} ${f2(Y + w * 0.3)} ${f2(X - w)} ${f2(Y)}Z`;
+  const b0 = 0.42, b1 = 0.58; // white band
+  const bx = t => w * (1 - t * 0.8);
+  return {d: p.depth, svg: `<ellipse cx="${f2(X + w * 0.25)}" cy="${f2(Y + w * 0.05)}" rx="${f2(w * 1.5)}" ry="${f2(w * 0.38)}" fill="url(#${u}sh)"/>`
+    + `<ellipse cx="${f2(X)}" cy="${f2(Y)}" rx="${f2(w * 1.3)}" ry="${f2(w * 0.34)}" fill="${col}"/><ellipse cx="${f2(X)}" cy="${f2(Y)}" rx="${f2(w * 1.3)}" ry="${f2(w * 0.34)}" fill="#000" fill-opacity=".18"/>`
+    + `<path d="${body}" fill="${col}"/>`
+    + `<polygon points="${f2(X - bx(b0))},${f2(Y - h * b0)} ${f2(X + bx(b0))},${f2(Y - h * b0)} ${f2(X + bx(b1))},${f2(Y - h * b1)} ${f2(X - bx(b1))},${f2(Y - h * b1)}" fill="#fff" fill-opacity=".85"/>`
+    + `<path d="${body}" fill="url(#${u}shade)"/>`};
+}
+function goal3(c, u, a, b, back){ // posts at ground points a and b; back = offset vector of the net
+  const GH = 9, A = proj(c, a[0], a[1]), B = proj(c, b[0], b[1]), At = proj(c, a[0], a[1], GH), Bt = proj(c, b[0], b[1], GH);
+  const Ab = proj(c, a[0] + back[0], a[1] + back[1]), Bb = proj(c, b[0] + back[0], b[1] + back[1]), Abt = proj(c, a[0] + back[0], a[1] + back[1], GH * 0.7), Bbt = proj(c, b[0] + back[0], b[1] + back[1], GH * 0.7);
+  const w = Math.max(0.35, 0.45 * (A.k + B.k) / 2);
+  const panes = [[Ab, Abt, Bbt, Bb], [At, Abt, Bbt, Bt], [A, Ab, Abt, At], [B, Bb, Bbt, Bt]];
+  const net = panes.map(q => `<polygon points="${pts(q)}" fill="#ffffff1c"/><polygon points="${pts(q)}" fill="url(#${u}net)"/>`).join("")
+    + `<polyline points="${pts([Ab, Abt, Bbt, Bb])}" fill="none" stroke="#ffffffaa" stroke-width="${f2(w * 0.4)}"/>`
+    + `<polygon points="${pts([A, B, Bb, Ab])}" fill="#0b1a10" fill-opacity=".12"/>`;
+  const frame = `<polyline points="${pts([A, At, Bt, B])}" fill="none" stroke="#9aa6b5" stroke-width="${f2(w * 2.3)}" stroke-linejoin="round" transform="translate(${f2(w * 0.35)} ${f2(w * 0.2)})"/>`
+    + `<polyline points="${pts([A, At, Bt, B])}" fill="none" stroke="#fff" stroke-width="${f2(w * 2)}" stroke-linejoin="round"/>`;
   return {d: Math.min(A.depth, B.depth), svg: net + frame};
 }
-function scene3(c, scene){
+function backdrop(c){
+  const hz = c.hz; let s = "";
+  // distant trees, two layers, then the perimeter boards
+  [["#86ab93", 4.6, 3.1, 7], ["#4f8460", 3.4, 2.4, 3]].forEach(([col, base, r, seed]) => {
+    s += `<rect y="${f2(hz - base)}" width="${W}" height="${f2(base)}" fill="${col}"/>`;
+    for(let i = 0; i <= 42; i++){ const j = ((i * 53 + seed * 17) % 11) / 11, x = i * 4 - 1 + j * 2.4, rr = r * (0.75 + j * 0.5);
+      s += `<circle cx="${f2(x)}" cy="${f2(hz - base + 0.6)}" r="${f2(rr)}" fill="${col}"/>`; }
+  });
+  s += `<rect y="${f2(hz - 1.9)}" width="${W}" height="1.9" fill="${NAVY}"/>`;
+  for(let i = 0; i < 8; i++) s += `<rect x="${i * 20 + 0.6}" y="${f2(hz - 1.6)}" width="18.8" height="1.3" fill="${i % 2 ? BLUE : "#26375a"}"/>`;
+  return s;
+}
+function scene3(c, u, scene){
   const back = [], front = []; let bg = "";
   const add = (o) => (o.d < c.d + 30 ? front : back).push(o);
   scene.forEach(e => {
     const [kind, ...a] = e;
     switch(kind){
       case "grass": {
-        const far = proj(c, 80, 45, 0); // sky, then grass from the horizon down
-        bg += `<rect width="${W}" height="${H}" fill="#cfe6f7"/><rect y="${f2(c.hz)}" width="${W}" height="${H}" fill="#6fbf7a"/>`;
-        bg += `<rect y="${f2(c.hz - 3)}" width="${W}" height="3" fill="#9fb8c9"/>`;
-        for(let i = 0; i < 8; i += 2) bg += groundPoly(c, [[i * 20 + 20, -40], [i * 20 + 40, -40], [i * 20 + 40, 130], [i * 20 + 20, 130]], `fill="#66b671"`);
-        if(!c.close) bg += `<polygon points="${pts([[2, 2], [158, 2], [158, 88], [2, 88]].map(q => proj(c, q[0], q[1])))}" fill="none" stroke="#ffffffaa" stroke-width=".5"/>`;
+        bg += `<rect width="${W}" height="${f2(c.hz + 1)}" fill="url(#${u}sky)"/>` + backdrop(c);
+        bg += `<rect y="${f2(c.hz)}" width="${W}" height="${H}" fill="url(#${u}grass)"/>`;
+        for(let i = 0; i < 8; i += 2) bg += groundPoly(c, [[i * 20 + 20, -40], [i * 20 + 40, -40], [i * 20 + 40, 130], [i * 20 + 20, 130]], `fill="#fff" fill-opacity=".07"`);
+        bg += `<rect y="${f2(c.hz)}" width="${W}" height="9" fill="url(#${u}haze)"/>`;
+        if(!c.close) bg += `<polygon points="${pts([[2, 2], [158, 2], [158, 88], [2, 88]].map(q => proj(c, q[0], q[1])))}" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width=".55"/>`;
         break; }
-      case "cone": add(cone3(c, a[0], a[1], a[2], a[3])); break;
+      case "cone": add(cone3(c, u, a[0], a[1], a[2], a[3])); break;
       case "gate": { const v = a[4], col = a[3] || ORANGE, p1 = v ? [a[0], a[1] - a[2] / 2] : [a[0] - a[2] / 2, a[1]], p2 = v ? [a[0], a[1] + a[2] / 2] : [a[0] + a[2] / 2, a[1]];
-        bg += groundLine(c, p1, p2, `stroke="${col}" stroke-dasharray="1.5 1.2" stroke-width=".6"`); add(cone3(c, p1[0], p1[1], col)); add(cone3(c, p2[0], p2[1], col)); break; }
-      case "box": bg += groundPoly(c, [[a[0], a[1]], [a[0] + a[2], a[1]], [a[0] + a[2], a[1] + a[3]], [a[0], a[1] + a[3]]], `fill="#ffffff2a" stroke="#fff" stroke-dasharray="1.6 1.2" stroke-width=".5"`); break;
+        bg += groundLine(c, p1, p2, `stroke="${col}" stroke-dasharray="1.5 1.2" stroke-width=".6"`); add(cone3(c, u, p1[0], p1[1], col)); add(cone3(c, u, p2[0], p2[1], col)); break; }
+      case "box": bg += groundPoly(c, [[a[0], a[1]], [a[0] + a[2], a[1]], [a[0] + a[2], a[1] + a[3]], [a[0], a[1] + a[3]]], `fill="#ffffff26" stroke="#fff" stroke-dasharray="1.6 1.2" stroke-width=".5"`); break;
       case "spot": { const p = proj(c, a[0], a[1]); bg += `<ellipse cx="${f2(p.x)}" cy="${f2(p.y)}" rx="${f2(0.8 * p.k)}" ry="${f2(0.3 * p.k)}" fill="#fff"/>`; break; }
-      case "ladder": { for(let i = 0; i <= a[2]; i++) bg += groundLine(c, [a[0] + i * a[3], a[1]], [a[0] + i * a[3], a[1] + a[4]], `stroke="#fff" stroke-width=".6"`);
-        bg += groundLine(c, [a[0], a[1]], [a[0] + a[2] * a[3], a[1]], `stroke="#fff" stroke-width=".6"`) + groundLine(c, [a[0], a[1] + a[4]], [a[0] + a[2] * a[3], a[1] + a[4]], `stroke="#fff" stroke-width=".6"`); break; }
+      case "ladder": { const st = `stroke="#f5d94a" stroke-width=".65"`;
+        for(let i = 0; i <= a[2]; i++) bg += groundLine(c, [a[0] + i * a[3], a[1]], [a[0] + i * a[3], a[1] + a[4]], st);
+        bg += groundLine(c, [a[0], a[1]], [a[0] + a[2] * a[3], a[1]], `stroke="#1b1f2a" stroke-width=".55"`) + groundLine(c, [a[0], a[1] + a[4]], [a[0] + a[2] * a[3], a[1] + a[4]], `stroke="#1b1f2a" stroke-width=".55"`); break; }
       case "channel": bg += groundLine(c, [a[0], a[2]], [a[1], a[2]], `stroke="#ffffffcc" stroke-width=".6"`) + groundLine(c, [a[0], a[3]], [a[1], a[3]], `stroke="#ffffffcc" stroke-width=".6"`); break;
       case "finish": bg += groundLine(c, [a[0], a[1]], [a[0], a[2]], `stroke="#fff" stroke-width="1" stroke-dasharray="2 1"`); break;
-      case "line": bg += groundLine(c, [a[0], a[1]], [a[2], a[3]], `stroke="#ffffffaa" stroke-width=".6"`); break;
-      case "label": { const p = proj(c, a[0], a[1]); bg += `<text x="${f2(p.x)}" y="${f2(p.y)}" font-size="${f2(Math.min(4.5, 1.6 * p.k))}" fill="#1f2b3d" text-anchor="middle">${esc(a[2])}</text>`; break; }
+      case "line": bg += groundLine(c, [a[0], a[1]], [a[2], a[3]], `stroke="#ffffffb0" stroke-width=".6"`); break;
+      case "label": { const p = proj(c, a[0], a[1]); bg += `<text x="${f2(p.x)}" y="${f2(p.y)}" font-size="${f2(Math.min(4.5, 1.6 * p.k))}" fill="#fff" fill-opacity=".9" font-weight="700" font-family="${DISPLAY_FONT}" text-anchor="middle">${esc(a[2])}</text>`; break; }
       case "path": { let q = a[0];
-        if(a[1] === "curve" && q.length === 4){ const out = []; for(let i = 0; i <= 16; i++){ const t = i / 16, u = 1 - t; out.push([u*u*u*q[0][0] + 3*u*u*t*q[1][0] + 3*u*t*t*q[2][0] + t*t*t*q[3][0], u*u*u*q[0][1] + 3*u*u*t*q[1][1] + 3*u*t*t*q[2][1] + t*t*t*q[3][1]]); } q = out; }
-        bg += `<polyline points="${pts(q.map(r => proj(c, r[0], r[1])))}" fill="none" stroke="#ffffffcc" stroke-width=".5" stroke-dasharray="1.6 1.2"/>`; break; }
-      case "tape": { const p = proj(c, a[0], a[1], 8.4); add({d: p.depth - 0.1, svg: `<rect x="${f2(p.x - 0.9 * p.k)}" y="${f2(p.y - 0.9 * p.k)}" width="${f2(1.8 * p.k)}" height="${f2(1.8 * p.k)}" fill="#e0b400"/>`}); break; }
-      case "goalTop": add(goal3(c, [a[0] - a[2] / 2, a[1]], [a[0] + a[2] / 2, a[1]], [0, -5])); break;
-      case "goalRight": add(goal3(c, [a[0], a[1] - a[2] / 2], [a[0], a[1] + a[2] / 2], [5, 0])); break;
-      case "goalLeft": add(goal3(c, [8, 30], [8, 60], [-5, 0])); break;
+        if(a[1] === "curve" && q.length === 4){ const out = []; for(let i = 0; i <= 16; i++){ const t = i / 16, v = 1 - t; out.push([v*v*v*q[0][0] + 3*v*v*t*q[1][0] + 3*v*t*t*q[2][0] + t*t*t*q[3][0], v*v*v*q[0][1] + 3*v*v*t*q[1][1] + 3*v*t*t*q[2][1] + t*t*t*q[3][1]]); } q = out; }
+        bg += `<polyline points="${pts(q.map(r => proj(c, r[0], r[1])))}" fill="none" stroke="#ffffffd0" stroke-width=".5" stroke-dasharray="1.6 1.2" stroke-linecap="round"/>`; break; }
+      case "tape": { const p = proj(c, a[0], a[1], 8.4); add({d: p.depth - 0.1, svg: `<rect x="${f2(p.x - 0.9 * p.k)}" y="${f2(p.y - 0.9 * p.k)}" width="${f2(1.8 * p.k)}" height="${f2(1.8 * p.k)}" fill="#e0b400" stroke="#9a7a00" stroke-width="${f2(0.1 * p.k)}"/>`}); break; }
+      case "goalTop": add(goal3(c, u, [a[0] - a[2] / 2, a[1]], [a[0] + a[2] / 2, a[1]], [0, -5])); break;
+      case "goalRight": add(goal3(c, u, [a[0], a[1] - a[2] / 2], [a[0], a[1] + a[2] / 2], [5, 0])); break;
+      case "goalLeft": add(goal3(c, u, [8, 30], [8, 60], [-5, 0])); break;
       case "wall": { if(UL(c.side, (a[0] + a[2]) / 2, (a[1] + a[3]) / 2)[0] < (c.uPeople ?? 0) - 2) break; const Hh = 4, A = proj(c, a[0], a[1]), B = proj(c, a[2], a[3]), At = proj(c, a[0], a[1], Hh), Bt = proj(c, a[2], a[3], Hh);
-        add({d: Math.min(A.depth, B.depth), svg: `<polygon points="${pts([A, At, Bt, B])}" fill="#9aa1ab" stroke="#6f7680" stroke-width=".3"/>`}); break; }
+        add({d: Math.min(A.depth, B.depth), svg: `<polygon points="${pts([A, At, Bt, B])}" fill="#a3aab3"/><polygon points="${pts([A, At, Bt, B])}" fill="url(#${u}shade)" opacity=".5"/><polyline points="${pts([At, Bt])}" fill="none" stroke="#cdd3da" stroke-width="${f2(Math.max(0.3, 0.25 * (A.k + B.k) / 2))}"/><polygon points="${pts([A, B, proj(c, a[2], a[3] + 0.01), proj(c, a[0], a[1] + 0.01)])}" fill="none" stroke="#6f7680" stroke-width=".25"/>`}); break; }
     }
   });
   const sortFar = arr => arr.sort((x, y) => y.d - x.d).map(o => o.svg).join("");
   return {bg: bg + sortFar(back), front: sortFar(front)};
 }
 
-/* a front-facing player figure; feet at screen point p */
-const SKIN = "#c68f62";
-function figure(c, p, o){
-  const k = c.H / 20 * p.k; // 20 local units tall
-  const col = o.kind === "helper" ? ORANGE : o.kind === "keeper" ? KEEPER : BLUE;
-  const lift = o.lift || 0, crouch = o.crouch || 0, ph = o.phase || 0, moving = o.moving || 0;
-  const hipY = -9 + crouch * 3.2, sh = hipY - 7 + crouch * 0.8;
-  let lf = o.feet ? o.feet[0] : [-2 + Math.sin(ph) * 0.6 * moving, -Math.max(0, Math.sin(ph)) * 2.2 * moving];
-  let rf = o.feet ? o.feet[1] : [2 - Math.sin(ph) * 0.6 * moving, -Math.max(0, -Math.sin(ph)) * 2.2 * moving];
+/* a front-facing player figure; feet at screen point p. Local units: 20 tall, feet at y = 0 */
+const seg = (a, b, w, col, cap = "round") => `<line x1="${f2(a[0])}" y1="${f2(a[1])}" x2="${f2(b[0])}" y2="${f2(b[1])}" stroke="${col}" stroke-width="${w}" stroke-linecap="${cap}"/>`;
+const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+function figure(c, u, p, o){
+  const k = c.H / 20 * p.k;
+  const kit = o.kind === "helper" ? ORANGE : o.kind === "keeper" ? KEEPER : BLUE;
+  const shorts = o.kind === "helper" ? "#f3f4f6" : o.kind === "keeper" ? "#1b1f2a" : NAVY;
+  const sock = o.kind === "keeper" ? "#1b1f2a" : kit;
+  const lk = o.look || {skin: "#c68f62", hair: "#2b1d14", style: 0}, sk = lk.skin;
+  const lift = o.lift || 0, crouch = o.crouch || 0, ph = o.phase || 0, mv = o.moving || 0;
+  const bob = -Math.abs(Math.sin(ph)) * 0.45 * mv;
+  const hipY = -9 + crouch * 3.2 + bob, sh = hipY - 7 + crouch * 0.8;
+  let lf = o.feet ? o.feet[0] : [-2 + Math.sin(ph) * 0.6 * mv, -Math.max(0, Math.sin(ph)) * 2.2 * mv];
+  let rf = o.feet ? o.feet[1] : [2 - Math.sin(ph) * 0.6 * mv, -Math.max(0, -Math.sin(ph)) * 2.2 * mv];
   // facing the camera: each hip connects to the foot on its own side of the screen, so legs never cross
   if(lf[0] > rf[0]) [lf, rf] = [rf, lf];
   if(crouch){ lf = [lf[0] - crouch * 1.2, lf[1]]; rf = [rf[0] + crouch * 1.2, rf[1]]; }
-  const sw = Math.sin(ph) * 1.6 * moving, kneeOut = crouch * 1.4;
-  const leg = (h, f, side) => `<polyline points="${side * 1.3},${hipY} ${f2((side * 1.3 + f[0]) / 2 + side * kneeOut)},${f2((hipY + f[1]) / 2)} ${f2(f[0])},${f2(f[1])}" fill="none" stroke="${SKIN}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`
-    + `<ellipse cx="${f2(f[0])}" cy="${f2(f[1])}" rx="1.3" ry=".8" fill="${NAVY}"/>`;
-  const gloves = o.kind === "keeper";
-  const armR = o.reach ? [6, sh - 3] : [4.6, hipY + 0.5 - sw], armL = o.reach ? [-6, sh - 3] : [-4.6, hipY + 0.5 + sw];
-  const body = `${leg(0, lf, -1)}${leg(0, rf, 1)}
-    <rect x="-3" y="${f2(hipY - 1.6)}" width="6" height="2.8" rx=".8" fill="${NAVY}"/>
-    <path d="M-3.4 ${f2(sh + 1)} Q-3.6 ${f2(sh)} -2 ${f2(sh - 0.2)} H2 Q3.6 ${f2(sh)} 3.4 ${f2(sh + 1)} L3.1 ${f2(hipY - 1.2)} H-3.1Z" fill="${col}" stroke="#fff" stroke-width=".35"/>
-    <polyline points="-3.1,${f2(sh + 0.8)} ${f2(armL[0])},${f2(armL[1])}" stroke="${SKIN}" stroke-width="1.2" stroke-linecap="round"/>
-    <polyline points="3.1,${f2(sh + 0.8)} ${f2(armR[0])},${f2(armR[1])}" stroke="${SKIN}" stroke-width="1.2" stroke-linecap="round"/>
-    ${gloves ? `<circle cx="${f2(armL[0])}" cy="${f2(armL[1])}" r=".95" fill="#e0b400"/><circle cx="${f2(armR[0])}" cy="${f2(armR[1])}" r=".95" fill="#e0b400"/>` : ""}
-    <circle cx="0" cy="${f2(sh - 2.4)}" r="2.3" fill="${SKIN}"/><path d="M-2.3 ${f2(sh - 2.6)} Q0 ${f2(sh - 5.6)} 2.3 ${f2(sh - 2.6)} Q0 ${f2(sh - 3.6)} -2.3 ${f2(sh - 2.6)}Z" fill="#3b2a20"/>`;
-  const rot = o.dive ? `rotate(${f2(o.dive * 72 * (o.diveDir || 1))} 0 ${hipY})` : "";
-  const shadow = `<ellipse cx="${f2(p.x)}" cy="${f2(p.y)}" rx="${f2(3.2 * k)}" ry="${f2(0.9 * k)}" fill="#0000002e"/>`;
-  return shadow + `<g transform="translate(${f2(p.x)} ${f2(p.y - lift * k)}) scale(${f2(k)}) ${rot}">${body}</g>`;
+  const sw = Math.sin(ph) * 1.5 * mv, kneeOut = crouch * 1.4;
+  const line = `stroke="#0b1424" stroke-opacity=".28" stroke-width=".22" stroke-linejoin="round"`;
+  let s = "";
+  // legs: thigh, shin, sock, boot
+  const legs = [[-1, lf], [1, rf]].map(([side, f]) => {
+    const hip = [side * 1.45, hipY], up = Math.max(0, -f[1]);
+    const knee = [(hip[0] + f[0]) / 2 + side * (0.3 + kneeOut), (hip[1] + f[1]) / 2 - up * 0.25];
+    const ankle = [f[0], f[1] - 0.75];
+    return {side, hip, knee, ankle, f};
+  });
+  legs.forEach(L => {
+    s += seg(L.hip, L.knee, 1.8, sk) + seg(L.knee, L.ankle, 1.45, sk) + seg(mix(L.ankle, L.knee, 0.6), L.ankle, 1.6, sock, "butt")
+      + seg(mix(L.ankle, L.knee, 0.6), mix(L.ankle, L.knee, 0.53), 1.62, "#fff", "butt");
+    const [fx, fy] = L.f;
+    s += `<path d="M${f2(fx - 1.3)} ${f2(fy)} Q${f2(fx - 1.3)} ${f2(fy - 1.15)} ${f2(fx)} ${f2(fy - 1.15)} Q${f2(fx + 1.3)} ${f2(fy - 1.15)} ${f2(fx + 1.3)} ${f2(fy)}Z" fill="#14171e"/>`
+      + `<line x1="${f2(fx - 1.1)}" y1="${f2(fy - 0.12)}" x2="${f2(fx + 1.1)}" y2="${f2(fy - 0.12)}" stroke="#fff" stroke-opacity=".55" stroke-width=".2"/>`;
+  });
+  // shorts follow the thighs
+  const P = legs.map(L => mix(L.hip, L.knee, 0.45)), w0 = hipY - 1.5;
+  s += `<path d="M-3.05 ${f2(w0)} L3.05 ${f2(w0)} L${f2(P[1][0] + 1.4)} ${f2(P[1][1])} L${f2(P[1][0] - 1.15)} ${f2(P[1][1] + 0.25)} L0 ${f2(hipY + 0.9)} L${f2(P[0][0] + 1.15)} ${f2(P[0][1] + 0.25)} L${f2(P[0][0] - 1.4)} ${f2(P[0][1])}Z" fill="${shorts}" ${line}/>`;
+  // neck, shirt, collar, crest
+  const shirt = `M-3.4 ${f2(sh + 1.1)} Q-3.45 ${f2(sh)} -1.9 ${f2(sh - 0.25)} L1.9 ${f2(sh - 0.25)} Q3.45 ${f2(sh)} 3.4 ${f2(sh + 1.1)} L3.05 ${f2(hipY - 1.1)} Q0 ${f2(hipY - 0.75)} -3.05 ${f2(hipY - 1.1)}Z`;
+  s += `<rect x="-.75" y="${f2(sh - 1.4)}" width="1.5" height="1.8" fill="${sk}"/>`
+    + `<path d="${shirt}" fill="${kit}" ${line}/><path d="${shirt}" fill="url(#${u}shade)"/>`
+    + `<path d="M-1.15 ${f2(sh - 0.2)} L0 ${f2(sh + 1.15)} L1.15 ${f2(sh - 0.2)}" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width=".32" stroke-linejoin="round"/>`
+    + (o.kind === "keeper" ? "" : `<circle cx="1.55" cy="${f2(sh + 2.3)}" r=".45" fill="#fff" fill-opacity=".9"/>`);
+  // arms: sleeve, forearm, hand (keepers: long sleeves and gloves)
+  const keeper = o.kind === "keeper", runLift = mv * 1.1;
+  const hands = o.reach ? [[-6, sh - 3], [6, sh - 3]] : [[-4.5, hipY + 0.4 + sw - runLift], [4.5, hipY + 0.4 - sw - runLift]];
+  hands.forEach(([hx, hy], i) => {
+    const side = i ? 1 : -1, S = [side * 3.15, sh + 0.9], Hd = [hx, hy];
+    const E = o.reach ? [side * 4.9, sh - 0.6] : [side * (4.0 + mv * 0.4), (S[1] + hy) / 2 + 0.2];
+    s += seg(S, E, 1.3, keeper ? kit : sk) + seg(E, Hd, 1.15, keeper ? kit : sk);
+    if(!keeper) s += seg(S, mix(S, E, 0.6), 1.85, kit, "butt") + `<circle cx="${f2(S[0])}" cy="${f2(S[1])}" r=".93" fill="${kit}"/>`;
+    s += keeper ? `<circle cx="${f2(hx)}" cy="${f2(hy)}" r="1" fill="#e8c21a" stroke="#8a6d00" stroke-width=".15"/>` : `<circle cx="${f2(hx)}" cy="${f2(hy)}" r=".62" fill="${sk}"/>`;
+  });
+  // head and hair
+  const hy = sh - 2.75;
+  s += `<circle cx="-2" cy="${f2(hy + 0.2)}" r=".45" fill="${sk}"/><circle cx="2" cy="${f2(hy + 0.2)}" r=".45" fill="${sk}"/>`
+    + `<ellipse cx="0" cy="${f2(hy)}" rx="2.05" ry="2.35" fill="${sk}"/><ellipse cx="0" cy="${f2(hy)}" rx="2.05" ry="2.35" fill="url(#${u}shade)" opacity=".8"/>`;
+  const hair = lk.style === 0
+    ? `M-2.08 ${f2(hy - 0.15)} Q-2.15 ${f2(hy - 2.7)} 0 ${f2(hy - 2.55)} Q2.15 ${f2(hy - 2.7)} 2.08 ${f2(hy - 0.15)} Q1.7 ${f2(hy - 1.45)} 0 ${f2(hy - 1.4)} Q-1.7 ${f2(hy - 1.45)} -2.08 ${f2(hy - 0.15)}Z`
+    : lk.style === 1
+    ? `M-1.95 ${f2(hy - 0.9)} Q-1.9 ${f2(hy - 2.55)} 0 ${f2(hy - 2.45)} Q1.9 ${f2(hy - 2.55)} 1.95 ${f2(hy - 0.9)} Q1.4 ${f2(hy - 1.8)} 0 ${f2(hy - 1.8)} Q-1.4 ${f2(hy - 1.8)} -1.95 ${f2(hy - 0.9)}Z`
+    : `M-2.3 ${f2(hy + 0.7)} Q-2.6 ${f2(hy - 3)} 0 ${f2(hy - 2.85)} Q2.6 ${f2(hy - 3)} 2.3 ${f2(hy + 0.7)} L1.95 ${f2(hy + 0.7)} Q1.8 ${f2(hy - 1.25)} 0 ${f2(hy - 1.2)} Q-1.8 ${f2(hy - 1.25)} -1.95 ${f2(hy + 0.7)}Z`;
+  s += `<path d="${hair}" fill="${lk.hair}"/>`;
+  const rot = o.dive ? `rotate(${f2(o.dive * 72 * (o.diveDir || 1))} 0 ${f2(hipY)})` : "";
+  const sr = 1 / (1 + lift * 0.08);
+  const shadow = `<ellipse cx="${f2(p.x + 0.4 * k)}" cy="${f2(p.y)}" rx="${f2(4 * k * sr)}" ry="${f2(1.15 * k * sr)}" fill="url(#${u}sh)"/>`;
+  return shadow + `<g transform="translate(${f2(p.x)} ${f2(p.y - lift * k)}) scale(${f2(k)}) ${rot}">${s}</g>`;
 }
-function ball3(c, x, y, z){
-  const g = proj(c, x, y), p = proj(c, x, y, z * 10), r = (c.close ? 0.06 : 0.1) * c.H * p.k;
-  return `<ellipse cx="${f2(g.x)}" cy="${f2(g.y)}" rx="${f2(r * 1.05)}" ry="${f2(r * 0.35)}" fill="#00000035"/>`
-    + `<g transform="translate(${f2(p.x)} ${f2(p.y - r)})"><circle r="${f2(r)}" fill="#fff" stroke="#1f2b3d" stroke-width="${f2(r * 0.18)}"/><path d="M${f2(-0.45 * r)} ${f2(-0.3 * r)} L0 ${f2(-0.65 * r)} L${f2(0.45 * r)} ${f2(-0.3 * r)} L${f2(0.3 * r)} ${f2(0.25 * r)} L${f2(-0.3 * r)} ${f2(0.25 * r)}Z" fill="#1f2b3d"/></g>`;
+function ball3(c, u, x, y, z, spin){
+  const g = proj(c, x, y), p = proj(c, x, y, z * 10), r = (c.close ? 0.06 : 0.1) * c.H * p.k, sr = 1 / (1 + z * 0.6);
+  const patch = (cx, cy, sz) => { let d = ""; for(let i = 0; i < 5; i++){ const a = (i * 72 - 90) * Math.PI / 180; d += (i ? "L" : "M") + f2(cx + Math.cos(a) * sz) + " " + f2(cy + Math.sin(a) * sz); } return d + "Z"; };
+  let pat = patch(0, 0, 0.36 * r);
+  for(let i = 0; i < 5; i++){ const a = (i * 72 + 90) * Math.PI / 180; pat += patch(Math.cos(a) * 0.82 * r, Math.sin(a) * 0.82 * r, 0.2 * r); }
+  return `<ellipse cx="${f2(g.x + r * 0.15)}" cy="${f2(g.y)}" rx="${f2(r * 1.25 * sr)}" ry="${f2(r * 0.42 * sr)}" fill="url(#${u}sh)"/>`
+    + `<g transform="translate(${f2(p.x)} ${f2(p.y - r)})"><circle r="${f2(r)}" fill="url(#${u}ball)" stroke="#27303f" stroke-width="${f2(r * 0.09)}"/>`
+    + `<path d="${pat}" fill="#1f2633" transform="rotate(${f2(spin || 0)})"/><circle r="${f2(r)}" fill="none" stroke="#27303f" stroke-width="${f2(r * 0.09)}"/>`
+    + `<ellipse cx="${f2(-0.35 * r)}" cy="${f2(-0.4 * r)}" rx="${f2(0.28 * r)}" ry="${f2(0.17 * r)}" fill="#fff" fill-opacity=".75" transform="rotate(-30 ${f2(-0.35 * r)} ${f2(-0.4 * r)})"/></g>`;
+}
+function bubble(x0, y0, txt){
+  const w = txt.length * 2.3 + 6, x = Math.min(W - w - 1, Math.max(1, x0 - w / 2)), y = Math.max(1, y0 - 10.5), tx = Math.min(x + w - 2.5, Math.max(x + 2.5, x0));
+  return `<g><rect x="${f2(x + 0.4)}" y="${f2(y + 0.6)}" width="${f2(w)}" height="7" rx="3.5" fill="#0a1423" fill-opacity=".22"/>`
+    + `<path d="M${f2(tx - 1.5)} ${f2(y + 6.6)} L${f2(tx)} ${f2(y + 9)} L${f2(tx + 1.5)} ${f2(y + 6.6)}Z" fill="#fff"/>`
+    + `<rect x="${f2(x)}" y="${f2(y)}" width="${f2(w)}" height="7" rx="3.5" fill="#fff"/>`
+    + `<text x="${f2(x + w / 2)}" y="${f2(y + 5)}" font-size="4.3" text-anchor="middle" fill="${NAVY}" font-weight="700" font-family="${DISPLAY_FONT}" letter-spacing=".15">${esc(txt)}</text></g>`;
 }
 function draw3(el, st, t){
-  const s = st.s, c = s.cam, items = [];
+  const s = st.s, c = s.cam, u = st.u, items = [];
   const feet = s.tracks.lf && s.tracks.rf ? [at(s.tracks.lf, t), at(s.tracks.rf, t)] : null;
   for(const [a, tr] of Object.entries(s.tracks)){
     const kind = s.actors[a], v = at(tr, t); if(!v) continue;
     if(kind === "foot") continue;
-    if(kind === "ball"){ const g = proj(c, v[0], v[1]); items.push({d: g.depth - 0.5, svg: ball3(c, v[0], v[1], Math.max(0, v[2] || 0))}); continue; }
+    const prev = st.prev[a]; const moved = prev ? Math.hypot(v[0] - prev[0], v[1] - prev[1]) : 0; st.prev[a] = [v[0], v[1]];
+    if(kind === "ball"){ const g = proj(c, v[0], v[1]); st.spin[a] = ((st.spin[a] || 0) + moved * 55) % 360;
+      items.push({d: g.depth - 0.5, svg: ball3(c, u, v[0], v[1], Math.max(0, v[2] || 0), st.spin[a])}); continue; }
     const p = proj(c, v[0], v[1]);
     // stride: distance travelled since the last frame
-    const prev = st.prev[a]; const moved = prev ? Math.hypot(v[0] - prev[0], v[1] - prev[1]) : 0; st.prev[a] = [v[0], v[1]];
     st.dist[a] = (st.dist[a] || 0) + moved; st.mov[a] = (st.mov[a] || 0) * 0.85 + Math.min(1, moved * 3) * 0.15;
-    const o = {kind: kind === "body" || kind === "dot" ? "player" : kind, phase: st.dist[a] * 0.9, moving: st.mov[a]};
+    const o = {kind: kind === "body" || kind === "dot" ? "player" : kind, phase: st.dist[a] * 0.9, moving: st.mov[a], look: st.looks[a]};
     if(kind === "body"){
       const z = v[2] || 0; if(z > 0) o.crouch = Math.min(1, z * 2.4); if(z < 0) o.lift = -z * 14;
       if(feet && feet[0] && feet[1]){ const kk = c.H / 20 * p.k; o.feet = feet.map(f => { const q = proj(c, f[0], f[1]); return [(q.x - p.x) / kk, (q.y - p.y) / kk]; }); }
     }
-    if(kind === "keeper" && v[2]){ o.dive = v[2]; o.diveDir = p.x < 80 ? -1 : 1; o.lift = v[2] * 3; o.reach = true; }
-    if(kind === "keeper" && !v[2]) o.reach = (s.tracks.b && (() => { const bv = at(s.tracks.b, t); return bv && (bv[2] || 0) > 0.3 && Math.hypot(bv[0] - v[0], bv[1] - v[1]) < 12; })());
-    items.push({d: p.depth, svg: figure(c, p, o)});
+    if(kind === "keeper" && v[2] > 0.02){ o.dive = v[2]; o.diveDir = p.x < 80 ? -1 : 1; o.lift = v[2] * 3; o.reach = true; }
+    if(kind === "keeper" && !(v[2] > 0.02)) o.reach = (s.tracks.b && (() => { const bv = at(s.tracks.b, t); return bv && (bv[2] || 0) > 0.3 && Math.hypot(bv[0] - v[0], bv[1] - v[1]) < 12; })());
+    items.push({d: p.depth, svg: figure(c, u, p, o)});
   }
   items.sort((x, y) => y.d - x.d);
   st.actEl.innerHTML = items.map(i => i.svg).join("");
-  let cap = ""; for(const [ct, cc] of s.caps){ if(ct <= t + 0.001) cap = cc; else break; }
-  if(cap !== st.cap){ st.cap = cap; st.capEl.textContent = cap; }
   const says = s.says.filter(([t0]) => t >= t0 && t < t0 + 1.2);
-  st.sayEl.innerHTML = says.map(([, a, txt]) => { const v = at(s.tracks[a] || [], t) || [80, 45]; const hp = proj(c, v[0], v[1], c.H * 1.15);
-    const w = txt.length * 2.3 + 5, x = Math.min(W - w - 1, Math.max(1, hp.x - w / 2)), y = Math.max(1, hp.y - 9);
-    return `<g><rect x="${f2(x)}" y="${f2(y)}" width="${f2(w)}" height="7" rx="3.5" fill="#fff" stroke="${NAVY}" stroke-width=".4"/><text x="${f2(x + w / 2)}" y="${f2(y + 4.9)}" font-size="4.2" text-anchor="middle" fill="${NAVY}" font-weight="700">${esc(txt)}</text></g>`; }).join("");
+  st.sayEl.innerHTML = says.map(([, a, txt]) => { const v = at(s.tracks[a] || [], t) || [80, 45]; const hp = proj(c, v[0], v[1], c.H * 1.15); return bubble(hp.x, hp.y, txt); }).join("");
+}
+
+/* caption bar: the current step, "2/4", and a short fade when it changes */
+function showCaption(st, t){
+  const s = st.s; let cur = null;
+  for(const row of s.capSeq){ if(row[0] <= t + 0.001) cur = row; else break; }
+  const txt = cur ? cur[1] : "", n = cur ? cur[2] : 0;
+  if(txt !== st.cap){
+    st.cap = txt; st.capEl.textContent = txt;
+    if(st.stepEl) st.stepEl.textContent = s.capTotal > 1 && txt ? `${n + 1}/${s.capTotal}` : "";
+    if(st.started && st.capEl.animate) try { st.capEl.animate([{opacity: 0, transform: "translateY(3px)"}, {opacity: 1, transform: "none"}], {duration: 260, easing: "ease-out"}); } catch(_){}
+  }
+  st.started = true;
+  if(st.progEl) st.progEl.setAttribute("width", f2(W * Math.min(1, t / (s.dur || 1))));
 }
 
 export function animSvg(id, title){
   const s = getScript(id); if(!s) return "";
-  const lbl = `role="img" aria-label="${esc((title ? title + ": " : "") + "animated demonstration")}" tabindex="0" title="Tap to pause or play"`;
+  const lbl = `role="img" aria-label="${esc((title ? title + ": " : "") + (s.cam.flat ? "animated diagram" : "animated demonstration"))}" tabindex="0" title="Tap to pause or play"`;
+  const cap = `<div class="anim-cap" aria-hidden="true"><span class="anim-step"></span><span class="anim-text"></span></div><span class="anim-state" aria-hidden="true"></span>`;
   if(!s.cam.flat){
-    const sc = scene3(s.cam, s.scene);
-    return `<div class="drill-anim" data-anim="${esc(id)}" data-act="animToggle" ${lbl}>
-    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${sc.bg}<g data-actors3d></g>${sc.front}<g data-say></g></svg>
-    <div class="anim-cap" aria-hidden="true"></div><span class="anim-state" aria-hidden="true"></span></div>`;
+    const u = "np" + (++UID) + "-", sc = scene3(s.cam, u, s.scene);
+    return `<div class="drill-anim" data-anim="${esc(id)}" data-uid="${u}" data-act="animToggle" ${lbl}>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${defs3(u, s.cam)}${sc.bg}<g data-actors3d></g>${sc.front}<rect width="${W}" height="${H}" fill="url(#${u}vig)"/><g data-say></g>${BUG}${PROGRESS}</svg>
+    ${cap}</div>`;
   }
   const actors = Object.entries(s.actors).sort((a, b) => (a[1] === "ball") - (b[1] === "ball")).map(([a, k]) => actorSvg(a, k)).join("");
   const bgKinds = ["grass", "board"], bg = sceneSvg(s.scene.filter(e => bgKinds.includes(e[0]))), fg = sceneSvg(s.scene.filter(e => !bgKinds.includes(e[0])));
   const z = s.zoom ? `translate(${s.zoom[0]} ${s.zoom[1]}) scale(${s.zoom[2]}) translate(${-s.zoom[0]} ${-s.zoom[1]})` : "";
-  return `<div class="drill-anim" data-anim="${esc(id)}" data-act="animToggle" role="img" aria-label="${esc((title ? title + ": " : "") + "animated diagram")}" tabindex="0" title="Tap to pause or play">
-    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${bg}<g${z ? ` transform="${z}"` : ""}>${fg}<g data-actors>${actors}</g></g><g data-say></g></svg>
-    <div class="anim-cap" aria-hidden="true"></div><span class="anim-state" aria-hidden="true"></span></div>`;
+  return `<div class="drill-anim" data-anim="${esc(id)}" data-act="animToggle" ${lbl}>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${bg}<g${z ? ` transform="${z}"` : ""}>${fg}<g data-actors>${actors}</g></g><g data-say></g>${BUG}${PROGRESS}</svg>
+    ${cap}</div>`;
 }
 
 /* ---------- player loop ---------- */
@@ -799,17 +939,15 @@ function draw(el, st, t){
       node.querySelector("[data-shadow]").setAttribute("rx", (2 - z * 0.6).toFixed(2)); }
     else if(kind === "keeper"){ const d = v[2] || 0; const b = node.querySelector("[data-body]"); b.setAttribute("rx", (4.2 + d * 3.6).toFixed(2)); b.setAttribute("ry", (4.2 - d * 1.6).toFixed(2)); }
     else if(kind === "body"){ const z = v[2] || 0; node.querySelector("[data-body]").setAttribute("r", (9 * (1 - z * 0.25)).toFixed(2)); }
-    else if(kind === "tick"){ node.querySelector("[data-tick]").setAttribute("opacity", (v[2] || 0).toFixed(2)); }
+    else if(kind === "tick"){ node.querySelector("[data-tick]").setAttribute("opacity", Math.max(0, Math.min(1, v[2] || 0)).toFixed(2)); }
   }
-  let cap = ""; for(const [ct, c] of s.caps){ if(ct <= t + 0.001) cap = c; else break; }
-  if(cap !== st.cap){ st.cap = cap; st.capEl.textContent = cap; }
   // speech bubbles shown for 1.2s
   const says = s.says.filter(([st0]) => t >= st0 && t < st0 + 1.2);
   const key = says.map(x => x.join("|")).join(";");
   if(key !== st.sayKey){ st.sayKey = key;
-    st.sayEl.innerHTML = says.map(([, a, txt]) => { const v = at(s.tracks[a] || [], t) || [80, 45]; const w = txt.length * 2.3 + 5, x = Math.min(W - w - 1, Math.max(1, v[0] - w / 2)), y = Math.max(1, v[1] - 13);
-      return `<g><rect x="${x}" y="${y}" width="${w}" height="7" rx="3.5" fill="#fff" stroke="${NAVY}" stroke-width=".4"/><text x="${x + w / 2}" y="${y + 4.9}" font-size="4.2" text-anchor="middle" fill="${NAVY}" font-weight="700">${esc(txt)}</text></g>`; }).join(""); }
+    st.sayEl.innerHTML = says.map(([, a, txt]) => { const v = at(s.tracks[a] || [], t) || [80, 45]; return bubble(v[0], v[1] - 2.5, txt); }).join(""); }
 }
+function frame(el, st, t){ (st.s.cam.flat ? draw : draw3)(el, st, t); showCaption(st, t); }
 function loop(now){
   rafId = null; let any = false;
   live.forEach((st, el) => {
@@ -817,7 +955,7 @@ function loop(now){
     if(!st.visible || st.paused) return;
     any = true; if(st.last == null) st.last = now;
     st.t = (st.t + (now - st.last) / 1000) % (st.s.dur + 0.8); st.last = now;
-    (st.s.cam.flat ? draw : draw3)(el, st, Math.min(st.t, st.s.dur));
+    frame(el, st, Math.min(st.t, st.s.dur));
   });
   if(any) rafId = requestAnimationFrame(loop);
 }
@@ -827,10 +965,12 @@ function attach(el){
   if(live.has(el)) return;
   const s = getScript(el.dataset.anim); if(!s) return;
   const nodes = {}; el.querySelectorAll("[data-a]").forEach(n => nodes[n.dataset.a] = n);
-  const st = {s, nodes, t: 0, last: null, paused: reduced(), visible: false, cap: null, capEl: el.querySelector(".anim-cap"), sayEl: el.querySelector("[data-say]"), sayKey: null,
-    actEl: el.querySelector("[data-actors3d]"), prev: {}, dist: {}, mov: {}};
+  const looks = {}; Object.keys(s.actors).forEach(a => looks[a] = lookFor(s.id, a));
+  const st = {s, nodes, t: 0, last: null, paused: reduced(), visible: false, cap: null, capEl: el.querySelector(".anim-text"), stepEl: el.querySelector(".anim-step"),
+    sayEl: el.querySelector("[data-say]"), sayKey: null, progEl: el.querySelector("[data-prog]"), u: el.dataset.uid || "",
+    actEl: el.querySelector("[data-actors3d]"), prev: {}, dist: {}, mov: {}, spin: {}, looks};
   live.set(el, st); el.classList.toggle("paused", st.paused);
-  (s.cam.flat ? draw : draw3)(el, st, reduced() ? Math.min(s.dur, 1.2) : 0);
+  frame(el, st, reduced() ? Math.min(s.dur, 1.2) : 0);
   if(io) io.observe(el); else { st.visible = true; kick(); }
 }
 export function animScan(root = document){
