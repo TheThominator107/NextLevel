@@ -887,6 +887,33 @@ function motion(s){
   });
 }
 
+const ballR = c => (c.close ? 0.06 : 0.078) * c.H;
+const frac = x => x - Math.floor(x);
+/* Where the ball is drawn. A dribble in a script is a ball gliding just ahead of the player; here it becomes
+   distinct touches: the foot meets the ball, the ball runs on, the player catches it up and touches it again. */
+function ballNow(s, t){
+  const tb = s.tracks.b, raw = tb && tb.length ? at(tb, t) : null; if(!raw) return null;
+  const out = {v: [raw[0], raw[1], raw[2] || 0], carry: 0, by: null, ring: 0};
+  if(!s.mot || out.v[2] > 0.05) return out;
+  const c = s.cam, U = c.H / 20; let who = null, bd = 5.6;
+  for(const a of s.people){ if(s.team[a] !== "att" || (s.actors[a] === "keeper" && !s.kfeet) || s.actors[a] === "body") continue;
+    const p = at(s.tracks[a], t), d = Math.hypot(p[0] - raw[0], p[1] - raw[1]); if(d < bd){ bd = d; who = a; } }
+  if(!who) return out;
+  const M = s.mot[who], i = clamp(Math.round(t / DT), 0, M.n - 1), m = M.m[i]; let kf = 1;
+  for(const k of s.kicks){ const d = Math.abs(t - k.t); if(d < 0.6) kf = Math.min(kf, ease((d - 0.28) / 0.3)); }
+  const cw = ease((m - 0.3) / 0.5) * kf * ease((5.6 - bd) / 1.2); if(cw < 0.002) return out;
+  const ang = M.ang[i], r = [-Math.sin(ang), Math.cos(ang)], md = [M.mx[i], M.my[i]], side = Math.abs(md[0] * r[0] + md[1] * r[1]);
+  const A = lerp(M.A[i], Math.min(M.A[i], 1.1), side) * m, hw = 1.5 + 0.8 * side * m, ph = M.ph[i], P = at(s.tracks[who], t);
+  let cap = ""; for(const row of s.capSeq){ if(row[0] <= t + 0.001) cap = row[1]; else break; }
+  const mode = /\bleft\b|weak/i.test(cap) ? -1 : /both|altern|each foot|either|small touches|close control/i.test(cap) ? 0 : 1;
+  const tau = mode ? frac((ph + (mode > 0 ? Math.PI : 0) - Math.PI / 2) / (2 * Math.PI)) : frac((ph - Math.PI / 2) / Math.PI);
+  const run = (mode ? 2.4 : 1.4) * clamp(M.sp[i] / 40, 0.45, 1), g = tau < 0.22 ? Math.sin(tau / 0.22 * Math.PI / 2) : (1 - tau) / 0.78;
+  const lead = A + 1.75 + ballR(c) / U + run * g, lat = mode ? mode * hw : -Math.sin(ph) * hw * 0.9, rm = [-md[1], md[0]];
+  const x = P[0] + U * (md[0] * lead + rm[0] * lat * Math.sign(rm[0] * r[0] + rm[1] * r[1] || 1)), y = P[1] + U * (md[1] * lead + rm[1] * lat * Math.sign(rm[0] * r[0] + rm[1] * r[1] || 1));
+  out.v = [lerp(raw[0], x, cw), lerp(raw[1], y, cw), 0]; out.carry = cw; out.by = who; out.ring = tau < 0.16 ? (1 - tau / 0.16) * cw : 0;
+  return out;
+}
+
 /* where every joint is at time t (world coordinates, z up) */
 function pose(s, a, t){
   const c = s.cam, U = c.H / 20, M = s.mot[a], i = clamp(Math.round(t / DT), 0, M.n - 1);
@@ -894,8 +921,8 @@ function pose(s, a, t){
   const ang = M.ang[i] + (kind === "body" ? (v[4] || 0) * Math.PI / 2 : 0);
   const f = [Math.cos(ang), Math.sin(ang), 0], r = [-f[1], f[0], 0], up = [0, 0, 1];
   const m = M.m[i], ph = M.ph[i], sp = M.sp[i], md = [M.mx[i], M.my[i], 0], P = [v[0], v[1], 0];
-  const tb = s.tracks.b && s.tracks.b.length ? s.tracks.b : null, bv = tb ? at(tb, t) : null;
-  const B = bv ? [bv[0], bv[1], Math.max(0, bv[2] || 0) * 10] : null, br = (c.close ? 0.06 : 0.1) * c.H;
+  const tb = s.tracks.b && s.tracks.b.length ? s.tracks.b : null, bn = tb ? ballNow(s, t) : null, bv = bn ? bn.v : null;
+  const B = bv ? [bv[0], bv[1], Math.max(0, bv[2] || 0) * 10] : null, br = ballR(c);
   const bd = B ? Math.hypot(B[0] - P[0], B[1] - P[1]) / U : 99, lat = B ? (B[0] - P[0]) * r[0] + (B[1] - P[1]) * r[1] : 0;
   let crouch = 0, lift = 0, pitch = 0, roll = 0, rollDir = 1, dive = 0, scoop = 0;
   if(keeper){ dive = ease(clamp(zc, 0, 1)); roll = dive * 0.87; if(B) rollDir = lat < 0 ? -1 : 1; }
@@ -922,14 +949,16 @@ function pose(s, a, t){
       const wp = q < 0 ? ease((q + TW) / TW * 2.2) : 1 - ease((q / TF - 0.55) / 0.45), sg = kk.foot > 0 ? -1 : 1;
       feet[1 - fi] = mix3(feet[1 - fi], [b0[0] - d[0] * U * 0.9 - d[1] * sg * U * 2.5, b0[1] - d[1] * U * 0.9 + d[0] * sg * U * 2.5, 0], wp * 0.9);
     }
-    else if(B && !dive && !lift && !(keeper && !s.kfeet) && bd < 6.6 && B[2] < 8 * U){
+    else if(B && !dive && !lift && !(keeper && !s.kfeet) && bd < 6.6 && B[2] < 8 * U && !(bn.by === a && bn.carry > 0.5)){
+      // not dribbling: one clear action at a time
       const fi = m > 0.4 ? (Math.sin(ph) > 0 ? 0 : 1) : (lat < -0.4 * U ? 0 : 1);
-      const nx = (B[0] - P[0]) / (bd * U || 1), ny = (B[1] - P[1]) / (bd * U || 1), b1 = at(tb, t + DT), bsp = Math.hypot(b1[0] - bv[0], b1[1] - bv[1]) / DT;
-      const w = ease((6.6 - bd) / 2.4) * lerp(1, 0.2 + 0.8 * Math.max(0, Math.sin(ph + (fi ? Math.PI : 0))), m); let tgt;
-      if(B[2] > 1.2 * U) tgt = [B[0] - nx * br * 0.2, B[1] - ny * br * 0.2, Math.max(0, B[2] - U)];            // in the air: get the foot or thigh under it
-      else if(sp < 1.5 && bsp < 3 && bd < 5.3) tgt = [B[0] - nx * br * 0.3, B[1] - ny * br * 0.3, 2 * br - 0.3 * U]; // dead ball: sole on top
-      else tgt = [B[0] - nx * (br + 0.5 * U), B[1] - ny * (br + 0.5 * U), 0.35 * U];                              // a touch
-      feet[fi] = mix3(feet[fi], tgt, w); busy = fi;
+      const nx = (B[0] - P[0]) / (bd * U || 1), ny = (B[1] - P[1]) / (bd * U || 1), b0 = at(tb, t), b1 = at(tb, t + DT), bsp = Math.hypot(b1[0] - b0[0], b1[1] - b0[1]) / DT;
+      let tgt = null, w = 0;
+      if(B[2] > 1.2 * U){ tgt = [B[0] - nx * br * 0.2, B[1] - ny * br * 0.2, Math.max(0, B[2] - U)]; w = ease((6.6 - bd) / 2); }                     // in the air: foot or thigh under it
+      else if(sp < 1.5 && bsp < 3){ if(bd < 4.9){ tgt = [B[0] - nx * br * 0.25, B[1] - ny * br * 0.25, 2 * br - 0.15 * U]; w = ease((4.9 - bd) / 0.7); } } // stopped dead: sole on top
+      else if(m < 0.5){ tgt = [B[0] - nx * (br + 0.45 * U), B[1] - ny * (br + 0.45 * U), 0.3 * U]; w = ease((6.4 - bd) / 1.6); }                        // receiving: foot behind the ball
+      else { tgt = [B[0] - nx * (br + 0.45 * U), B[1] - ny * (br + 0.45 * U), 0.3 * U]; w = ease((6.6 - bd) / 2.4) * (0.2 + 0.8 * Math.max(0, Math.sin(ph + (fi ? Math.PI : 0)))) * (1 - (bn.by === a ? bn.carry : 0)); }
+      if(tgt){ feet[fi] = mix3(feet[fi], tgt, w); if(w > 0.3) busy = fi; }
     }
   }
   if(lift) feet = feet.map(F => [F[0], F[1], F[2] + U * lift * 0.9]);
@@ -950,7 +979,7 @@ function pose(s, a, t){
   const pts = {pel: Pz, chest, head};
   feet.forEach((F, j) => { const sg = j ? 1 : -1, [kn, an] = joint(hips[j], [F[0], F[1], F[2] + 0.7 * U], 4.6 * U, 4.6 * U, add3(f, r, sg * (0.12 + Math.min(1, crouch / 4) * 0.5))), fz = an[2] - 0.25 * U, d = fdir[j];
     pts["hip" + j] = hips[j]; pts["knee" + j] = kn; pts["ank" + j] = an;
-    pts["toe" + j] = [an[0] + d[0] * U * 1.7, an[1] + d[1] * U * 1.7, fz]; pts["heel" + j] = [an[0] - d[0] * U * 0.6, an[1] - d[1] * U * 0.6, fz]; });
+    pts["toe" + j] = [an[0] + d[0] * U * 1.6, an[1] + d[1] * U * 1.6, fz - 0.1 * U]; pts["heel" + j] = [an[0] - d[0] * U * 0.5, an[1] - d[1] * U * 0.5, fz]; });
   // arms
   const hold = !keeper && s.hold && s.hold.some(([t0, t1]) => t >= t0 && t <= t1), Bc = B ? [B[0], B[1], B[2] + br] : null;
   const arm = (S, Hd, sg) => joint(S, Hd, 3.3 * U, 3.1 * U, [-f[0] * 0.8 + r[0] * sg * 0.6, -f[1] * 0.8 + r[1] * sg * 0.6, -0.35]);
@@ -988,7 +1017,7 @@ function drawFig(c, u, Q, o){
   const kit = KITS[o.team], sk = o.look.skin;
   const leg = j => { const Hp = S["hip" + j], K = S["knee" + j], A = S["ank" + j], sock = mx(K, A, 0.42);
     return ln(Hp, K, 1.9, sk) + ln(K, A, 1.5, sk) + ln(sock, A, 1.66, kit.sock, "butt") + dot(A, 0.83, kit.sock) + ln(sock, mx(K, A, 0.5), 1.7, "#fff", "butt")
-      + ln(S["heel" + j], S["toe" + j], 1.5, "#15181f") + ln(mx(S["heel" + j], S["toe" + j], 0.55), S["toe" + j], 0.55, "#fff") + ln(Hp, mx(Hp, K, 0.52), 2.5, kit.shorts, "butt") + dot(Hp, 1.25, kit.shorts); };
+      + ln(S["heel" + j], S["toe" + j], 1.62, "#161a22") + ln(S["heel" + j], S["toe" + j], 1.08, "#f6e33c") + ln(Hp, mx(Hp, K, 0.52), 2.5, kit.shorts, "butt") + dot(Hp, 1.25, kit.shorts); };
   const far = S.knee0.depth >= S.knee1.depth ? 0 : 1;
   let out = leg(far) + leg(1 - far) + ln(S.hip0, S.hip1, 2.7, kit.shorts);
   // torso: as wide as the shoulders look from here
@@ -1020,7 +1049,7 @@ function drawFig(c, u, Q, o){
   return `<ellipse cx="${f2(gc.x + 0.4 * wk)}" cy="${f2(gc.y)}" rx="${f2((3.9 + ext * 0.55) * wk)}" ry="${f2((1.15 + ext * 0.05) * wk)}" fill="url(#${u}sh)"/>` + out;
 }
 function ball3(c, u, x, y, z, spin){
-  const g = proj(c, x, y), p = proj(c, x, y, z * 10), r = (c.close ? 0.06 : 0.1) * c.H * p.k, sr = 1 / (1 + z * 0.6);
+  const g = proj(c, x, y), p = proj(c, x, y, z * 10), r = ballR(c) * p.k, sr = 1 / (1 + z * 0.6);
   const patch = (cx, cy, sz) => { let d = ""; for(let i = 0; i < 5; i++){ const a = (i * 72 - 90) * Math.PI / 180; d += (i ? "L" : "M") + f2(cx + Math.cos(a) * sz) + " " + f2(cy + Math.sin(a) * sz); } return d + "Z"; };
   let pat = patch(0, 0, 0.36 * r);
   for(let i = 0; i < 5; i++){ const a = (i * 72 + 90) * Math.PI / 180; pat += patch(Math.cos(a) * 0.82 * r, Math.sin(a) * 0.82 * r, 0.2 * r); }
@@ -1038,14 +1067,19 @@ function bubble(x0, y0, txt){
 }
 function draw3(el, st, t){
   const s = st.s, c = s.cam, u = st.u, items = [];
-  for(const [a, tr] of Object.entries(s.tracks)){
-    const kind = s.actors[a], v = at(tr, t); if(!v || kind === "foot") continue;
-    if(kind === "ball"){ const prev = st.prev[a], moved = prev ? Math.hypot(v[0] - prev[0], v[1] - prev[1]) : 0; st.prev[a] = [v[0], v[1]];
-      const g = proj(c, v[0], v[1]); st.spin[a] = ((st.spin[a] || 0) + moved * 55) % 360;
-      items.push({d: g.depth - 0.5, svg: ball3(c, u, v[0], v[1], Math.max(0, v[2] || 0), st.spin[a])}); continue; }
-    if(!s.mot[a]) continue;
-    items.push({d: proj(c, v[0], v[1]).depth, svg: drawFig(c, u, pose(s, a, t), {team: s.team[a], look: s.looks[a], keeper: kind === "keeper"})});
-  }
+  const U = c.H / 20, br = ballR(c), figs = [];
+  for(const a of s.people || []){ const v = at(s.tracks[a], t); if(!v) continue; const Q = pose(s, a, t), d = proj(c, v[0], v[1]).depth;
+    figs.push({Q, d}); items.push({d, svg: drawFig(c, u, Q, {team: s.team[a], look: s.looks[a], keeper: s.actors[a] === "keeper"})}); }
+  const bn = ballNow(s, t);
+  if(bn){ const v = bn.v, prev = st.prev.b, moved = prev ? Math.hypot(v[0] - prev[0], v[1] - prev[1]) : 0; st.prev.b = [v[0], v[1]];
+    const g = proj(c, v[0], v[1]); st.spin.b = ((st.spin.b || 0) + Math.min(moved, 4) * 55) % 360;
+    // a foot on top of the ball is drawn over it
+    const over = v[2] < 0.1 ? figs.find(F => [0, 1].some(j => { const A = F.Q.pts["ank" + j]; return A[2] - 0.7 * U > br && Math.hypot(A[0] - v[0], A[1] - v[1]) < br * 1.6; })) : null;
+    let ring = "";
+    const pulse = (x, y, k, o) => { const q = proj(c, x, y), rr = br * q.k * (1.15 + 1.5 * k); return `<ellipse cx="${f2(q.x)}" cy="${f2(q.y)}" rx="${f2(rr)}" ry="${f2(rr * (c.cs ? 0.5 : 0.32))}" fill="none" stroke="#fff" stroke-width="${f2(Math.max(0.25, 0.28 * U * q.k))}" stroke-opacity="${f2(0.85 * o)}"/>`; };
+    if(bn.ring > 0.02) ring += pulse(v[0], v[1], 1 - bn.ring, bn.ring);
+    for(const k of s.kicks){ const x = (t - k.t) / 0.24; if(x >= 0 && x < 1) ring += pulse(k.b0[0], k.b0[1], x, 1 - x); }
+    items.push({d: over ? over.d + 0.01 : g.depth - 0.5, svg: ring + ball3(c, u, v[0], v[1], Math.max(0, v[2] || 0), st.spin.b)}); }
   items.sort((x, y) => y.d - x.d);
   st.actEl.innerHTML = items.map(i => i.svg).join("");
   const says = s.says.filter(([t0]) => t >= t0 && t < t0 + 1.2);
