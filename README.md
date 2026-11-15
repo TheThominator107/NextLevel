@@ -14,7 +14,13 @@ Build command: (none). Output directory: `/`.
 ## Database updates
 New database: run `supabase/setup.sql`, then every file in `supabase/migrations/` in number order.
 
-**Not sure which database updates you've run?** Run `supabase/all_updates.sql` once in the SQL Editor. It contains every update (002 to 015), is safe whatever state your database is in, and can be run again any time. If Supabase warns about a "destructive operation", click "Run this query": it only removes old, unused parts.
+**Recruiting has three sections** (update 016): College and Pro for players 16 and over, Youth clubs for any age. Pro scouts can't see players until a NextPlay owner approves them in the app. To make yourself an owner, run this once in the SQL Editor with the email you sign in to NextPlay with:
+
+```sql
+insert into public.platform_admins (user_id) select id from auth.users where lower(email) = lower('you@example.com') on conflict do nothing;
+```
+
+**Not sure which database updates you've run?** Run `supabase/all_updates.sql` once in the SQL Editor. It contains every update (002 to 016), is safe whatever state your database is in, and can be run again any time. If Supabase warns about a "destructive operation", click "Run this query": it only removes old, unused parts.
 Existing database: run any migration you haven't run yet. They're all safe to run more than once.
 
 ## Paywall
