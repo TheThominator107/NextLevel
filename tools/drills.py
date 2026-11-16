@@ -179,7 +179,7 @@ drill("b-basic-turns", "Hook turns", "Dribbling", "Beginner", 10, "Ball, 2 cones
   "Slow down and stop the ball before turning.",
   "Turn without slowing down and race back to the start.")
 
-drill("b-laces", "Laces strike at a wall target", "Shooting", "Beginner", 10, "Ball, wall, 2 cones", ["shooting"], ["Finishing"],
+drill("b-laces", "Laces strike at a wall target", "Finishing", "Beginner", 10, "Ball, wall, 2 cones", ["shooting"], ["Finishing"],
   "A clean, low, powerful strike with the laces.",
   "Make a target 3 yards wide against a wall with two cones. Stand 10 yards away.",
   ["Put the ball in front of you and take two steps back and one to the side.",
@@ -400,7 +400,7 @@ drill("b-speed-dribble", "Speed dribble and stop", "Dribbling", "Intermediate", 
   "Jog with the ball.",
   "Use only your weaker foot, or race against your best time.")
 
-drill("b-dribble-shoot", "Dribble, set and shoot", "Shooting", "Intermediate", 12, "Ball, wall, 5 cones", ["shooting", "dribbling"], ["Finishing"],
+drill("b-dribble-shoot", "Dribble, set and shoot", "Finishing", "Intermediate", 12, "Ball, wall, 5 cones", ["shooting", "dribbling"], ["Finishing"],
   "Combine dribbling and finishing at game speed.",
   "Make a 3-yard target on a wall with two cones. Put three cones in a line 15 to 25 yards from the wall.",
   ["Dribble through the three cones.",
@@ -412,7 +412,7 @@ drill("b-dribble-shoot", "Dribble, set and shoot", "Shooting", "Intermediate", 1
   "Walk through the cones.",
   "Shoot with the weaker foot or one touch after the last cone.")
 
-drill("b-wall-return-finish", "Wall return, set and finish", "Shooting", "Intermediate", 12, "Ball, wall, 4 cones", ["shooting", "first_touch"], ["Finishing", "Composure"],
+drill("b-wall-return-finish", "Wall return, set and finish", "Finishing", "Intermediate", 12, "Ball, wall, 4 cones", ["shooting", "first_touch"], ["Finishing", "Composure"],
   "Score after receiving: control, set and strike.",
   "A 3-yard target on the wall with two cones. A cone 12 yards out at an angle to start.",
   ["Pass firmly against the wall from the angle.",
@@ -524,7 +524,7 @@ drill("b-aerial", "Aerial control off the wall", "First touch", "Advanced", 12, 
   "Throw the ball against the wall instead of kicking it, so it comes back softer.",
   "Control and turn 180 degrees with your first touch.")
 
-drill("b-volley", "Volleys and half-volleys", "Shooting", "Advanced", 10, "Ball, wall, 2 cones", ["shooting", "first_touch"], ["Finishing", "Composure"],
+drill("b-volley", "Volleys and half-volleys", "Finishing", "Advanced", 10, "Ball, wall, 2 cones", ["shooting", "first_touch"], ["Finishing", "Composure"],
   "Strike a dropping ball cleanly and keep it down.",
   "Make a 3-yard target against the wall with two cones. Stand 8 yards away.",
   ["Toss the ball up in front of your kicking foot.",
@@ -572,7 +572,7 @@ drill("b-long-pass", "Long passes into a box", "Passing", "Advanced", 15, "Ball,
   "Move to 20 yards and make the box bigger.",
   "Play a long pass straight after a touch out of your feet, or make the box 3 by 3 yards.")
 
-drill("b-curl", "Curl round the wall", "Shooting", "Advanced", 15, "Ball, wall, 5 cones", ["shooting"], ["Finishing"],
+drill("b-curl", "Curl round the wall", "Finishing", "Advanced", 15, "Ball, wall, 5 cones", ["shooting"], ["Finishing"],
   "Bend the ball round a defensive wall into the corner.",
   "Make a 4-yard target on the wall with two cones. Put three cones in a line 6 yards in front of it as the 'defensive wall'. Ball 15 yards out.",
   ["Pick the side of the wall you'll bend round.",
@@ -584,7 +584,7 @@ drill("b-curl", "Curl round the wall", "Shooting", "Advanced", 15, "Ball, wall, 
   "Move closer and take away the cone wall.",
   "Make the target 2 yards wide, or curl it in from a wide angle.")
 
-drill("b-chip", "Chips into a box", "Passing", "Advanced", 12, "Ball, 7 cones", ["passing", "shooting"], ["Finishing", "Passing range"],
+drill("b-chip", "Chips into a box", "Finishing", "Advanced", 12, "Ball, 7 cones", ["passing", "shooting"], ["Finishing", "Passing range"],
   "Lift the ball over a defender or keeper and land it softly.",
   "Put a line of three cones 8 yards away as the 'defender'. Make a 4-yard box of cones 6 yards behind them.",
   ["Dribble toward the cone line.",
@@ -596,7 +596,7 @@ drill("b-chip", "Chips into a box", "Passing", "Advanced", 12, "Ball, 7 cones", 
   "Chip a stationary ball.",
   "Chip a rolling ball after a touch, or move the box closer to the cones.")
 
-drill("b-first-time", "First-time finishing", "Shooting", "Advanced", 12, "Ball, wall, 4 cones", ["shooting", "first_touch"], ["Finishing", "Composure"],
+drill("b-first-time", "First-time finishing", "Finishing", "Advanced", 12, "Ball, wall, 4 cones", ["shooting", "first_touch"], ["Finishing", "Composure"],
   "Finish without a controlling touch: the fastest way to score.",
   "Make a 3-yard target on the wall with two cones. Start from a cone 10 yards out and 6 yards to the side.",
   ["Pass firmly against the wall at an angle so the ball comes back across the target.",
@@ -620,7 +620,7 @@ drill("b-tight-space", "Receive, protect and spin", "First touch", "Advanced", 1
   "Control the ball and stop it before you turn.",
   "Spin with the outside of the foot in one touch.")
 
-drill("b-weak-finish", "Weak-foot finishing", "Shooting", "Advanced", 12, "Ball, wall, 4 cones", ["shooting"], ["Weak foot", "Finishing"],
+drill("b-weak-finish", "Weak-foot finishing", "Finishing", "Advanced", 12, "Ball, wall, 4 cones", ["shooting"], ["Weak foot", "Finishing"],
   "Score with your weaker foot so defenders can't force you one way.",
   "Make a 3-yard target on the wall with two cones. Two cones as start points, 15 yards out, left and right.",
   ["Dribble in from the cone.",
@@ -692,7 +692,7 @@ drill("b-dribble-intervals", "Dribble intervals", "Fitness", "Advanced", 15, "Ba
   "Fewer reps, longer rest.",
   "Shorter rest, or add a turn halfway.")
 
-drill("b-game-sim", "Game-speed wall circuit", "Passing", "Advanced", 15, "Ball, wall, 6 cones", ["passing", "first_touch", "dribbling", "shooting", "decision_making"], ["Composure", "Finishing"],
+drill("b-game-sim", "Game-speed wall circuit", "Finishing", "Advanced", 15, "Ball, wall, 6 cones", ["passing", "first_touch", "dribbling", "shooting", "decision_making"], ["Composure", "Finishing"],
   "Pass, receive, turn, dribble and finish in one sequence at match speed.",
   "Make a 3-yard target on the wall with two cones. Put four cones in a line 10 to 20 yards from the wall, 3 yards apart.",
   ["Pass against the wall from the end of the cone line.",

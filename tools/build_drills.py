@@ -24,7 +24,7 @@ block = ("const BUILTIN_DRILLS = [\n  /* Solo drills for ages 10 to 18: a ball, 
          + ",\n".join(rows) + "\n];\n/* drills that were retired: old assignments open the closest current drill */\nconst LEGACY_DRILLS = " + js(LEGACY) + ";")
 p = os.path.join(ROOT, "app.js"); s = open(p).read()
 a = s.index("const BUILTIN_DRILLS = [")
-b = s.index("];", s.index("const LEGACY_DRILLS") if "const LEGACY_DRILLS" in s else a) + 2
+b = s.index("\n", s.index("const LEGACY_DRILLS")) if "const LEGACY_DRILLS" in s else s.index("];", a) + 2
 s = s[:a] + block + s[b:]
 open(p, "w").write(s)
 
