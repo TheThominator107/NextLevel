@@ -1,4 +1,4 @@
--- NextPlay: ALL database updates (002 to 017) in one file.
+-- NextPlay: ALL database updates (002 to 018) in one file.
 -- Paste into Supabase -> SQL Editor -> New query -> Run.
 -- Safe to run no matter which updates you have already run, and safe to run more than once.
 -- If Supabase asks you to confirm a 'destructive operation', click 'Run this query' (it only removes old, unused parts).
@@ -23,6 +23,7 @@ create policy reviews_del on public.reviews for delete to authenticated
 
 -- Done. You should see "Success. No rows returned".
 
+
 -- =================== 003_family_drills.sql ===================
 -- NextPlay update 003: families can add recommended home drills to their own player's week
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
@@ -42,6 +43,7 @@ create policy assign_family_delete on public.assignments for delete to authentic
   using (assigned_by = auth.uid() and player_id in (select my_player_ids()));
 
 -- Done. You should see "Success. No rows returned".
+
 
 -- =================== 004_contact_messages.sql ===================
 -- NextPlay update 004: "Contact Us" form messages
@@ -68,6 +70,7 @@ create policy contact_insert on public.contact_messages for insert to anon, auth
 grant insert on public.contact_messages to anon, authenticated;
 
 -- Done. You should see "Success. No rows returned".
+
 
 -- =================== 005_drill_paywall.sql ===================
 -- NextPlay update 005: drill instructions behind the Home Training paywall
@@ -135,6 +138,7 @@ insert into public.drill_steps (drill_id, steps) values
 on conflict (drill_id) do update set steps = excluded.steps;
 
 -- Done. You should see "Success. No rows returned".
+
 
 -- =================== 006_private_messages_meetings.sql ===================
 -- NextPlay update 006: private coach / player / parent chat + meeting room
@@ -220,6 +224,7 @@ end $$;
 
 -- Done. You should see "Success. No rows returned".
 
+
 -- =================== 007_team_coaches.sql ===================
 -- NextPlay update 007: assign coaches to teams; private messages & meetings only for a player's own team coaches
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
@@ -296,6 +301,7 @@ end $$;
 
 -- Done. You should see "Success. No rows returned".
 
+
 -- =================== 008_public_private_profiles.sql ===================
 -- NextPlay update 008: profiles are Public or Private
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
@@ -345,6 +351,7 @@ end $$;
 grant execute on function public.get_public_profile(text) to anon, authenticated;
 
 -- Done. You should see "Success. No rows returned".
+
 
 -- =================== 009_family_owned_players.sql ===================
 -- NextPlay update 009: parents sign up freely and request to join a team
@@ -808,6 +815,7 @@ end $$;
 
 -- Done. You should see "Success. No rows returned".
 
+
 -- =================== 010_player_setup_and_search.sql ===================
 -- NextPlay update 010: date of birth for players + a better club / team search
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
@@ -949,6 +957,7 @@ grant  execute on function public.get_public_profile(text)      to anon, authent
 
 -- Done. You should see "Success. No rows returned".
 
+
 -- =================== 011_recruitment_profile.sql ===================
 -- NextPlay update 011: the Recruitment Profile
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
@@ -1005,6 +1014,7 @@ end $$;
 grant execute on function public.get_public_profile(text) to anon, authenticated;
 
 -- Done. You should see "Success. No rows returned".
+
 
 -- =================== 012_coach_recruiting.sql ===================
 -- NextPlay update 012: coach recruiting (find players, shortlist, invite to a team)
@@ -1218,6 +1228,7 @@ do $$ begin
 end $$;
 
 -- Done. You should see "Success. No rows returned".
+
 
 -- =================== 013_college_recruiting.sql ===================
 -- NextPlay update 013: college recruiting (players 16+, college coach accounts)
@@ -1553,6 +1564,7 @@ end $$;
 -- Tip: turn on Authentication -> Sign In / Providers -> Email -> "Confirm email" before launch,
 -- so college coaches have to prove they own their .edu address.
 
+
 -- =================== 014_more_drills.sql ===================
 -- NextPlay update 014: 45 more home drills (step-by-step instructions)
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
@@ -1608,6 +1620,7 @@ on conflict (drill_id) do update set steps = excluded.steps;
 
 -- Done. You should see "Success. No rows returned".
 
+
 -- =================== 015_club_unlimited.sql ===================
 -- NextPlay update 015: Club Unlimited plan
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
@@ -1622,6 +1635,7 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 -- Done. You should see "Success. No rows returned".
+
 
 -- =================== 016_recruiting_sections.sql ===================
 -- NextPlay update 016: three recruiting sections
@@ -1946,6 +1960,7 @@ end $$;
 --
 --   insert into public.platform_admins (user_id) select id from auth.users where lower(email) = lower('you@example.com') on conflict do nothing;
 
+
 -- =================== 017_solo_drills.sql ===================
 -- NextPlay update 017: the new solo drill library (60 drills for ages 10 to 18, done alone with a ball, cones and a wall)
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once. Needs update 005.
@@ -2025,3 +2040,55 @@ on conflict (drill_id) do update set setup = excluded.setup, steps = excluded.st
   points = excluded.points, easier = excluded.easier, harder = excluded.harder;
 
 -- Done. You should see "Success. No rows returned".
+
+
+-- =================== 018_team_sessions.sql ===================
+-- NextPlay update 018: team training sessions
+-- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
+-- Coaches build training sessions for a team from the team drill library.
+-- Only coaches and admins in the club can see or change them.
+
+create table if not exists public.team_sessions (
+  id           uuid primary key default gen_random_uuid(),
+  club_id      uuid not null references public.clubs(id) on delete cascade,
+  team_id      uuid references public.teams(id) on delete set null,
+  title        text not null check (char_length(title) between 1 and 100),
+  session_date date,
+  minutes      int not null default 75 check (minutes between 0 and 300),
+  focus        text[] not null default '{}',
+  blocks       jsonb not null default '[]'::jsonb check (jsonb_typeof(blocks) = 'array' and jsonb_array_length(blocks) <= 30),
+  notes        text not null default '' check (char_length(notes) <= 4000),
+  created_by   uuid references auth.users(id) on delete set null default auth.uid(),
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+create index if not exists team_sessions_club_idx on public.team_sessions (club_id);
+create index if not exists team_sessions_team_idx on public.team_sessions (team_id);
+
+alter table public.team_sessions enable row level security;
+
+drop policy if exists team_sessions_read on public.team_sessions;
+create policy team_sessions_read on public.team_sessions for select to authenticated
+  using (club_id = my_club() and is_staff());
+
+drop policy if exists team_sessions_insert on public.team_sessions;
+create policy team_sessions_insert on public.team_sessions for insert to authenticated
+  with check (club_id = my_club() and is_staff()
+    and (team_id is null or exists (select 1 from public.teams t where t.id = team_id and t.club_id = my_club())));
+
+drop policy if exists team_sessions_update on public.team_sessions;
+create policy team_sessions_update on public.team_sessions for update to authenticated
+  using (club_id = my_club() and is_staff())
+  with check (club_id = my_club() and is_staff()
+    and (team_id is null or exists (select 1 from public.teams t where t.id = team_id and t.club_id = my_club())));
+
+drop policy if exists team_sessions_delete on public.team_sessions;
+create policy team_sessions_delete on public.team_sessions for delete to authenticated
+  using (club_id = my_club() and is_staff() and (created_by = auth.uid() or is_admin()));
+
+do $$ begin
+  begin alter publication supabase_realtime add table public.team_sessions; exception when duplicate_object then null; end;
+end $$;
+
+-- Done. You should see "Success. No rows returned".
+

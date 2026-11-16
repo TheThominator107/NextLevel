@@ -1,5 +1,6 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
 import { animSvg, animScan, animToggle, hasAnim } from "./anim.js";
+import { TEAM_DRILLS, teamDrillById, METHODS, PHASES, PHASE_NOTE, TIPS_LABEL, diagramSvg, DIAGRAM_KEY, playersText } from "./teamdrills.js";
 "use strict";
 const APP_NAME = "NextPlay";
 
@@ -147,6 +148,7 @@ const S = {
   view:null, playerId:null, childId:null, teamFilter:"all", catFilter:"All",
   chartSkill:"overall", preview:false, loading:true, noDb:false, notice:null, subClubId:undefined,
   profiles:[], comments:[], ptab:"dev", assets:null, publicSlug:null, pub:null,
+  sessions:[], sessTab:"plan", sessTeam:null, draft:null, tdPhase:"All", tdSkill:"", tdSearch:"", tdAllAges:false,
   messages:[], chatTeam:null, pmessages:[], meetings:[], teamCoaches:[], pmPlayer:null, pmTab:"chat", meetingId:null
 };
 const APP_URL = location.origin + location.pathname;
@@ -350,7 +352,7 @@ async function save(fn, ok){
 let sb = null, channel = null, loadTimer;
 const TABLE = {clubs:"clubs", teams:"teams", players:"players", reviews:"reviews", assignments:"assignments", drills:"drills",
   members:"members", profiles:"player_profiles", comments:"comments", messages:"messages",
-  pmessages:"private_messages", meetings:"meetings", requests:"join_requests", interest:"recruit_interest", shortlist:"college_shortlist", college:"college_coaches"};
+  pmessages:"private_messages", meetings:"meetings", requests:"join_requests", interest:"recruit_interest", shortlist:"college_shortlist", college:"college_coaches", sessions:"team_sessions"};
 const PK = {profiles:"player_id"};
 const TABLE_TO_KEY = Object.fromEntries(Object.entries(TABLE).map(([k,v]) => [v,k]));
 TABLE_TO_KEY.clubs = "club"; TABLE_TO_KEY.family_links = "links"; TABLE_TO_KEY.team_coaches = "teamCoaches";
@@ -464,7 +466,7 @@ async function loadKey(key){
   /* college coaches and pro scouts only load their own details, shortlist and messages */
   if(col && !["college","shortlist","interest"].includes(key)) return;
   if(pro && !["pro","shortlist","interest"].includes(key)) return;
-  if((key === "college" && !col) || (key === "pro" && !pro) || (key === "shortlist" && fam)) return;
+  if((key === "college" && !col) || (key === "pro" && !pro) || (key === "shortlist" && fam) || (key === "sessions" && fam)) return;
   const byClub = t => fam ? sb.from(t).select("*") : sb.from(t).select("*").eq("club_id", cid);
   let q;
   if(key === "club") q = fam ? sb.rpc("family_clubs") : sb.from("clubs").select("*").eq("id", cid).maybeSingle();
@@ -486,6 +488,7 @@ async function loadKey(key){
   const {data, error} = await q;
   if(cid !== S.subClubId) return;
   if(error){ console.error(key, error); if(key === "owner" || key === "scouts") return; /* not there until database update 016 is run */
+    if(key === "sessions"){ S.sessionsMissing = true; render(); return; } /* not there until database update 018 is run */
     S.notice = "Some data couldn't load. Reload the page to try again."; render(); return; }
   if(key === "club" && fam){ const before = JSON.stringify(S.clubs); S.clubs = (Array.isArray(data) ? data : []).map(camel); S.club = null; S.clubLoaded = true; if(before !== JSON.stringify(S.clubs)) loadSteps(); }
   else if(key === "club"){ const before = S.club && S.club.familyAccess; S.club = data ? camel(data) : null; S.clubLoaded = true; if(S.club && before !== undefined && before !== S.club.familyAccess) loadSteps(); }
@@ -497,7 +500,7 @@ async function loadKey(key){
   else if(key === "owner") S.owner = (data || []).length > 0;
   else if(key === "scouts") S.scouts = (Array.isArray(data) ? data : []).map(camel);
   else if(key === "teamCoaches") S.teamCoaches = data || [];
-  else S[key] = data.map(camel);
+  else { if(key === "sessions") S.sessionsMissing = false; S[key] = data.map(camel); }
   if(key === "members" || key === "links"){
     const links = S.links || [];
     S.members = S.members.map(m => ({...m, playerIds: links.filter(l => l.member_id === m.id).map(l => l.player_id)}));
@@ -508,7 +511,7 @@ function subscribeClub(cid){
   if(channel){ sb.removeChannel(channel); channel = null; }
   S.subClubId = cid; S.clubLoaded = false;
   S.club = null; S.teams = []; S.players = []; S.reviews = []; S.assignments = []; S.drills = []; S.members = []; S.links = [];
-  S.profiles = []; S.comments = []; S.messages = []; S.pmessages = []; S.meetings = []; S.teamCoaches = []; S.clubs = []; S.requests = []; S.interest = []; S.shortlist = []; S.scout = null; S.college = null; S.pro = null; S.proLoaded = false; S.scouts = []; S.owner = false;
+  S.profiles = []; S.comments = []; S.messages = []; S.pmessages = []; S.meetings = []; S.teamCoaches = []; S.clubs = []; S.requests = []; S.interest = []; S.shortlist = []; S.scout = null; S.college = null; S.pro = null; S.proLoaded = false; S.scouts = []; S.owner = false; S.sessions = []; S.sessionsMissing = false; S.draft = null;
   if(!cid) return;
   ALL_KEYS.forEach(k => loadKey(k));
   channel = sb.channel("club-" + cid)
@@ -523,10 +526,10 @@ function subscribeClub(cid){
     })
     .subscribe();
 }
-const ALL_KEYS = ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","meetings","teamCoaches","requests","interest","shortlist","college","pro","owner","scouts"];
+const ALL_KEYS = ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","meetings","teamCoaches","requests","interest","shortlist","college","pro","owner","scouts","sessions"];
 function refreshAll(){ ALL_KEYS.forEach(schedule); }
 function fixView(){
-  const staffViews = ["roster","player","chat","messages","drills","recruit","plans","club"], famViews = ["home","chat","messages","drills","recruit","plans","account"];
+  const staffViews = ["roster","player","sessions","chat","messages","drills","recruit","plans","club"], famViews = ["home","chat","messages","drills","recruit","plans","account"];
   if(!S.me) { S.view = null; return; }
   if(isScout()){ if(!["scout","shortlist","account"].includes(S.view)) S.view = "scout"; return; }
   const ok = isStaff() ? staffViews : famViews;
@@ -542,7 +545,7 @@ function topbar(){
   let tabs = "";
   if(S.me && (S.club || !isStaff())){
     const items = isStaff()
-      ? [["roster","Players"],["chat","Team chat"],["messages","Messages"],["drills","Drill library"],["recruit","Recruit"],["plans","Plans"],["club","Club"]]
+      ? [["roster","Players"],["sessions","Sessions"],["chat","Team chat"],["messages","Messages"],["drills","Drill library"],["recruit","Recruit"],["plans","Plans"],["club","Club"]]
       : isScout() ? [["scout","Find players"],["shortlist","Shortlist"],["account","Account"]]
       : [["home","My player"],["chat","Team chat"],["messages","Messages"],["drills","Home drills"],["recruit","Recruiting"],["plans","Plans"],["account","Account"]];
     const pmu = totalPmUnread();
@@ -600,6 +603,7 @@ function viewBody(){
     switch(S.view){
       case "player": return playerView();
       case "drills": return drillsView();
+      case "sessions": return sessionsView();
       case "plans": return plansView();
       case "club": return clubView();
       case "recruit": return staffRecruit();
@@ -1698,7 +1702,7 @@ function drillsView(){
     const kids = S.players.filter(p => (S.me.playerIds||[]).includes(p.id));
     recs = kids.map(k => recommendCard(k, {family:true, title: kids.length > 1 ? "Recommended for " + k.name : "Recommended for you"})).join("");
   }
-  return `<div class="row between"><div class="stack" style="gap:4px"><h1>${staff?"Drill library":"Home drills"}</h1><p class="muted small">${staff?"Built-in drills plus any your club adds. Assign them to players for home practice.":"Drills you can do at home with a ball and a little space."}</p></div>
+  return `<div class="row between"><div class="stack" style="gap:4px"><h1>${staff?"Drill library":"Home drills"}</h1><p class="muted small">${staff?"Solo drills for home practice, plus any your club adds. For team practices, see Sessions.":"Drills you can do at home with a ball and a little space."}</p></div>
     ${staff?`<button class="btn primary" data-act="modal" data-m="drill">Add club drill</button>`:""}</div>
   ${recs}
   <h2>${staff ? "All drills by level and skill" : "All home drills by level and skill"}</h2>
@@ -2609,7 +2613,7 @@ const AUDIENCES = [
   {id:"select", icon:"🏆", title:"Select & travel clubs", text:"One review standard across every coach and age group, progress families can see, and recruiting support for older players.", link:["#clubs","For clubs"]},
   {id:"rec", icon:"⚽", title:"Recreational leagues", text:"Quick, friendly reviews volunteer coaches can do in minutes, and at-home drills that keep kids playing between games.", link:["#clubs","For rec programs"]},
   {id:"trainers", icon:"🎯", title:"Private trainers & academies", text:"Give every training group a written review and homework, so families see the value of each session.", link:["#clubs","For trainers"]},
-  {id:"coaches", icon:"📋", title:"Coaches", text:"Rate 13 field skills or 7 goalkeeper skills, write the update note, assign drills and message families, from your phone.", link:["#coach","Start as a coach"]},
+  {id:"coaches", icon:"📋", title:"Coaches", text:"Rate 13 field skills or 7 goalkeeper skills, plan team practices from the reviews, assign home drills and message families, from your phone.", link:["#coach","Start as a coach"]},
   {id:"parents", icon:"👪", title:"Parents", text:"See the coach's feedback, what changed since last time, and exactly what to practice at home.", link:["#for-parents","For parents"]},
   {id:"players", icon:"🧒", title:"Players", text:"Animated drills picked from your coach's review, a weekly tracker, and a profile that grows with you.", link:["#drills","See the drills"]},
   {id:"college", icon:"🎓", title:"College coaches", text:"Search players aged 16+ by position, class, GPA and division interest. Shortlist and message families. Free.", link:["#college","Join free"]},
@@ -3398,6 +3402,357 @@ document.addEventListener("input", ev => {
   const pos = ev.target.selectionStart;
   render();
   const el = document.getElementById("drill-search"); if(el){ el.focus(); try{ el.setSelectionRange(pos, pos); }catch(_){} }
+});
+
+/* ---------- team training sessions ---------- */
+const TD_SKILLS = FIELD_SKILLS.filter(s => s.k !== "coachability");
+const SESS_LENGTHS = [45, 60, 75, 90, 105, 120];
+const ageOfTeam = t => { const m = String((t && t.ageGroup) || (t && t.name) || "").match(/U-?\s?(\d{1,2})\b/i) || String((t && t.ageGroup) || "").match(/(\d{1,2})/); return m ? Number(m[1]) : null; };
+const tdAgeOk = (dr, age) => age == null || (dr.minAge || 0) <= age;
+const blockDrill = b => b && !b.custom ? teamDrillById(b.drillId) : null;
+const blockTitle = b => b.custom ? (b.title || "Your activity") : (blockDrill(b) || {}).title || "Drill no longer in the library";
+const blockPhase = b => b.custom ? "Your activity" : (blockDrill(b) || {}).phase || "";
+const sessTotal = blocks => (blocks || []).reduce((n, b) => n + (Number(b.minutes) || 0), 0);
+const draftKey = () => "np-session-draft-" + (S.uid || "");
+
+function sessTeamId(){
+  const ts = myTeams();
+  if(S.sessTeam === "all" || ts.some(t => t.id === S.sessTeam)) return S.sessTeam;
+  return ts.length ? ts[0].id : "all";
+}
+/* team picture from each player's latest review: lowest team averages, players rated 1 or 2, and the coach's "Work on" tags */
+function teamFocus(teamId){
+  const players = S.players.filter(p => teamId === "all" || p.teamId === teamId);
+  const vals = {}, low = {}, tagged = {};
+  let reviewed = 0, keepers = 0;
+  for(const p of players){
+    const rs = reviewsFor(p.id), last = rs[rs.length - 1]; if(!last || !last.ratings) continue;
+    reviewed++; const form = reviewForm(last); if(form === "gk") keepers++;
+    for(const sk of skillsFor(form)){
+      const v = validRating(last.ratings[sk.k]); if(v == null) continue;
+      (vals[sk.k] = vals[sk.k] || []).push(v);
+      if(v <= 2) (low[sk.k] = low[sk.k] || []).push(p);
+    }
+    for(const t of (last.improve || [])) for(const k of (TAG_SKILLS[t] || [])) (tagged[k] = tagged[k] || new Set()).add(p.id);
+  }
+  const skills = Object.keys(vals).filter(k => k !== "coachability").map(k => {
+    const v = vals[k], avg = v.reduce((a, b) => a + b, 0) / v.length, gk = k.startsWith("gk_");
+    const pool = Math.max(1, gk ? keepers : reviewed - keepers);
+    const tags = tagged[k] ? tagged[k].size : 0, lows = low[k] || [];
+    const need = Math.max(0, 4 - avg) * 2 + (tags / pool) * 2 + (lows.length / v.length) * 2;
+    return {k, label:SKILL_LABEL[k] || k, avg, n:v.length, gk, need, low:lows, tags};
+  }).sort((a, b) => b.need - a.need || a.avg - b.avg);
+  return {players, reviewed, keepers, skills, field:skills.filter(s => !s.gk), gk:skills.filter(s => s.gk), need:Object.fromEntries(skills.map(s => [s.k, s.need]))};
+}
+const defaultFocus = F => F.field.filter(s => s.need > 0.5).slice(0, 3).map(s => s.k);
+
+function newDraft(teamId){
+  const F = teamFocus(teamId);
+  return {id:null, title:"", teamId, date:"", minutes:75, focus:defaultFocus(F), blocks:[], notes:"", focusTouched:false};
+}
+function draft(){
+  const tid = sessTeamId();
+  if(!S.draft){
+    try { const j = JSON.parse(localStorage.getItem(draftKey()) || "null"); if(j && Array.isArray(j.blocks)) S.draft = j; } catch(_){}
+    if(!S.draft) S.draft = newDraft(tid);
+  }
+  return S.draft;
+}
+function keepDraft(){ try { localStorage.setItem(draftKey(), JSON.stringify(S.draft)); } catch(_){} }
+
+function scoreTeamDrill(dr, F, focus){
+  const hits = (dr.skills || []).filter(k => focus.includes(k));
+  const base = (dr.skills || []).reduce((s, k) => s + (F.need[k] || 0), 0) / Math.sqrt((dr.skills || []).length || 1);
+  return {score: base + hits.length * 3, hits};
+}
+function whyDrill(dr, F, focus){
+  const fs = Object.fromEntries(F.skills.map(s => [s.k, s]));
+  const ks = (dr.skills || []).filter(k => focus.includes(k) || (fs[k] && fs[k].need > 1)).sort((a, b) => (focus.includes(b) - focus.includes(a)) || ((fs[b] || {}).need || 0) - ((fs[a] || {}).need || 0)).slice(0, 2);
+  return ks.map(k => fs[k] ? `${SKILL_LABEL[k]} (team average ${fix1(fs[k].avg)}/5)` : `${SKILL_LABEL[k]} (your focus)`);
+}
+function recommendTeamDrills(F, focus, age, n = 5){
+  const used = new Set((S.draft ? S.draft.blocks : []).map(b => b.drillId));
+  return TEAM_DRILLS.filter(d => tdAgeOk(d, age) && d.id !== "t-cooldown" && !used.has(d.id))
+    .map(d => ({d, ...scoreTeamDrill(d, F, focus)})).filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score).slice(0, n);
+}
+/* a full session: warm-up, a technical or possession practice, an opposed practice, a game, and a cool-down for longer sessions */
+function autoBuild(minutes, F, focus, age){
+  const ok = TEAM_DRILLS.filter(d => tdAgeOk(d, age) && d.id !== "t-cooldown");
+  const sc = d => scoreTeamDrill(d, F, focus).score;
+  const pick = (phases, not) => ok.filter(d => phases.includes(d.phase) && !not.includes(d.id)).sort((a, b) => sc(b) - sc(a) || a.minutes - b.minutes)[0];
+  const warm = pick(["Warm-up"], []);
+  const m1 = pick(["Technical", "Possession"], [warm && warm.id]);
+  const m2 = pick(["Possession", "Attacking", "Defending", "Transition"], [warm && warm.id, m1 && m1.id]);
+  const game = pick(["Game"], []);
+  const cool = minutes >= 75 ? teamDrillById("t-cooldown") : null;
+  const r5 = x => Math.max(5, Math.round(x / 5) * 5);
+  const wMin = minutes >= 75 ? 15 : 10, cMin = cool ? 5 : 0, rem = Math.max(15, minutes - wMin - cMin);
+  const a = r5(rem * 0.3), b = r5(rem * 0.33), c = Math.max(5, rem - a - b);
+  return [[warm, wMin], [m1, a], [m2, b], [game, c], [cool, cMin]].filter(([d, m]) => d && m > 0).map(([d, m]) => ({drillId:d.id, minutes:m, notes:""}));
+}
+
+function tipsHtml(dr){ return (dr.tips || []).map(t => `<span class="tips-b" title="Ajax TIPS: ${TIPS_LABEL[t]}">${TIPS_LABEL[t]}</span>`).join(""); }
+function teamDrillDetails(dr, open){
+  const m = METHODS[dr.method] || {};
+  return `<details class="drill-how" ${open ? "open" : ""}><summary>How it works</summary>
+    <p class="dh-row"><b>Set up</b>${esc(dr.setup)}</p>
+    <p class="dh-row"><b>Equipment</b>${esc(dr.equipment)}</p>
+    <div class="dh-row"><b>How to run it</b><ol>${dr.how.map(s => `<li>${esc(s)}</li>`).join("")}</ol></div>
+    <div class="dh-points"><b>Coaching points</b><ul>${dr.points.map(s => `<li>${esc(s)}</li>`).join("")}</ul></div>
+    <p class="dh-row"><b>Make it harder</b>${esc(dr.progress)}</p>
+    <p class="dh-row"><b>Make it easier</b>${esc(dr.regress)}</p>
+    ${dr.note ? `<p class="dh-row note-safe"><b>Safety</b>${esc(dr.note)}</p>` : ""}
+    ${m.name ? `<p class="dh-row method"><b>Where this comes from: ${esc(m.name)}</b>${esc(m.from)}</p>` : ""}
+  </details>`;
+}
+function teamDrillCard(dr, opts = {}){
+  const d0 = S.draft, inPlan = d0 && d0.blocks.some(b => b.drillId === dr.id);
+  return `<article class="drill tdrill">
+    <div class="row between top-al"><h3>${esc(dr.title)}</h3><span class="pill plain">${esc(dr.phase)}</span></div>
+    <div class="tdiag-w">${diagramSvg(dr)}</div>
+    <div class="dmeta"><span>${esc(dr.minutes)} min</span><span>· ${esc(playersText(dr))}</span><span>· ${esc(dr.area)}</span><span>· Ages ${esc(dr.minAge)}+</span></div>
+    <p class="dgoal">${esc(dr.summary)}</p>
+    <div class="trains small"><span class="muted">Works on:</span> ${(dr.skills || []).map(k => esc(SKILL_LABEL[k] || k)).join(" · ")}</div>
+    <div class="tips-row small"><span class="muted">TIPS:</span> ${tipsHtml(dr)}</div>
+    ${opts.why && opts.why.length ? `<p class="small rec-why"><b>Why for this team:</b> works on ${esc(opts.why.join("; "))}</p>` : ""}
+    ${teamDrillDetails(dr)}
+    <div class="row"><button class="btn sm ${inPlan ? "" : "primary"}" data-act="sessAdd" data-id="${esc(dr.id)}" aria-label="Add ${esc(dr.title)} to your session">${inPlan ? "Add again" : "Add to session"}</button>${inPlan ? `<span class="small good-t">✓ In your session</span>` : ""}</div>
+  </article>`;
+}
+
+function sessionsView(){
+  const tab = ["plan", "library", "saved"].includes(S.sessTab) ? S.sessTab : "plan";
+  const n = (S.sessions || []).length;
+  const head = `<div class="stack" style="gap:4px"><h1>Training sessions</h1>
+    <p class="muted small">Plan team practices from the team drill library. Recommendations come from your players' latest reviews.</p></div>
+    <div class="subtabs" role="tablist" aria-label="Session sections">
+      <button role="tab" data-act="sessTab" data-id="plan" aria-selected="${tab === "plan"}">Plan a session</button>
+      <button role="tab" data-act="sessTab" data-id="library" aria-selected="${tab === "library"}">Team drill library</button>
+      <button role="tab" data-act="sessTab" data-id="saved" aria-selected="${tab === "saved"}">Saved sessions${n ? ` (${n})` : ""}</button>
+    </div>
+    ${S.sessionsMissing ? `<div class="banner" role="status"><b>One step left:</b> run database update 018 (or <code>supabase/all_updates.sql</code>) in Supabase so sessions can be saved. You can still plan and print.</div>` : ""}`;
+  if(tab === "library") return head + teamLibraryHtml();
+  if(tab === "saved") return head + savedSessionsHtml();
+  return head + sessionPlanHtml();
+}
+
+function sessionPlanHtml(){
+  const d = draft(), teams = myTeams(), tid = sessTeamId();
+  if(d.teamId !== tid && !d.blocks.length && !d.id){ S.draft = newDraft(tid); return sessionPlanHtml(); }
+  const team = teams.find(t => t.id === d.teamId), age = ageOfTeam(team);
+  const F = teamFocus(d.teamId || "all");
+  const focus = d.focus || [];
+  const chip = s => `<button type="button" class="fchip" data-act="sessFocus" data-id="${esc(s.k)}" aria-pressed="${focus.includes(s.k)}">${esc(s.label)}${s.n ? `<span class="fc-avg num">${fix1(s.avg)}</span>` : ""}</button>`;
+  const ranked = F.field.slice(0, 6);
+  const others = TD_SKILLS.filter(s => !ranked.some(r => r.k === s.k)).map(s => ({k:s.k, label:s.label, n:0}));
+  const watch = F.field.filter(s => focus.includes(s.k) && s.low.length);
+  const focusCard = `<section class="card stack" aria-labelledby="tf-h">
+    <div class="row between"><h2 id="tf-h">Team focus</h2>
+      <label class="f small inline-f" for="sess-team">Team<select id="sess-team" data-sd="teamId">
+        ${teams.map(t => `<option value="${esc(t.id)}" ${t.id === d.teamId ? "selected" : ""}>${esc(t.name)}</option>`).join("")}
+        <option value="all" ${d.teamId === "all" ? "selected" : ""}>All players in the club</option></select></label></div>
+    ${F.reviewed ? `<p class="small muted">From the latest reviews of ${F.reviewed} of ${F.players.length} player${F.players.length === 1 ? "" : "s"}. Lowest team averages first; the number is the team average out of 5. Pick up to 4 to focus on.</p>
+      <div class="fchips" role="group" aria-label="Focus skills, lowest team average first">${ranked.map(chip).join("")}</div>
+      <details class="small"><summary>Other skills</summary><div class="fchips" style="margin-top:8px">${others.map(chip).join("")}</div></details>
+      ${F.gk.length ? `<p class="small"><b>Keepers:</b> ${F.gk.slice(0, 2).map(s => `${esc(s.label)} ${fix1(s.avg)}/5`).join(" · ")}</p>` : ""}
+      ${watch.length ? `<div class="small watch"><b>Players to watch</b>${watch.map(s => `<p>${esc(s.label)}: ${s.low.map(p => esc(p.name)).join(", ")} (rated 1 or 2)</p>`).join("")}</div>` : ""}`
+    : `<p class="small">${F.players.length ? "No reviews yet for this team." : "No players on this team yet."} Review players on the Players tab and recommendations will follow. For now, pick what you want to work on:</p>
+      <div class="fchips" role="group" aria-label="Focus skills">${TD_SKILLS.map(s => chip({k:s.k, label:s.label, n:0})).join("")}</div>`}
+    <div class="row"><button class="btn primary" data-act="${d.blocks.length ? "sessAutoReplace" : "sessAuto"}">Build a ${esc(d.minutes || 75)}-minute session for me</button></div>
+  </section>`;
+  const recs = recommendTeamDrills(F, focus, age, 4);
+  const recCard = `<section class="card stack" aria-labelledby="tr-h"><h2 id="tr-h">Recommended for ${esc(team ? team.name : "your players")}</h2>
+    ${age != null ? `<p class="small muted">Suitable for ${esc(team.ageGroup || "U" + age)}. ${focus.length ? "Matched to your focus: " + focus.map(k => esc(SKILL_LABEL[k])).join(", ") + "." : ""}</p>` : ""}
+    ${recs.length ? `<ul class="rec-list">${recs.map(x => `<li><div class="stack" style="gap:2px"><b>${esc(x.d.title)}</b><span class="small muted">${esc(x.d.phase)} · ${esc(x.d.minutes)} min · ${esc(playersText(x.d))}</span>
+      ${whyDrill(x.d, F, focus).length ? `<span class="small">Works on ${esc(whyDrill(x.d, F, focus).join("; "))}</span>` : ""}</div>
+      <div class="row nowrap"><button class="btn sm" data-act="modal" data-m="tdrill" data-id="${esc(x.d.id)}" aria-label="Details for ${esc(x.d.title)}">Details</button><button class="btn sm primary" data-act="sessAdd" data-id="${esc(x.d.id)}" aria-label="Add ${esc(x.d.title)} to your session">Add</button></div></li>`).join("")}</ul>`
+      : `<p class="small muted">Pick a focus above to see recommendations.</p>`}
+    <button class="btn ghost sm" data-act="sessTab" data-id="library">Browse all ${TEAM_DRILLS.length} team drills</button>
+  </section>`;
+  return `<div class="grid2 sess-grid"><div class="stack">${focusCard}${recCard}</div>${builderHtml(d)}</div>`;
+}
+
+function builderHtml(d){
+  const total = sessTotal(d.blocks), plan = Number(d.minutes) || 0;
+  const lens = SESS_LENGTHS.includes(plan) ? SESS_LENGTHS : SESS_LENGTHS.concat(plan).sort((a, b) => a - b);
+  const blk = (b, i) => { const dr = blockDrill(b), last = i === d.blocks.length - 1, t = blockTitle(b);
+    return `<li class="blk">
+      <div class="blk-h"><span class="blk-n num" aria-hidden="true">${i + 1}</span><div class="stack" style="gap:2px;min-width:0"><b>${esc(t)}</b>
+        <span class="small muted">${esc(blockPhase(b))}${dr ? ` · ${esc(playersText(dr))} · ${esc(dr.area)}` : ""}</span></div></div>
+      <div class="blk-f">
+        <label class="f small min-f" for="blk-m-${i}">Minutes<input type="number" id="blk-m-${i}" min="1" max="120" inputmode="numeric" data-blk="${i}" data-k="minutes" value="${esc(b.minutes)}"></label>
+        <label class="f small grow" for="blk-n-${i}">Notes for this block<input type="text" id="blk-n-${i}" maxlength="300" data-blk="${i}" data-k="notes" value="${esc(b.notes || "")}" placeholder="e.g. Focus on body shape"></label>
+      </div>
+      <div class="row blk-a">
+        <button class="btn ghost sm" data-act="sessMove" data-i="${i}" data-dir="-1" ${i === 0 ? "disabled" : ""} aria-label="Move ${esc(t)} up">↑ Up</button>
+        <button class="btn ghost sm" data-act="sessMove" data-i="${i}" data-dir="1" ${last ? "disabled" : ""} aria-label="Move ${esc(t)} down">↓ Down</button>
+        ${dr ? `<button class="btn ghost sm" data-act="modal" data-m="tdrill" data-id="${esc(dr.id)}" aria-label="Details for ${esc(t)}">Details</button>` : ""}
+        <button class="btn ghost sm" data-act="sessRemove" data-i="${i}" aria-label="Remove ${esc(t)}">Remove</button>
+      </div></li>`; };
+  return `<section class="card stack sess-builder" aria-labelledby="sb-h">
+    <div class="row between"><h2 id="sb-h">${d.id ? "Edit session" : "Session plan"}</h2>${d.id ? `<span class="pill good">Saved</span>` : ""}</div>
+    <label class="f" for="sd-title">Title<input type="text" id="sd-title" maxlength="100" data-sd="title" value="${esc(d.title)}" placeholder="e.g. Tuesday: playing through pressure"></label>
+    <div class="row wrap-f">
+      <label class="f" for="sd-date">Date<input type="date" id="sd-date" data-sd="date" value="${esc(d.date || "")}"></label>
+      <label class="f" for="sd-min">Planned length<select id="sd-min" data-sd="minutes">${lens.map(m => `<option value="${m}" ${m === plan ? "selected" : ""}>${m} minutes</option>`).join("")}</select></label>
+    </div>
+    <p class="sess-total small" id="sess-total" aria-live="polite">${totalText(total, plan)}</p>
+    ${d.blocks.length ? `<ol class="blocks">${d.blocks.map(blk).join("")}</ol>`
+      : `<div class="empty small"><p><b>No drills yet.</b> Use “Build a session for me”, add a recommended drill, or browse the team drill library.</p></div>`}
+    <details class="add-own"><summary>Add your own activity</summary>
+      <form data-form="sessCustom" class="row wrap-f" style="margin-top:8px">
+        <label class="f grow" for="own-t">Activity<input type="text" id="own-t" name="title" required maxlength="80" placeholder="e.g. Set pieces: corners"></label>
+        <label class="f min-f" for="own-m">Minutes<input type="number" id="own-m" name="minutes" min="1" max="120" value="10" required></label>
+        <button class="btn" type="submit">Add</button>
+      </form></details>
+    <label class="f" for="sd-notes">Notes for the session<textarea id="sd-notes" rows="3" maxlength="4000" data-sd="notes" placeholder="Equipment to bring, who's missing, reminders">${esc(d.notes || "")}</textarea></label>
+    <div class="row">
+      <button class="btn primary" data-act="sessSave">${d.id ? "Save changes" : "Save session"}</button>
+      <button class="btn" data-act="sessPrint" ${d.blocks.length ? "" : "disabled"}>Print or save as PDF</button>
+      <button class="btn ghost" data-act="${d.blocks.length || d.id ? "sessNewConfirm" : "sessNew"}">Start a new plan</button>
+    </div>
+  </section>`;
+}
+function totalText(total, plan){
+  const diff = plan - total;
+  return `<b class="num">${total}</b> of ${plan} minutes planned` + (total && diff > 0 ? ` · ${diff} left` : total && diff < 0 ? ` · <span class="over">${-diff} over</span>` : "");
+}
+function updSessTotal(){ const el = document.getElementById("sess-total"); if(el && S.draft) el.innerHTML = totalText(sessTotal(S.draft.blocks), Number(S.draft.minutes) || 0); }
+
+function teamLibraryHtml(){
+  const d = draft(), team = myTeams().find(t => t.id === d.teamId), age = S.tdAllAges ? null : ageOfTeam(team);
+  const q = (S.tdSearch || "").trim().toLowerCase(), ph = S.tdPhase || "All", sk = S.tdSkill || "";
+  const list = TEAM_DRILLS.filter(dr => (ph === "All" || dr.phase === ph) && (!sk || dr.skills.includes(sk)) && tdAgeOk(dr, age)
+    && (!q || [dr.title, dr.summary, dr.phase, (METHODS[dr.method] || {}).name, ...dr.skills.map(k => SKILL_LABEL[k])].join(" ").toLowerCase().includes(q)));
+  return `<div class="panel-note small"><p>Academy-style team practices, written by NextPlay in plain language. Each drill notes the publicly documented coaching method it comes from: rondos and positional play (Ajax and Barcelona), the Ajax TIPS model, Dutch 4v4, Funino, FIFA 11+ and U.S. Soccer's Play-Practice-Play. They aren't any club's own curriculum, and no club endorses NextPlay.</p></div>
+    <div class="lib-tools stack">
+      <div class="fchips" role="group" aria-label="Part of the session">${["All", ...PHASES].map(p => `<button type="button" class="fchip" data-act="tdPhase" data-id="${esc(p)}" aria-pressed="${p === ph}">${esc(p === "All" ? "All parts" : p)}</button>`).join("")}</div>
+      <div class="row wrap-f">
+        <label class="f small search-f" for="td-search">Find a drill<input type="search" id="td-search" data-input="tdSearch" value="${esc(S.tdSearch || "")}" placeholder="e.g. rondo, pressing, finishing"></label>
+        <label class="f small" for="td-skill">Works on<select id="td-skill" data-td="skill"><option value="">Any skill</option>${TD_SKILLS.concat(GK_SKILLS).map(s => `<option value="${esc(s.k)}" ${s.k === sk ? "selected" : ""}>${esc(s.label)}</option>`).join("")}</select></label>
+        ${ageOfTeam(team) != null ? `<label class="chk small"><input type="checkbox" data-td="allAges" ${S.tdAllAges ? "checked" : ""}> Show drills for all ages (now: suitable for ${esc(team.ageGroup || team.name)})</label>` : ""}
+      </div>
+    </div>
+    ${DIAGRAM_KEY}
+    ${ph !== "All" ? `<p class="small muted">${esc(PHASE_NOTE[ph])}</p>` : ""}
+    <h2 class="sr-only">Drills</h2><p class="small muted" aria-live="polite">${list.length} drill${list.length === 1 ? "" : "s"}</p>
+    ${list.length ? `<div class="dgrid tdgrid">${list.map(dr => teamDrillCard(dr)).join("")}</div>` : `<div class="empty"><p>No drills match. Try another part of the session or skill.</p></div>`}`;
+}
+
+function savedSessionsHtml(){
+  const list = (S.sessions || []).slice().sort((a, b) => String(b.sessionDate || "").localeCompare(String(a.sessionDate || "")) || (b.updatedAt || 0) - (a.updatedAt || 0));
+  if(!list.length) return `<div class="empty"><p><b>No saved sessions yet.</b> Plan one on the “Plan a session” tab and save it to reuse or share with your coaches.</p></div>`;
+  return `<div class="list sess-list">${list.map(s => `<article class="card sess-item">
+    <div class="row between"><div class="stack" style="gap:2px"><h2 class="h3">${esc(s.title)}</h2>
+      <span class="small muted">${[s.teamId ? teamName(s.teamId) : "All players", s.sessionDate ? fmtDate(s.sessionDate) : "No date", `${sessTotal(s.blocks)} min`, `${(s.blocks || []).length} block${(s.blocks || []).length === 1 ? "" : "s"}`].map(esc).join(" · ")}</span></div></div>
+    ${(s.focus || []).length ? `<p class="small"><span class="muted">Focus:</span> ${(s.focus).map(k => esc(SKILL_LABEL[k] || k)).join(" · ")}</p>` : ""}
+    <p class="small muted">${(s.blocks || []).map(b => esc(blockTitle(b))).join(" → ")}</p>
+    <div class="row"><button class="btn sm primary" data-act="sessOpen" data-id="${esc(s.id)}" aria-label="Open ${esc(s.title)}">Open</button>
+      <button class="btn sm" data-act="sessPrint" data-id="${esc(s.id)}" aria-label="Print ${esc(s.title)}">Print</button>
+      <button class="btn sm" data-act="sessCopy" data-id="${esc(s.id)}" aria-label="Copy ${esc(s.title)} into a new plan">Use as template</button>
+      ${s.createdBy === S.uid || isAdmin() ? `<button class="btn ghost sm" data-act="sessDel" data-id="${esc(s.id)}" aria-label="Delete ${esc(s.title)}">Delete</button>` : ""}</div>
+  </article>`).join("")}</div>`;
+}
+
+function printSessionHtml(s){
+  const blocks = s.blocks || [];
+  let t = 0;
+  return `<div class="sess-print">
+    <h2>${esc(s.title || "Training session")}</h2>
+    <p class="small muted">${[s.teamId ? teamName(s.teamId) : "All players", s.sessionDate ? fmtDate(s.sessionDate) : "", `${sessTotal(blocks)} minutes`].filter(Boolean).map(esc).join(" · ")}${(s.focus || []).length ? ` · Focus: ${s.focus.map(k => esc(SKILL_LABEL[k] || k)).join(", ")}` : ""}</p>
+    ${s.notes ? `<p class="small" style="white-space:pre-wrap">${esc(s.notes)}</p>` : ""}
+    ${blocks.map((b, i) => { const dr = blockDrill(b), from = t; t += Number(b.minutes) || 0;
+      return `<section class="pblk"><h3>${i + 1}. ${esc(blockTitle(b))} <span class="small muted">· ${esc(b.minutes)} min (${from}–${t})</span></h3>
+        ${b.notes ? `<p class="small"><b>Notes:</b> ${esc(b.notes)}</p>` : ""}
+        ${dr ? `<div class="pblk-in"><div class="pdiag">${diagramSvg(dr)}</div><div class="stack small" style="gap:6px">
+          <p><b>Set up:</b> ${esc(dr.setup)} <span class="muted">(${esc(playersText(dr))}; ${esc(dr.equipment)})</span></p>
+          <ol>${dr.how.map(x => `<li>${esc(x)}</li>`).join("")}</ol>
+          <p><b>Coaching points:</b> ${dr.points.map(esc).join(" ")}</p>
+          <p><b>Harder:</b> ${esc(dr.progress)} <b>Easier:</b> ${esc(dr.regress)}</p></div></div>` : ""}
+      </section>`; }).join("")}
+    <div class="row no-print"><button class="btn primary" type="button" data-act="printNow">Print or save as PDF</button><button class="btn" type="button" data-act="close">Close</button></div>
+  </div>`;
+}
+
+MODALS.tdrill = ds => { const dr = teamDrillById(ds.id); if(!dr) return `<h2>Drill not found</h2>`;
+  return `<h2>${esc(dr.title)}</h2>${teamDrillCard(dr).replace('<article class="drill tdrill">', '<article class="tdrill in-modal">').replace(/<h3>[\s\S]*?<\/h3>/, "").replace('<details class="drill-how" >', '<details class="drill-how" open>')}`; };
+MODALS.sessPrint = () => printSessionHtml(S.printSess || {});
+
+Object.assign(CONFIRM, {
+  sessDel: ["Delete this session?", "It's removed for every coach in your club. This can't be undone.", "Delete session"],
+  sessAutoReplace: ["Replace your current plan?", "The drills in your plan are replaced with a new recommended session. Your title, date and notes stay.", "Replace drills"],
+  sessNewConfirm: ["Start a new plan?", "Anything you haven't saved in the current plan is cleared.", "Start new plan"]
+});
+Object.assign(ACTS, {
+  sessTab: ds => { S.sessTab = ds.id; render(); },
+  sessFocus: ds => { const d = draft(), f = d.focus || (d.focus = []); const i = f.indexOf(ds.id);
+    if(i >= 0) f.splice(i, 1); else { if(f.length >= 4) return toast("Pick up to 4 focus skills. Remove one first.", true); f.push(ds.id); }
+    d.focusTouched = true; keepDraft(); render(); },
+  sessAuto: () => { const d = draft(), team = myTeams().find(t => t.id === d.teamId);
+    const F = teamFocus(d.teamId || "all"); d.blocks = autoBuild(Number(d.minutes) || 75, F, d.focus || [], ageOfTeam(team));
+    if(!d.title) d.title = (team ? team.name + ": " : "") + ((d.focus || []).length ? d.focus.slice(0, 2).map(k => SKILL_LABEL[k]).join(" and ") : "Training");
+    keepDraft(); render(); toast(`Session built: ${d.blocks.length} blocks, ${sessTotal(d.blocks)} minutes. Change anything you like.`);
+    const el = document.getElementById("sb-h"); if(el){ el.tabIndex = -1; el.focus(); } },
+  sessAdd: ds => { const dr = teamDrillById(ds.id); if(!dr) return; const d = draft();
+    if(d.blocks.length >= 30) return toast("A session can have up to 30 blocks.", true);
+    d.blocks.push({drillId:dr.id, minutes:dr.minutes, notes:""}); keepDraft(); if(document.querySelector("#modal .tdrill")) closeModal(); render();
+    toast(`Added “${dr.title}” (${dr.minutes} min). Total: ${sessTotal(d.blocks)} of ${d.minutes} minutes.`); },
+  sessMove: ds => { const d = draft(), i = +ds.i, j = i + (+ds.dir); if(j < 0 || j >= d.blocks.length) return;
+    [d.blocks[i], d.blocks[j]] = [d.blocks[j], d.blocks[i]]; keepDraft(); render();
+    const b = document.querySelector(`[data-act="sessMove"][data-i="${j}"][data-dir="${ds.dir}"]:not([disabled])`) || document.querySelector(`[data-act="sessMove"][data-i="${j}"]:not([disabled])`); if(b) b.focus(); },
+  sessRemove: ds => { const d = draft(), b = d.blocks[+ds.i]; if(!b) return; d.blocks.splice(+ds.i, 1); keepDraft(); render(); toast(`Removed “${blockTitle(b)}”.`);
+    const h = document.getElementById("sb-h"); if(h){ h.tabIndex = -1; h.focus(); } },
+  sessNew: () => { S.draft = newDraft(sessTeamId()); keepDraft(); render(); },
+  sessSave: async () => {
+    const d = draft(); if(!d.blocks.length) return toast("Add at least one drill before saving.", true);
+    const team = S.teams.find(t => t.id === d.teamId);
+    const title = (d.title || "").trim() || `${team ? team.name : "Team"} session${d.date ? " · " + fmtDate(d.date) : ""}`;
+    const id = d.id || crypto.randomUUID();
+    const row = {clubId:S.me.clubId, teamId:team ? team.id : null, title:title.slice(0, 100), sessionDate:d.date || null, minutes:Number(d.minutes) || 0,
+      focus:(d.focus || []).slice(0, 4), notes:(d.notes || "").slice(0, 4000), updatedAt:Date.now(),
+      blocks:d.blocks.slice(0, 30).map(b => b.custom ? {custom:true, title:String(b.title || "").slice(0, 80), minutes:Math.max(0, Math.min(120, Number(b.minutes) || 0)), notes:String(b.notes || "").slice(0, 300)}
+        : {drillId:b.drillId, minutes:Math.max(0, Math.min(120, Number(b.minutes) || 0)), notes:String(b.notes || "").slice(0, 300)})};
+    if(!d.id){ row.createdBy = S.uid; row.createdAt = Date.now(); }
+    const ok = await save(() => S.db.collection("sessions").doc(id).set(row), d.id ? "Session updated" : "Session saved. Find it under Saved sessions.");
+    if(ok){ d.id = id; d.title = row.title; keepDraft(); render(); }
+  },
+  sessOpen: ds => { const s = (S.sessions || []).find(x => x.id === ds.id); if(!s) return;
+    S.draft = {id:s.id, title:s.title, teamId:s.teamId || "all", date:s.sessionDate || "", minutes:s.minutes || sessTotal(s.blocks), focus:(s.focus || []).slice(), blocks:JSON.parse(JSON.stringify(s.blocks || [])), notes:s.notes || "", focusTouched:true};
+    S.sessTeam = S.draft.teamId; S.sessTab = "plan"; keepDraft(); render(); window.scrollTo(0, 0); },
+  sessCopy: ds => { ACTS.sessOpen(ds); if(S.draft){ S.draft.id = null; S.draft.date = ""; S.draft.title = S.draft.title + " (copy)"; keepDraft(); render(); toast("Copied into a new plan. Save it when you're ready."); } },
+  sessDel: async ds => { const ok = await save(() => S.db.doc("sessions/" + ds.id).delete(), "Session deleted");
+    if(ok && S.draft && S.draft.id === ds.id){ S.draft.id = null; keepDraft(); render(); } },
+  sessPrint: ds => { const s = ds.id ? (S.sessions || []).find(x => x.id === ds.id) : (() => { const d = draft(); return {...d, teamId:d.teamId === "all" ? null : d.teamId, sessionDate:d.date}; })();
+    if(!s) return; S.printSess = s; openModal(printSessionHtml(s)); },
+  printNow: () => window.print(),
+  tdPhase: ds => { S.tdPhase = ds.id; render(); }
+});
+ACTS.sessAutoReplace = ACTS.sessAuto;
+ACTS.sessNewConfirm = ACTS.sessNew;
+FORMS.sessCustom = async fd => {
+  const d = draft(), title = String(fd.get("title") || "").trim(); if(!title) return;
+  if(d.blocks.length >= 30) return toast("A session can have up to 30 blocks.", true);
+  d.blocks.push({custom:true, title:title.slice(0, 80), minutes:Math.max(1, Math.min(120, Number(fd.get("minutes")) || 10)), notes:""});
+  keepDraft(); render(); toast(`Added “${title}”.`);
+};
+document.addEventListener("input", ev => {
+  const t = ev.target; if(!t.dataset || !S.draft) return;
+  if(t.dataset.sd && t.dataset.sd !== "teamId"){ const k = t.dataset.sd; S.draft[k] = k === "minutes" ? Number(t.value) || 0 : t.value; if(k === "minutes") updSessTotal(); keepDraft(); }
+  else if(t.dataset.blk != null){ const b = S.draft.blocks[+t.dataset.blk]; if(!b) return; const k = t.dataset.k;
+    b[k] = k === "minutes" ? Math.max(0, Math.min(120, Number(t.value) || 0)) : t.value; if(k === "minutes") updSessTotal(); keepDraft(); }
+  else if(t.dataset.input === "tdSearch"){ S.tdSearch = t.value; const pos = t.selectionStart; render();
+    const el = document.getElementById("td-search"); if(el){ el.focus(); try { el.setSelectionRange(pos, pos); } catch(_){} } }
+});
+document.addEventListener("change", ev => {
+  const t = ev.target; if(!t.dataset) return;
+  if(t.dataset.sd === "teamId" && S.draft){ S.sessTeam = t.value;
+    if(S.draft.blocks.length || S.draft.id){ S.draft.teamId = t.value; if(!S.draft.focusTouched) S.draft.focus = defaultFocus(teamFocus(t.value)); }
+    else S.draft = newDraft(t.value);
+    keepDraft(); render(); const el = document.getElementById("sess-team"); if(el) el.focus(); }
+  if(t.dataset.sd === "minutes" && S.draft){ render(); const el = document.getElementById("sd-min"); if(el) el.focus(); }
+  if(t.dataset.td === "skill"){ S.tdSkill = t.value; render(); const el = document.getElementById("td-skill"); if(el) el.focus(); }
+  if(t.dataset.td === "allAges"){ S.tdAllAges = t.checked; render(); const el = document.querySelector('[data-td="allAges"]'); if(el) el.focus(); }
 });
 
 /* ---------- sign-in screens ---------- */
