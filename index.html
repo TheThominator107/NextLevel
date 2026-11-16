@@ -19,17 +19,23 @@
 <meta name="theme-color" content="#14213a">
 <link rel="icon" href="brand/mark-small.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="brand/mark-180.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Outfit:wght@600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" href="fonts/inter-400.woff" as="font" type="font/woff" crossorigin>
+<link rel="preload" href="fonts/inter-display-800.woff" as="font" type="font/woff" crossorigin>
 <style>
+/* Inter and Inter Display, served with the site (SIL Open Font License, see fonts/OFL.txt) */
+@font-face{font-family:"Inter";font-style:normal;font-weight:400;font-display:swap;src:url(fonts/inter-400.woff) format("woff")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:500;font-display:swap;src:url(fonts/inter-500.woff) format("woff")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:600;font-display:swap;src:url(fonts/inter-600.woff) format("woff")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:700;font-display:swap;src:url(fonts/inter-700.woff) format("woff")}
+@font-face{font-family:"Inter Display";font-style:normal;font-weight:700;font-display:swap;src:url(fonts/inter-display-700.woff) format("woff")}
+@font-face{font-family:"Inter Display";font-style:normal;font-weight:800;font-display:swap;src:url(fonts/inter-display-800.woff) format("woff")}
 :root{
   /* layout: slim top bar + one working column; coach goes roster -> player, family lands on one child's page */
   --ink:#14213a;
   --paper:#f3f5f8;
   --surface:#ffffff;
   --line:#d2dcee;
-  --muted:#1f2b3d;
+  --muted:#475467;
   --accent:#d9572a;
   --accent-ink:#ffffff;
   --blue:#1f5fc9; --blue-deep:#16449a; --blue-soft:#e4ecfb;
@@ -42,8 +48,8 @@
   --up:#1d7a46; --up-soft:#e2f3e8; --down:#b42318; --down-soft:#fbe3df;
   --shadow:0 1px 2px rgba(20,33,58,.06),0 4px 14px rgba(20,33,58,.05);
   --field-a:#74c47f; --field-b:#66ba72; --field-lines:.85; --eyebrow:#14213a; --card-muted:#4f5b70;
-  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
-  --body:"Source Sans 3",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --display:"Inter Display","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
@@ -88,7 +94,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .top .logo-mark{box-shadow:0 0 0 1px rgba(255,255,255,.14)}
 .small-brand .logo-mark{width:30px;height:30px;border-radius:8px}
 @media (max-width:420px){.logo-mark{width:32px;height:32px}}
-.wordmark{display:inline-flex;align-items:center;gap:0;font-family:"Outfit","Source Sans 3",system-ui,sans-serif;font-weight:700;font-size:1.6rem;letter-spacing:-.015em;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.wordmark{display:inline-flex;align-items:center;gap:0;font-family:var(--display);font-weight:800;font-size:1.55rem;letter-spacing:-.035em;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 .wm-play{color:#f0763f}
 .small-brand .wm-play{color:var(--accent)}
 .brand svg{flex:none}
@@ -675,6 +681,57 @@ ul.ticks li{position:relative;padding-left:24px;line-height:1.45}
 ul.ticks li::before{content:"✓";position:absolute;left:2px;top:0;color:var(--accent);font-weight:800}
 p.picked{margin:0;padding:8px 12px;border-radius:8px;background:var(--blue-soft);color:var(--blue-deep)}
 
+
+/* ---------- type system ---------- */
+body{font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:"cv11","calt"}
+p,li{text-wrap:pretty}
+h1,h2,h3,h4{font-family:var(--display);color:var(--ink);text-wrap:balance}
+h1{font-size:2.25rem;font-weight:800;letter-spacing:-.026em;line-height:1.08}
+h2{font-size:1.4rem;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+h3{font-size:1.08rem;font-weight:700;letter-spacing:-.012em;line-height:1.3}
+b,strong{font-weight:600}
+.small{font-size:.875rem;line-height:1.5}
+.lead{font-size:1.125rem;line-height:1.6;color:var(--muted);letter-spacing:-.005em}
+.eyebrow{font-family:var(--body);font-size:.74rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);border-left:0;padding-left:0}
+.page-hero h1{font-size:2.6rem}
+.hh-copy h1{font-size:3.1rem;letter-spacing:-.03em;line-height:1.04}
+.sec-head h2,.final-cta h2{font-size:2rem;font-weight:800;letter-spacing:-.026em}
+.feature h3,.aud h3{font-size:1.1rem}
+.prog h2{font-size:1.45rem}
+/* numbers: tight display figures that line up */
+.tile .big,.overall .big,.plan .price,.home-facts b,.score,.slider output,.step-n,.anim-step{font-family:var(--display);font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.home-facts b{font-size:1.9rem}
+.plan .price{font-size:2.3rem}
+.overall .big{font-size:2.9rem}
+.tile .big{font-size:2.2rem}
+.step-n{font-size:1rem;letter-spacing:0}
+.avatar,.photo.ph{font-family:var(--display);font-weight:800;letter-spacing:-.02em}
+.portal .ptitle{font-size:1.65rem;font-weight:800;letter-spacing:-.03em}
+.sk-name{font-family:var(--body);font-size:1rem;font-weight:600;letter-spacing:-.01em}
+.anim-step{font-weight:700;letter-spacing:.02em}
+/* controls */
+.btn{font-weight:600;letter-spacing:-.006em;border-radius:10px}
+.btn.lg{font-size:1rem;padding:13px 22px}
+.btn.sm{font-size:.84rem;border-radius:8px}
+.pill{font-size:.72rem;font-weight:600;letter-spacing:.02em}
+.chip{font-size:.82rem;font-weight:500}
+th,.fcol .fh,.who-sees thead th{font-family:var(--body);font-size:.72rem;font-weight:600;letter-spacing:.08em}
+.navlink,nav.tabs button{font-weight:500;letter-spacing:-.005em}
+label.f{font-weight:600;font-size:.88rem;letter-spacing:-.005em}
+input,select,textarea{font-size:1rem}
+.dmeta{font-size:.8rem}
+.legal p,.legal li{font-size:.98rem;line-height:1.7}
+.faq-d summary{font-size:1rem;font-weight:600;letter-spacing:-.01em}
+/* page titles, tab bars and notes never sit straight on the pitch lines */
+main > .stack:has(> h1), main > .row:has(> .stack > h1){background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 20px;box-shadow:var(--shadow);align-self:stretch}
+main > .stack:has(> h1) > p, main > .row > .stack > p{max-width:75ch}
+main > .subtabs, .card ~ .subtabs{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:2px 8px 0;box-shadow:var(--shadow)}
+.lib-tools{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px;box-shadow:var(--shadow);align-items:flex-end}
+.sg-title{display:inline-flex;align-items:baseline;gap:6px;align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 14px;box-shadow:var(--shadow);font-size:1.05rem;color:var(--ink)}
+main > .btn.ghost, main > a.btn.ghost, .btn.ghost.back{background:var(--surface);border-color:var(--line);box-shadow:var(--shadow);align-self:flex-start;padding:6px 12px}
+main > p.small, main > p.muted{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 14px;align-self:flex-start;max-width:100%}
+@media (max-width:900px){.hh-copy h1{font-size:2.5rem}.page-hero h1{font-size:2.2rem}}
+@media (max-width:520px){h1{font-size:1.9rem}.hh-copy h1{font-size:2.15rem}.page-hero h1{font-size:1.95rem}.sec-head h2,.final-cta h2{font-size:1.6rem}.lead{font-size:1.05rem}}
 </style>
 </head>
 <body>

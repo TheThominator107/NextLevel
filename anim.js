@@ -895,7 +895,7 @@ function actorSvg(id, kind, flip){
 /* ---------- drawing: front camera ---------- */
 const f2 = n => n.toFixed(2);
 const pts = arr => arr.map(p => f2(p.x) + "," + f2(p.y)).join(" ");
-const DISPLAY_FONT = "Barlow Condensed, Arial Narrow, Arial, sans-serif";
+const DISPLAY_FONT = "Inter Display, Inter, Arial, sans-serif";
 let UID = 0;
 
 const FLIP = new Set(["b-third-man", "b-draw-shape", "b-pro-watch", "b-film-review"]); // boards where the dots are the team on the ball
@@ -914,7 +914,7 @@ function defs3(u, c){
   </defs>`;
 }
 /* the corner badge and the progress line, shared by both kinds of scene */
-const BUG = `<g aria-hidden="true"><rect x="3" y="3" width="25.5" height="5.8" rx="1.1" fill="${NAVY}" fill-opacity=".78"/><rect x="3" y="3" width="1.1" height="5.8" fill="${ORANGE}"/><text x="16.3" y="7.35" font-size="3.9" font-weight="700" letter-spacing=".35" text-anchor="middle" fill="#fff" font-family="${DISPLAY_FONT}">NEXTPLAY</text></g>`;
+const BUG = `<g aria-hidden="true"><rect x="3" y="3" width="25.5" height="5.8" rx="1.1" fill="${NAVY}" fill-opacity=".78"/><rect x="3" y="3" width="1.1" height="5.8" fill="${ORANGE}"/><text x="16.3" y="7.2" font-size="3.15" font-weight="800" letter-spacing=".3" text-anchor="middle" fill="#fff" font-family="${DISPLAY_FONT}">NEXTPLAY</text></g>`;
 const PROGRESS = `<rect x="0" y="${H - 1}" width="${W}" height="1" fill="#0a1423" fill-opacity=".35"/><rect data-prog x="0" y="${H - 1}" width="0" height="1" fill="${ORANGE}"/>`;
 
 function groundPoly(c, corners, attrs){ return `<polygon points="${pts(corners.map(q => proj(c, q[0], q[1], q[2] || 0)))}" ${attrs}/>`; }
@@ -1248,7 +1248,7 @@ function ball3(c, u, x, y, z, spin){
     + `<ellipse cx="${f2(-0.35 * r)}" cy="${f2(-0.4 * r)}" rx="${f2(0.28 * r)}" ry="${f2(0.17 * r)}" fill="#fff" fill-opacity=".75" transform="rotate(-30 ${f2(-0.35 * r)} ${f2(-0.4 * r)})"/></g>`;
 }
 function bubble(x0, y0, txt){
-  const w = txt.length * 2.3 + 6, x = Math.min(W - w - 1, Math.max(1, x0 - w / 2)), y = Math.max(1, y0 - 10.5), tx = Math.min(x + w - 2.5, Math.max(x + 2.5, x0));
+  const w = txt.length * 2.45 + 6, x = Math.min(W - w - 1, Math.max(1, x0 - w / 2)), y = Math.max(1, y0 - 10.5), tx = Math.min(x + w - 2.5, Math.max(x + 2.5, x0));
   return `<g><rect x="${f2(x + 0.4)}" y="${f2(y + 0.6)}" width="${f2(w)}" height="7" rx="3.5" fill="#0a1423" fill-opacity=".22"/>`
     + `<path d="M${f2(tx - 1.5)} ${f2(y + 6.6)} L${f2(tx)} ${f2(y + 9)} L${f2(tx + 1.5)} ${f2(y + 6.6)}Z" fill="#fff"/>`
     + `<rect x="${f2(x)}" y="${f2(y)}" width="${f2(w)}" height="7" rx="3.5" fill="#fff"/>`

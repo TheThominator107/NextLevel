@@ -2711,7 +2711,7 @@ function legalPage(kind){
       "<b>Contact form messages</b> you send us.")),
     P("What we don't do", L("We don't show ads.", "We don't sell or rent anyone's information.", "We don't use your information to build advertising profiles.")),
     P("How we use it", "To run the service: show reviews and drills to the right people, recommend drills, deliver messages, show Recruitment Profiles in the sections a family has turned on, check college coach and scout accounts, answer your questions, and keep the service secure."),
-    P("Who can see it", `Each part of a player's information is only shown to the people listed on our <a href="#safety">Safety page</a>. Recruiting listings are off until a parent turns them on. We share information with the companies that host and run ${APP_NAME} for us (database and file storage, website hosting and fonts) only so they can provide that service, and we'd share it if the law required us to.`),
+    P("Who can see it", `Each part of a player's information is only shown to the people listed on our <a href="#safety">Safety page</a>. Recruiting listings are off until a parent turns them on. We share information with the companies that host and run ${APP_NAME} for us (database and file storage, and website hosting) only so they can provide that service, and we'd share it if the law required us to.`),
     P("Children", `Many players are under 13. Accounts for players under 13 must be created and managed by a parent or guardian, who gives consent for the information they add. Players under ${RECRUIT_AGE} never have a public profile link, and youth club coaches only see their first name, last initial and birth year. A parent can review, change or delete their child's information at any time from their account, or by contacting us.`),
     P("Your choices", L("Edit your player's profile and recruiting details at any time.", "Turn each recruiting section on or off at any time.", "Make a profile private.", "Leave a team or club; the club loses access to your player's information.", `Ask us to delete your account and your players' information: <a href="#contact">contact us</a> and choose <b>Privacy request</b>.`)),
     P("Cookies and storage", "We use your browser's storage to keep you signed in and to remember small preferences. We don't use advertising or tracking cookies."),
@@ -3375,7 +3375,7 @@ const GRAY_AVATAR = `<svg viewBox="0 0 200 200" class="avatar-art-svg" role="img
   <path d="M162 190 C156 170 144 160 128 154" stroke="#ffffff" stroke-width="4" fill="none" opacity=".85" stroke-linecap="round"/>
   <path d="M86 128 h28 v20 c-7 7 -21 7 -28 0z" fill="#c4875b"/>
   <path d="M80 147 L100 170 L120 147" fill="none" stroke="#14213a" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"/>
-  <text x="141" y="191" font-family="Barlow Condensed, Arial Narrow, Arial, sans-serif" font-weight="700" font-size="24" fill="#ffffff">8</text>
+  <text x="141" y="191" font-family="Inter Display, Inter, Arial, sans-serif" font-weight="700" font-size="24" fill="#ffffff">8</text>
   <ellipse cx="61" cy="96" rx="8" ry="11" fill="#d29a6b"/><ellipse cx="139" cy="96" rx="8" ry="11" fill="#d29a6b"/>
   <ellipse cx="100" cy="92" rx="39" ry="45" fill="#dca678"/>
   <path d="M60 88 C56 52 80 38 103 40 C128 41 146 56 140 88 C137 74 128 64 114 64 C101 56 84 58 73 68 C66 73 62 80 60 88Z" fill="#3b2a1f"/>
