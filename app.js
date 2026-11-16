@@ -330,7 +330,7 @@ function relDays(iso){
 let toastT;
 function toast(msg, err){
   const el = document.getElementById("toast");
-  el.innerHTML = `<div class="toast${err?" err":""}" role="status">${esc(msg)}</div>`;
+  el.innerHTML = `<div class="toast${err?" err":""}" role="${err ? "alert" : "status"}">${esc(msg)}</div>`;
   clearTimeout(toastT); toastT = setTimeout(()=>{el.innerHTML="";}, 3200);
 }
 function errMsg(e){
@@ -727,6 +727,27 @@ function portalCards(act){
 }
 
 /* roster */
+/* a short checklist for new clubs; it goes away once everything is done or the coach hides it */
+function setupCard(){
+  if(!isStaff() || !S.club) return "";
+  const key = "np-setup-hidden-" + S.club.id; let hidden = false; try { hidden = localStorage.getItem(key) === "1"; } catch(_){}
+  const coaches = S.members.filter(m => m.role === "admin" || m.role === "coach").length;
+  const steps = [
+    [S.teams.length > 0, "Add your teams", "One for each team, training group or camp.", `<button class="btn sm" data-act="modal" data-m="team">Add a team</button>`],
+    [coaches > 1, "Invite your other coaches", `They sign up as a coach and enter your club code: <b class="code">${esc(S.club.code)}</b>`, `<button class="btn sm" data-act="copy" data-text="${esc(S.club.code)}">Copy club code</button>`],
+    [S.players.length > 0, "Get families to join", `Families sign up, search for ${esc(S.club.name)} and ask to join a team. You approve them here.`, `<button class="btn sm" data-act="copy" data-text="${esc(APP_URL + "#parent")}">Copy sign-up link for families</button>`],
+    [S.reviews.length > 0, "Write your first review", "Open a player, rate each skill from 1 to 5 and add a short note.", ""],
+    [S.assignments.length > 0, "Assign a home drill", "Pick from the drill library, or use the drills suggested after a review.", `<button class="btn sm" data-act="go" data-view="drills">Open the drill library</button>`]];
+  const done = steps.filter(x => x[0]).length;
+  if(hidden || done === steps.length) return "";
+  return `<section class="card stack setup-card" aria-labelledby="setup-h">
+    <div class="row between"><div class="stack" style="gap:2px"><h2 id="setup-h">Get your club set up</h2><p class="small muted">${done} of ${steps.length} done</p></div>
+      <button type="button" class="btn ghost sm" data-act="hideSetup">Hide this</button></div>
+    <div class="setup-bar" role="progressbar" aria-label="Club setup" aria-valuemin="0" aria-valuemax="${steps.length}" aria-valuenow="${done}"><i style="width:${done / steps.length * 100}%"></i></div>
+    <ol class="setup-list">${steps.map(([ok, t, x, btn], i) => `<li class="${ok ? "done" : ""}"><span class="tick" aria-hidden="true">${ok ? "✓" : i + 1}</span>
+      <span class="what"><b>${t}</b><span class="sr-only">${ok ? " (done)" : " (to do)"}</span><br><span class="small muted">${x}</span></span>${ok ? "" : btn}</li>`).join("")}</ol>
+  </section>`;
+}
 function rosterView(){
   const players = S.players.filter(p => S.teamFilter === "all" || p.teamId === S.teamFilter).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
   const due = S.players.filter(p => reviewStatus(p.id).cls !== "good").length;
@@ -752,6 +773,7 @@ function rosterView(){
     <div class="stack" style="gap:4px"><h1>Players</h1><p class="muted small">Club code for your coaches: <span class="code">${esc(S.club.code)}</span></p></div>
     <div class="row"><button class="btn" data-act="modal" data-m="team">Add team</button></div>
   </div>
+  ${setupCard()}
   ${requestsCard()}
   <div class="grid3">
     <div class="card tile"><div class="big num">${S.players.length}</div><div class="lbl">Players in ${esc(S.club.name)}</div></div>
@@ -766,7 +788,7 @@ function rosterView(){
     ${players.length ? `<div class="tbl-wrap"><table>
       <thead><tr><th>Player</th><th>Team</th><th>Overall</th><th>Last review</th><th>Home drills this week</th><th>Status</th></tr></thead>
       <tbody>${rows}</tbody></table></div>`
-      : `<div class="locked"><h3>No players yet</h3><p class="muted">${S.teams.length ? `Families find ${esc(S.club.name)} by name in ${APP_NAME} and ask to join a team. Their requests show up here for you to approve.` : `Add your teams first. Families then find ${esc(S.club.name)} by name and ask to join one.`}</p>${S.teams.length ? "" : `<button class="btn primary" data-act="modal" data-m="team">Add team</button>`}</div>`}
+      : `<div class="locked"><h2 class="h3">No players yet</h2><p class="muted">${S.teams.length ? `Families find ${esc(S.club.name)} by name in ${APP_NAME} and ask to join a team. Their requests show up here for you to approve.` : `Add your teams first. Families then find ${esc(S.club.name)} by name and ask to join one.`}</p>${S.teams.length ? "" : `<button class="btn primary" data-act="modal" data-m="team">Add team</button>`}</div>`}
   </div>`;
 }
 
@@ -1407,18 +1429,18 @@ function scoutView(){
   if(!S.scout || (!S.scout.res && !S.scout.loading)) setTimeout(runScout, 0);
   const f = (S.scout && S.scout.f) || {}, sec = mySection(), c = S.college || {}, ps = S.pro || {};
   const who = sec === "college" ? [c.school, c.program, c.division].filter(Boolean).join(" · ") : sec === "pro" ? [ps.org, ps.orgType].filter(Boolean).join(" · ") : (S.club || {}).name || "";
-  const head = `<div class="stack" style="gap:4px">${isStaff() ? "" : "<h1>Find players</h1>"}<p class="muted small">${who ? esc(who) + ". " : ""}${SCOUT_COPY[sec].intro}</p></div>`;
+  const head = `<div class="stack" style="gap:4px">${isStaff() ? "" : "<h1>Find players</h1>"}<p class="muted small${isStaff() ? " panel-note" : ""}">${who ? esc(who) + ". " : ""}${SCOUT_COPY[sec].intro}</p></div>`;
   const sc = S.scout || {};
   const results = sc.loading && !sc.res ? `<div class="card"><p class="muted">Searching…</p></div>`
     : sc.error ? `<div class="card stack"><p>Search didn't work. Try again in a moment.</p></div>`
-    : !(sc.res || []).length ? `<div class="locked"><h3>No players match</h3><p class="muted">${SCOUT_COPY[sec].none}</p></div>`
+    : !(sc.res || []).length ? `<div class="locked"><h2 class="h3">No players match</h2><p class="muted">${SCOUT_COPY[sec].none}</p></div>`
     : `<p class="small muted">${sc.res.length} player${sc.res.length===1?"":"s"}${sc.res.length >= 60 ? " (showing the 60 most recently updated; narrow your filters)" : ""}</p><div class="scout-grid">${sc.res.map(scoutCard).join("")}</div>`;
   return head + `<div class="scout-layout">${scoutFilters(f, sec)}<div class="stack" style="gap:12px">${results}</div></div>`;
 }
 function shortlistHtml(){
   const all = S.shortlist || [], sec = mySection(), staff = isStaff();
   const head = `<div class="stack" style="gap:4px">${staff ? "" : "<h1>Shortlist</h1>"}<p class="muted small">${SCOUT_COPY[sec].private}</p></div>`;
-  if(!all.length) return head + `<div class="locked"><h3>Your shortlist is empty</h3><p class="muted">Use ☆ Shortlist on any player in Find players.</p><button class="btn primary" data-act="${staff ? "rview" : "go"}" data-view="scout" data-id="find">Find players</button></div>`;
+  if(!all.length) return head + `<div class="locked"><h2 class="h3">Your shortlist is empty</h2><p class="muted">Use ☆ Shortlist on any player in Find players.</p><button class="btn primary" data-act="${staff ? "rview" : "go"}" data-view="scout" data-id="find">Find players</button></div>`;
   const fl = S.slFilter || "all";
   const list = all.filter(x => fl === "all" || x.status === fl);
   const counts = Object.fromEntries(SL_STATUS.map(([k]) => [k, all.filter(x => x.status === k).length]));
@@ -1604,8 +1626,8 @@ function chatView(){
     lastAuthor = m.announce ? "" : m.authorId; lastTs = m.createdAt;
   }
   if(!ms.length) thread = `<div class="muted" style="margin:auto;text-align:center;max-width:40ch">No messages yet. ${isStaff()?"Post a welcome or this week's schedule.":"Say hi to your team."}</div>`;
-  return `<div class="chat">
-    <aside class="chat-side" aria-label="Team chats"><h3>Your teams</h3>
+  return `<h1 class="sr-only">Team chat</h1><div class="chat">
+    <aside class="chat-side" aria-label="Team chats"><h2 class="side-h">Your teams</h2>
       ${teams.map(t => { const last = teamMsgs(t.id).slice(-1)[0]; const u = unreadFor(t.id); return `<button data-act="chatTeam" data-id="${esc(t.id)}" aria-current="${t.id===team.id}"><span class="tn"><span>${esc(t.name)}</span><span class="tp">${last ? esc((last.authorName||"") + ": " + last.text) : "No messages yet"}</span></span>${u?`<span class="badge">${u}</span>`:""}</button>`; }).join("")}
     </aside>
     <section class="chat-main" aria-label="${esc(team.name)} chat">
@@ -1776,13 +1798,32 @@ function accountView(){
 }
 
 /* ---------- modals ---------- */
+let modalReturn = null;
 function openModal(html){
-  const m = document.getElementById("modal");
-  m.innerHTML = `<div class="backdrop" data-act="closeBg"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;
-  const f = m.querySelector("input,select,textarea,button.primary");
+  const m = document.getElementById("modal"), wasOpen = !!m.innerHTML;
+  if(!wasOpen) modalReturn = document.activeElement;
+  m.innerHTML = `<div class="backdrop" data-act="closeBg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">${html}<button type="button" class="m-close" data-act="close" aria-label="Close">×</button></div></div>`;
+  const h = m.querySelector(".modal h2, .modal h3"); if(h){ h.id = "modal-title"; h.tabIndex = -1; }
+  const app = document.getElementById("app"); if(app) app.inert = true;
+  const f = m.querySelector(".modal input:not([type=hidden]):not([type=file]),.modal select,.modal textarea,.modal button.primary") || h;
   if(f) f.focus();
 }
-function closeModal(){ document.getElementById("modal").innerHTML = ""; }
+function closeModal(){
+  document.getElementById("modal").innerHTML = "";
+  const app = document.getElementById("app"); if(app) app.inert = false;
+  const r = modalReturn; modalReturn = null;
+  if(r && document.body.contains(r)) try { r.focus(); } catch(_){}
+}
+/* keep keyboard focus inside an open dialog */
+document.addEventListener("keydown", ev => {
+  if(ev.key !== "Tab") return;
+  const m = document.querySelector("#modal .modal"); if(!m) return;
+  const f = [...m.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select,textarea,[tabindex]:not([tabindex="-1"])')].filter(e => e.offsetParent !== null);
+  if(!f.length) return;
+  const first = f[0], last = f[f.length - 1];
+  if(ev.shiftKey && (document.activeElement === first || !m.contains(document.activeElement))){ ev.preventDefault(); last.focus(); }
+  else if(!ev.shiftKey && (document.activeElement === last || !m.contains(document.activeElement))){ ev.preventDefault(); first.focus(); }
+});
 const teamOptions = sel => S.teams.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(t=>`<option value="${esc(t.id)}" ${t.id===sel?"selected":""}>${esc(t.name)}</option>`).join("");
 
 const MODALS = {
@@ -2065,12 +2106,9 @@ const ACTS = {
   delDrill: async ds => { await save(() => S.db.doc("drills/" + ds.id).delete(), "Drill deleted"); },
   delTeam: async ds => { if(S.teamFilter === ds.id) S.teamFilter = "all"; await save(() => S.db.doc("teams/" + ds.id).delete(), "Team deleted"); },
   delReview: async (ds, el) => {
-    if(!el.dataset.armed){ el.dataset.armed = "1"; el.textContent = "Click again to permanently delete"; return; }
     await save(() => S.db.doc("reviews/" + ds.id).delete(), "Review deleted");
   },
   removeFromClub: async ds => {
-    const el = document.querySelector('[data-act="removeFromClub"]');
-    if(el && !el.dataset.armed){ el.dataset.armed = "1"; el.textContent = "Click again to remove"; return; }
     closeModal();
     const ok = await save(() => rpc("remove_from_club", {pid:ds.id}), "Removed from your club");
     if(ok){ S.view = "roster"; refreshAll(); render(); }
@@ -2343,9 +2381,37 @@ const FORMS = {
 };
 
 /* ---------- events ---------- */
+/* actions that delete something: ask first, in plain words */
+const CONFIRM = {
+  delTeam: ["Delete this team?", "Players stay in your club but won't be on a team, and the team chat is deleted.", "Delete team"],
+  delReview: ["Delete this review?", "It disappears from the player's timeline for the family and every coach. This can't be undone.", "Delete review"],
+  removeFromClub: ["Remove this player from your club?", "The family keeps the profile; your coaches lose access to it. They can ask to join again.", "Remove player"],
+  delDrill: ["Delete this club drill?", "It's removed from your library and from any player it was assigned to.", "Delete drill"],
+  unassign: ["Remove this drill from the player's week?", "Their progress on it this week is cleared.", "Remove drill"],
+  delMsg: ["Delete this message?", "It's removed from the team chat for everyone.", "Delete message"],
+  delPm: ["Delete this message?", "It's removed from the conversation for everyone.", "Delete message"],
+  delPhoto: ["Remove the profile photo?", "You can add a new one at any time.", "Remove photo"],
+  delVideo: ["Remove this video?", "It's removed from the profile. Uploaded files are deleted.", "Remove video"],
+  delHistory: ["Remove this club from the history?", "", "Remove"],
+  delHighlight: ["Remove this highlight?", "", "Remove"],
+  delStat: ["Remove this season's stats?", "", "Remove"],
+  delComment: ["Delete this comment?", "It's removed for the family and the other coaches.", "Delete"]
+};
+let confirmed = null;
+ACTS.hideSetup = () => { try { localStorage.setItem("np-setup-hidden-" + S.club.id, "1"); } catch(_){} render(); toast("Hidden. Everything is still under Club and Drill library."); };
+ACTS.confirmGo = () => { const c = confirmed; confirmed = null; closeModal(); if(c) ACTS[c.act](c.ds, c.el, null); };
 document.addEventListener("click", ev => {
   const el = ev.target.closest("[data-act]"); if(!el) return;
   const f = ACTS[el.dataset.act]; if(!f) return;
+  const ask = CONFIRM[el.dataset.act];
+  if(ask){
+    ev.preventDefault();
+    confirmed = {act: el.dataset.act, ds: {...el.dataset}, el};
+    const back = document.getElementById("modal").innerHTML ? null : el;
+    openModal(`<h2>${ask[0]}</h2>${ask[1] ? `<p>${ask[1]}</p>` : ""}<div class="confirm-actions"><button type="button" class="btn danger solid" data-act="confirmGo">${ask[2]}</button><button type="button" class="btn" data-act="close">Cancel</button></div>`);
+    if(back) modalReturn = back;
+    return;
+  }
   if(el.dataset.act === "closeBg" && ev.target !== el) return;
   ev.preventDefault(); f(el.dataset, el, ev);
 });
@@ -2453,7 +2519,7 @@ const PUBLIC_PAGES = [
   ["how-it-works","How it works"], ["drills","Drills"], ["clubs","Clubs & Teams"], ["recruiting","Recruiting"],
   ["for-parents","For Parents"], ["pricing","Pricing"], ["contact","Contact Us"]
 ];
-const FOOTER_PAGES = [["safety","Safety"],["privacy","Privacy"],["terms","Terms"]];
+const FOOTER_PAGES = [["safety","Safety"],["privacy","Privacy"],["terms","Terms"],["accessibility","Accessibility"]];
 const PAGE_IDS = PUBLIC_PAGES.concat(FOOTER_PAGES).map(p => p[0]);
 
 function publicNav(){
@@ -2469,14 +2535,14 @@ function siteFooter(){
     <nav class="fcols" aria-label="Footer">
       ${col("Product", [["#how-it-works","How it works"],["#drills","Drills"],["#recruiting","Recruiting"],["#pricing","Pricing"]])}
       ${col("Who it's for", [["#clubs","Clubs, leagues & trainers"],["#for-parents","Parents & players"],["#college","College coaches"],["#pro","Pro scouts"]])}
-      ${col("Company", [["#contact","Contact us"],["#safety","Safety"],["#privacy","Privacy Policy"],["#terms","Terms of Use"]])}
+      ${col("Company", [["#contact","Contact us"],["#safety","Safety"],["#accessibility","Accessibility"],["#privacy","Privacy Policy"],["#terms","Terms of Use"]])}
     </nav>
   </div><div class="foot-base"><span class="small muted">© ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.</span><a class="small" href="#signin">Sign in</a></div></footer>`;
 }
 const cta = (coachLabel = "Start your club", famLabel = "I'm a parent or player") => `<div class="row cta-row">
   <button type="button" class="btn primary" data-act="pickPortal" data-id="coach" data-mode="signup">${coachLabel}</button>
   <button type="button" class="btn" data-act="pickPortal" data-id="family" data-mode="signup">${famLabel}</button></div>`;
-const feature = (title, text) => `<div class="card stack feature"><h3>${title}</h3><p class="muted">${text}</p></div>`;
+const feature = (title, text) => `<div class="card stack feature"><h2 class="h3">${title}</h2><p class="muted">${text}</p></div>`;
 
 function publicPage(){
   switch(S.publicPage){
@@ -2490,6 +2556,7 @@ function publicPage(){
     case "safety": return pageSafety();
     case "privacy": return legalPage("privacy");
     case "terms": return legalPage("terms");
+    case "accessibility": return pageAccessibility();
   }
   return "";
 }
@@ -2697,6 +2764,29 @@ function pageSafety(){
     <p>If anyone on ${APP_NAME} makes you or your child uncomfortable, or you think an account isn't who it says it is, tell us straight away. Choose <b>Safety concern</b> as the topic and we'll look into it. If a child is in danger, call 911 first.</p>
     <div><a class="btn primary" href="#contact" data-act="contactTopic" data-id="Safety concern">Report a concern</a></div></div>`;
 }
+function pageAccessibility(){
+  return `<section class="page-hero stack"><span class="eyebrow">Accessibility</span>
+    <h1>${APP_NAME} for everyone</h1>
+    <p class="lead">Players, parents and coaches should all be able to use ${APP_NAME}, whatever device they use and however they use it. We aim to meet the Web Content Accessibility Guidelines (WCAG) 2.2 at level AA.</p></section>
+  <div class="grid2">
+    <div class="card stack"><h2>What we've built in</h2><ul class="ticks">
+      <li>Everything works with a keyboard alone. Press Tab to move, Enter to choose, and Escape to close a window. A "Skip to content" link is the first thing on every page.</li>
+      <li>Pages are built for screen readers, with headings, labelled buttons and form fields, and announcements when something is saved or goes wrong.</li>
+      <li>Text and buttons meet AA colour contrast, in both light and dark mode.</li>
+      <li>Pages work when zoomed to 400% or on screens as narrow as 320 pixels, without scrolling sideways.</li>
+      <li>Buttons are large enough to tap easily on a phone.</li>
+      <li>If your device is set to reduce motion, drill animations start paused and page effects are switched off.</li>
+      <li>We ask before deleting anything.</li></ul></div>
+    <div class="card stack"><h2>Drill animations</h2>
+      <p>Every drill animation can be paused and played with a tap, a click, or the Enter or Space key. Each one is described by its title for screen readers, and every drill also has full written steps, setup, sets and reps, and coaching points, so you never need the animation to do the drill.</p>
+      <h2>Known limits</h2>
+      <p>Videos that families upload or link to (YouTube, Hudl, Veo) may not have captions; that's up to whoever made the video. If you find anything else that's hard to use, please tell us.</p></div>
+  </div>
+  <div class="card stack callout"><h2>Tell us what's not working</h2>
+    <p>If something on ${APP_NAME} is hard to use with your device, browser or assistive technology, tell us what you were trying to do and we'll fix it or help you another way.</p>
+    <div><a class="btn primary" href="#contact" data-act="contactTopic" data-id="Accessibility">Report an accessibility problem</a></div>
+    <p class="small muted">Last reviewed ${LEGAL_UPDATED}.</p></div>`;
+}
 function legalPage(kind){
   const P = (h, ...ps) => `<h2>${h}</h2>${ps.map(x => x.startsWith("<") ? x : `<p>${x}</p>`).join("")}`;
   const L = (...xs) => `<ul>${xs.map(x => `<li>${x}</li>`).join("")}</ul>`;
@@ -2735,7 +2825,7 @@ function legalPage(kind){
 }
 /* the browser tab title follows the page */
 const PAGE_TITLES = {"how-it-works":"How it works", drills:"Solo soccer drills for ages 10 to 18", clubs:"For clubs, leagues and trainers", recruiting:"Recruiting: college, pro and youth clubs",
-  "for-parents":"For parents and players", pricing:"Pricing", contact:"Contact us", safety:"How we keep players safe", privacy:"Privacy Policy", terms:"Terms of Use"};
+  "for-parents":"For parents and players", pricing:"Pricing", contact:"Contact us", safety:"How we keep players safe", privacy:"Privacy Policy", terms:"Terms of Use", accessibility:"Accessibility"};
 function setTitle(){
   const t = S.publicPage ? PAGE_TITLES[S.publicPage] : S.publicSlug ? (S.pub && S.pub.player ? S.pub.player.name + " · Recruitment Profile" : "Recruitment Profile")
     : !S.uid ? (S.portal || S.wantSignin ? "Sign in" : "") : "";
@@ -2872,7 +2962,7 @@ function pageContact(){
       <label class="f" for="ct-name">Your name<input type="text" id="ct-name" name="name" required maxlength="80" autocomplete="name"></label>
       <label class="f" for="ct-email">Email<input type="email" id="ct-email" name="email" required maxlength="120" autocomplete="email"></label>
       <label class="f" for="ct-role">I am a<select id="ct-role" name="role">${["Club director","Rec league organizer","Private trainer","Coach","Parent","Player","College coach","Pro scout","Other"].map(o => `<option>${o}</option>`).join("")}</select></label>
-      <label class="f" for="ct-topic">Topic<select id="ct-topic" name="topic">${["Club walkthrough","Pricing","Recruiting","Help with my account","Safety concern","Privacy request","Feedback","Other"].map(o => `<option ${S.contactTopic === o ? "selected" : ""}>${o}</option>`).join("")}</select></label>
+      <label class="f" for="ct-topic">Topic<select id="ct-topic" name="topic">${["Club walkthrough","Pricing","Recruiting","Help with my account","Accessibility","Safety concern","Privacy request","Feedback","Other"].map(o => `<option ${S.contactTopic === o ? "selected" : ""}>${o}</option>`).join("")}</select></label>
     </div>
     <label class="f" for="ct-club">Club or team (optional)<input type="text" id="ct-club" name="club" maxlength="120"></label>
     <label class="f" for="ct-msg">Message<textarea id="ct-msg" name="message" required maxlength="2000" style="min-height:140px"></textarea></label>
@@ -3002,7 +3092,7 @@ function messagesView(){
   const fams = S.members.filter(m => m.role === "family" && (m.playerIds||[]).includes(p.id));
   const famNames = fams.map(m => m.name).filter(Boolean);
   const nOpen = openMeetings(p.id), mUnread = meetingsFor(p.id).reduce((n, mt) => n + unreadIn(p.id, mt.id), 0), cUnread = unreadIn(p.id, null);
-  const side = `<aside class="chat-side" aria-label="Private conversations"><h3>${isStaff() ? "Players" : "Your player"}</h3>
+  const side = `<aside class="chat-side" aria-label="Private conversations"><h2 class="side-h">${isStaff() ? "Players" : "Your player"}</h2>
     ${players.map(pl => { const last = pmThread(pl.id).slice(-1)[0], u = pmUnreadFor(pl.id), om = openMeetings(pl.id);
       return `<button data-act="pmPlayer" data-id="${esc(pl.id)}" aria-current="${pl.id===p.id}"><span class="tn"><span>${esc(pl.name)}${om?` <span class="pill warn" style="font-size:.68rem">${om} meeting${om>1?"s":""}</span>`:""}</span><span class="tp">${last ? esc((last.authorName||"") + ": " + last.text) : isStaff() ? esc(teamName(pl.teamId)) : "No messages yet"}</span></span>${u?`<span class="badge">${u}</span>`:""}</button>`; }).join("")}
   </aside>`;
@@ -3024,7 +3114,7 @@ function messagesView(){
     S.meetingId = null;
     main = meetingList(p);
   }
-  return `<div class="chat pm">${side}<section class="chat-main" aria-label="Private conversation about ${esc(p.name)}">${head}${main}</section></div>`;
+  return `<h1 class="sr-only">Messages</h1><div class="chat pm">${side}<section class="chat-main" aria-label="Private conversation about ${esc(p.name)}">${head}${main}</section></div>`;
 }
 
 function meetingList(p){
@@ -3327,21 +3417,21 @@ function authView(){
     ? `<span class="pill plain" style="align-self:flex-start">Pro scout</span>
        <h1>${mode==="signup"?"Scout the next generation":"Welcome back"}</h1>
        <p style="max-width:52ch">Search Recruitment Profiles of players aged ${RECRUIT_AGE} and over by position, age, playing status and level. Keep a private shortlist and message families directly.</p>
-       <div class="card stack"><h3>Approved scouts only</h3><p class="small">Create an account and tell us which club, academy or agency you work for. ${APP_NAME} checks every scout before they can see players. It's free.</p></div>`
+       <div class="card stack"><h2 class="h3">Approved scouts only</h2><p class="small">Create an account and tell us which club, academy or agency you work for. ${APP_NAME} checks every scout before they can see players. It's free.</p></div>`
     : college
     ? `<span class="pill plain" style="align-self:flex-start">College coach</span>
        <h1>${mode==="signup"?"Find your next recruits":"Welcome back, coach"}</h1>
        <p style="max-width:52ch">Search Recruitment Profiles of players aged ${RECRUIT_AGE} and over by position, class, GPA, league and division interest. Keep a private shortlist and message families directly.</p>
-       <div class="card stack"><h3>Free for college coaches</h3><p class="small">Search, shortlist and messaging are free once you create an account. Use your school email address ending in <b>.edu</b>; families see it when you message them.</p></div>`
+       <div class="card stack"><h2 class="h3">Free for college coaches</h2><p class="small">Search, shortlist and messaging are free once you create an account. Use your school email address ending in <b>.edu</b>; families see it when you message them.</p></div>`
     : coach
     ? `<span class="pill warn" style="align-self:flex-start">Coach</span>
        <h1>${mode==="signup"?"Bring your club onto "+APP_NAME:"Welcome back, coach"}</h1>
        <p style="max-width:52ch">Track every player's development, assign home drills, write references for scouts and keep your teams in the loop.</p>
-       <div class="card stack"><h3>New club?</h3><p class="small">Create an account, then start your club. You'll get a club code to share with your other coaches.</p></div>`
+       <div class="card stack"><h2 class="h3">New club?</h2><p class="small">Create an account, then start your club. You'll get a club code to share with your other coaches.</p></div>`
     : `<span class="pill good" style="align-self:flex-start">Parent / Player</span>
        <h1>${mode==="signup"?"Follow your player's progress":"Welcome back"}</h1>
        <p style="max-width:52ch">See your coach's reviews, practice the drills they pick for you, build a highlight profile and chat with your team.</p>
-       <div class="card stack"><h3>First time here?</h3><p class="small">Create an account with your email and set up your player's profile. Then find your club and ask to join your team.</p></div>`;
+       <div class="card stack"><h2 class="h3">First time here?</h2><p class="small">Create an account with your email and set up your player's profile. Then find your club and ask to join your team.</p></div>`;
   return `<button class="btn ghost back" data-act="pickPortal" data-id="">← ${pro ? "Not a pro scout? Go back" : college ? "Not a college coach? Go back" : coach?"Not a coach? Switch to Parent / Player":"Not a parent or player? Switch to Coach"}</button>
   <section class="hero">
     <div class="stack">${side}</div>

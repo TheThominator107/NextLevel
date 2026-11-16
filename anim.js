@@ -1291,7 +1291,8 @@ function showCaption(st, t){
 
 export function animSvg(id, title){
   const s = getScript(id); if(!s) return "";
-  const lbl = `role="img" aria-label="${esc((title ? title + ": " : "") + (s.cam.flat ? "animated diagram" : "animated demonstration"))}" tabindex="0" title="Tap to pause or play"`;
+  const base = (title ? title + ": " : "") + (s.cam.flat ? "animated diagram" : "animated demonstration");
+  const lbl = `role="button" aria-label="${esc(base)}, playing. Press to pause." data-label="${esc(base)}" tabindex="0" title="Tap to pause or play"`;
   const cap = `<div class="anim-cap" aria-hidden="true"><span class="anim-step"></span><span class="anim-text"></span></div><span class="anim-state" aria-hidden="true"></span>`;
   if(!s.cam.flat){
     const u = "np" + (++UID) + "-", sc = scene3(s.cam, u, s.scene);
@@ -1351,7 +1352,7 @@ function attach(el){
   const st = {s, nodes, t: 0, last: null, paused: reduced(), visible: false, cap: null, capEl: el.querySelector(".anim-text"), stepEl: el.querySelector(".anim-step"),
     sayEl: el.querySelector("[data-say]"), sayKey: null, progEl: el.querySelector("[data-prog]"), u: el.dataset.uid || "",
     actEl: el.querySelector("[data-actors3d]"), prev: {}, dist: {}, mov: {}, spin: {}};
-  live.set(el, st); el.classList.toggle("paused", st.paused);
+  live.set(el, st); el.classList.toggle("paused", st.paused); setLabel(el, st.paused);
   frame(el, st, reduced() ? Math.min(s.dur, 1.2) : 0);
   if(io) io.observe(el); else { st.visible = true; kick(); }
 }
@@ -1364,8 +1365,9 @@ export function animScan(root = document){
 }
 export function animToggle(el){
   const st = live.get(el); if(!st) return;
-  st.paused = !st.paused; st.last = null; el.classList.toggle("paused", st.paused); kick();
+  st.paused = !st.paused; st.last = null; el.classList.toggle("paused", st.paused); setLabel(el, st.paused); kick();
 }
+function setLabel(el, paused){ if(el.dataset.label) el.setAttribute("aria-label", el.dataset.label + (paused ? ", paused. Press to play." : ", playing. Press to pause.")); }
 export const ANIM_COUNT = () => Object.keys(SCRIPTS).length;
 /* jump a paused animation to a moment in time (used for previews and tests) */
 export function animSeek(el, t){

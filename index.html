@@ -36,13 +36,13 @@
   --surface:#ffffff;
   --line:#d2dcee;
   --muted:#475467;
-  --accent:#d9572a;
+  --accent:#c4471c;
   --accent-ink:#ffffff;
   --blue:#1f5fc9; --blue-deep:#16449a; --blue-soft:#e4ecfb;
   --pitch:var(--blue);
   --pitch-soft:var(--blue-soft);
   --chip:#eaf0fa;
-  --good:#1f5fc9; --warn:#c2410c; --bad:#b42318;
+  --good:#1f5fc9; --warn:#b23a0a; --bad:#b42318;
   --good-soft:#e4ecfb; --warn-soft:#fde9dc; --bad-soft:#fbe3df;
   --input-bg:#f5f8fe; --input-line:#bfd0ee;
   --up:#1d7a46; --up-soft:#e2f3e8; --down:#b42318; --down-soft:#fbe3df;
@@ -261,7 +261,7 @@ input[type=email],input[type=password]{border:1px solid var(--line);background:v
 nav.tabs button[aria-current="page"] .badge{background:var(--paper);color:var(--ink)}
 .chat{display:grid;grid-template-columns:240px 1fr;gap:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;height:calc(100vh - 190px);min-height:440px}
 .chat-side{border-right:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto;background:var(--paper)}
-.chat-side h3{padding:14px 16px 6px;font-size:.8rem;font-family:var(--body);text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.chat-side h2,.chat-side h3{padding:14px 16px 6px;margin:0;font-size:.8rem;font-family:var(--body);text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
 .chat-side button{display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;border:0;background:none;padding:11px 16px;cursor:pointer;border-left:3px solid transparent}
 .chat-side button:hover{background:var(--chip)}
 .chat-side button[aria-current="true"]{background:var(--surface);border-left-color:var(--accent);font-weight:700}
@@ -619,7 +619,7 @@ label.check{display:flex;gap:8px;align-items:center;font-size:.92rem;cursor:poin
 .scout-top .photo{width:56px;height:56px;border-radius:12px;font-size:1.1rem;object-fit:cover;flex:none}
 .scout-name{font-size:1.08rem}
 .scout-actions{gap:8px;flex-wrap:wrap;margin-top:auto}
-.chip.open-badge{background:var(--warn-soft);color:var(--accent);font-weight:600}
+.chip.open-badge{background:var(--warn-soft);color:var(--warn);font-weight:600}
 .sl-item{display:flex;flex-direction:column;gap:12px}
 .sl-form{display:grid;grid-template-columns:150px 150px 180px 1fr auto;gap:10px;align-items:end}
 @media (max-width:980px){.sl-form{grid-template-columns:1fr 1fr}.sl-form .sl-note{grid-column:1/-1}}
@@ -682,6 +682,45 @@ ul.ticks li::before{content:"✓";position:absolute;left:2px;top:0;color:var(--a
 p.picked{margin:0;padding:8px 12px;border-radius:8px;background:var(--blue-soft);color:var(--blue-deep)}
 
 
+/* ---------- accessibility ---------- */
+/* links inside sentences are underlined, not just coloured */
+p a:not(.btn), li a:not(.btn), td a:not(.btn), .faq-d a, .legal a{text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px}
+/* comfortable tap targets (24px minimum, more on touch screens) */
+.fcol a{padding:3px 0;min-height:28px;display:inline-flex;align-items:center}
+.foot-base a{display:inline-flex;align-items:center;min-height:28px;padding:0 4px}
+summary{min-height:28px;display:flex;align-items:center;gap:6px;cursor:pointer}
+@media (pointer:coarse){.btn.sm{min-height:36px}.btn{min-height:44px}.chipbox span{min-height:36px;display:inline-flex;align-items:center}}
+/* text that would otherwise sit on the pitch */
+.example > .row:first-child, .college-link, main > .stack:has(> .portals) > .stack:first-child{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px;box-shadow:var(--shadow)}
+.college-link{align-self:center;text-align:center}
+.panel-note{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 14px;align-self:flex-start}
+.hero > .stack > .btn.ghost{background:var(--surface);border-color:var(--line);color:var(--ink)}
+.grid2 > *, .grid3 > *, .hero > *, .home-hero > *{min-width:0}
+.subtabs{overflow-x:auto;scrollbar-width:thin}
+.subtabs button{flex:none}
+/* hidden text for screen readers */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+/* dialogs */
+.modal .m-close{position:absolute;top:10px;right:10px;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:1.4rem;line-height:1;cursor:pointer;display:grid;place-items:center;color:var(--muted)}
+.modal .m-close:hover{color:var(--ink);border-color:var(--muted)}
+.modal{position:relative}
+.modal > h2:first-of-type{padding-right:44px}
+.confirm-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.btn.danger.solid{background:var(--bad);border-color:var(--bad);color:#fff}
+/* getting started */
+.setup-card{border-left:5px solid var(--accent)}
+.setup-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.setup-list li{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.setup-list li.done{background:var(--good-soft);border-color:transparent}
+.setup-list .tick{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:800;border:2px solid var(--line);font-size:.85rem}
+.setup-list li.done .tick{background:var(--good);border-color:var(--good);color:#fff}
+.setup-list .what{flex:1;min-width:200px}
+.setup-list li.done .what b{text-decoration:line-through;text-decoration-thickness:1px}
+.setup-bar{height:8px;border-radius:99px;background:var(--chip);overflow:hidden}
+.setup-bar i{display:block;height:100%;background:var(--accent);border-radius:99px}
+/* respect reduced motion everywhere */
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{transition-duration:.01ms !important;animation-duration:.01ms !important;animation-iteration-count:1 !important;scroll-behavior:auto !important}}
+
 /* ---------- type system ---------- */
 body{font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-feature-settings:"cv11","calt"}
 p,li{text-wrap:pretty}
@@ -696,7 +735,8 @@ b,strong{font-weight:600}
 .page-hero h1{font-size:2.6rem}
 .hh-copy h1{font-size:3.1rem;letter-spacing:-.03em;line-height:1.04}
 .sec-head h2,.final-cta h2{font-size:2rem;font-weight:800;letter-spacing:-.026em}
-.feature h3,.aud h3{font-size:1.1rem}
+.feature h3,.feature h2,.aud h3{font-size:1.1rem}
+h2.h3{font-size:1.08rem;font-weight:700;letter-spacing:-.012em;line-height:1.3}
 .prog h2{font-size:1.45rem}
 /* numbers: tight display figures that line up */
 .tile .big,.overall .big,.plan .price,.home-facts b,.score,.slider output,.step-n,.anim-step{font-family:var(--display);font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
@@ -737,7 +777,7 @@ main > p.small, main > p.muted{background:var(--surface);border:1px solid var(--
 <body>
 <div id="app"></div>
 <div id="modal"></div>
-<div id="toast"></div>
+<div id="toast" aria-live="polite"></div>
 <script src="config.js"></script>
 <script type="module" src="app.js"></script>
 </body>
