@@ -1,6 +1,6 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
 import { animSvg, animScan, animToggle, hasAnim } from "./anim.js";
-import { TEAM_DRILLS, teamDrillById, METHODS, PHASES, PHASE_NOTE, TIPS_LABEL, diagramSvg, DIAGRAM_KEY, playersText } from "./teamdrills.js";
+import { TEAM_DRILLS, teamDrillById, METHODS, PHASES, PHASE_NOTE, TIPS_LABEL, diagramSvg, DIAGRAM_KEY, playersText, LEVELS as TD_LEVELS, LEVEL_NOTE as TD_LEVEL_NOTE } from "./teamdrills.js";
 "use strict";
 const APP_NAME = "NextPlay";
 
@@ -3409,6 +3409,14 @@ const TD_SKILLS = FIELD_SKILLS.filter(s => s.k !== "coachability");
 const SESS_LENGTHS = [45, 60, 75, 90, 105, 120];
 const ageOfTeam = t => { const m = String((t && t.ageGroup) || (t && t.name) || "").match(/U-?\s?(\d{1,2})\b/i) || String((t && t.ageGroup) || "").match(/(\d{1,2})/); return m ? Number(m[1]) : null; };
 const tdAgeOk = (dr, age) => age == null || (dr.minAge || 0) <= age;
+/* the level that usually suits a team's age group */
+const levelForAge = age => age == null ? null : age <= 10 ? "Beginner" : age <= 13 ? "Intermediate" : "Advanced";
+function levelFit(dr, age){
+  const want = levelForAge(age); if(!want) return 0;
+  const diff = TD_LEVELS.indexOf(dr.level) - TD_LEVELS.indexOf(want);
+  return diff === 0 ? 1.5 : diff === 1 ? -1 : diff >= 2 ? -3 : diff === -1 ? 0 : -1;
+}
+const lvlPill = dr => `<span class="pill plain lvl-pill"><span class="lvl-dot lvl-${String(dr.level).toLowerCase()}" aria-hidden="true"></span>${esc(dr.level)}</span>`;
 const blockDrill = b => b && !b.custom ? teamDrillById(b.drillId) : null;
 const blockTitle = b => b.custom ? (b.title || "Your activity") : (blockDrill(b) || {}).title || "Drill no longer in the library";
 const blockPhase = b => b.custom ? "Your activity" : (blockDrill(b) || {}).phase || "";
@@ -3460,10 +3468,10 @@ function draft(){
 }
 function keepDraft(){ try { localStorage.setItem(draftKey(), JSON.stringify(S.draft)); } catch(_){} }
 
-function scoreTeamDrill(dr, F, focus){
+function scoreTeamDrill(dr, F, focus, age){
   const hits = (dr.skills || []).filter(k => focus.includes(k));
-  const base = (dr.skills || []).reduce((s, k) => s + (F.need[k] || 0), 0) / Math.sqrt((dr.skills || []).length || 1);
-  return {score: base + hits.length * 3, hits};
+  const base = (dr.skills || []).reduce((s, k) => s + (F.need[k] || 0), 0) / Math.sqrt((dr.skills || []).length || 1) + hits.length * 3;
+  return {score: base > 0 ? base + levelFit(dr, age) : 0, hits};
 }
 function whyDrill(dr, F, focus){
   const fs = Object.fromEntries(F.skills.map(s => [s.k, s]));
@@ -3473,13 +3481,13 @@ function whyDrill(dr, F, focus){
 function recommendTeamDrills(F, focus, age, n = 5){
   const used = new Set((S.draft ? S.draft.blocks : []).map(b => b.drillId));
   return TEAM_DRILLS.filter(d => tdAgeOk(d, age) && d.id !== "t-cooldown" && !used.has(d.id))
-    .map(d => ({d, ...scoreTeamDrill(d, F, focus)})).filter(x => x.score > 0)
+    .map(d => ({d, ...scoreTeamDrill(d, F, focus, age)})).filter(x => x.score > 0)
     .sort((a, b) => b.score - a.score).slice(0, n);
 }
 /* a full session: warm-up, a technical or possession practice, an opposed practice, a game, and a cool-down for longer sessions */
 function autoBuild(minutes, F, focus, age){
   const ok = TEAM_DRILLS.filter(d => tdAgeOk(d, age) && d.id !== "t-cooldown");
-  const sc = d => scoreTeamDrill(d, F, focus).score;
+  const sc = d => scoreTeamDrill(d, F, focus, age).score + (focus.length || F.skills.length ? 0 : levelFit(d, age));
   const pick = (phases, not) => ok.filter(d => phases.includes(d.phase) && !not.includes(d.id)).sort((a, b) => sc(b) - sc(a) || a.minutes - b.minutes)[0];
   const warm = pick(["Warm-up"], []);
   const m1 = pick(["Technical", "Possession"], [warm && warm.id]);
@@ -3509,7 +3517,7 @@ function teamDrillDetails(dr, open){
 function teamDrillCard(dr, opts = {}){
   const d0 = S.draft, inPlan = d0 && d0.blocks.some(b => b.drillId === dr.id);
   return `<article class="drill tdrill">
-    <div class="row between top-al"><h3>${esc(dr.title)}</h3><span class="pill plain">${esc(dr.phase)}</span></div>
+    <div class="row between top-al"><h3>${esc(dr.title)}</h3><span class="row td-pills">${lvlPill(dr)}<span class="pill plain">${esc(dr.phase)}</span></span></div>
     <div class="tdiag-w">${diagramSvg(dr)}</div>
     <div class="dmeta"><span>${esc(dr.minutes)} min</span><span>· ${esc(playersText(dr))}</span><span>· ${esc(dr.area)}</span><span>· Ages ${esc(dr.minAge)}+</span></div>
     <p class="dgoal">${esc(dr.summary)}</p>
@@ -3564,7 +3572,7 @@ function sessionPlanHtml(){
   const recs = recommendTeamDrills(F, focus, age, 4);
   const recCard = `<section class="card stack" aria-labelledby="tr-h"><h2 id="tr-h">Recommended for ${esc(team ? team.name : "your players")}</h2>
     ${age != null ? `<p class="small muted">Suitable for ${esc(team.ageGroup || "U" + age)}. ${focus.length ? "Matched to your focus: " + focus.map(k => esc(SKILL_LABEL[k])).join(", ") + "." : ""}</p>` : ""}
-    ${recs.length ? `<ul class="rec-list">${recs.map(x => `<li><div class="stack" style="gap:2px"><b>${esc(x.d.title)}</b><span class="small muted">${esc(x.d.phase)} · ${esc(x.d.minutes)} min · ${esc(playersText(x.d))}</span>
+    ${recs.length ? `<ul class="rec-list">${recs.map(x => `<li><div class="stack" style="gap:2px"><b>${esc(x.d.title)}</b><span class="small muted">${esc(x.d.level)} · ${esc(x.d.phase)} · ${esc(x.d.minutes)} min · ${esc(playersText(x.d))}</span>
       ${whyDrill(x.d, F, focus).length ? `<span class="small">Works on ${esc(whyDrill(x.d, F, focus).join("; "))}</span>` : ""}</div>
       <div class="row nowrap"><button class="btn sm" data-act="modal" data-m="tdrill" data-id="${esc(x.d.id)}" aria-label="Details for ${esc(x.d.title)}">Details</button><button class="btn sm primary" data-act="sessAdd" data-id="${esc(x.d.id)}" aria-label="Add ${esc(x.d.title)} to your session">Add</button></div></li>`).join("")}</ul>`
       : `<p class="small muted">Pick a focus above to see recommendations.</p>`}
@@ -3579,7 +3587,7 @@ function builderHtml(d){
   const blk = (b, i) => { const dr = blockDrill(b), last = i === d.blocks.length - 1, t = blockTitle(b);
     return `<li class="blk">
       <div class="blk-h"><span class="blk-n num" aria-hidden="true">${i + 1}</span><div class="stack" style="gap:2px;min-width:0"><b>${esc(t)}</b>
-        <span class="small muted">${esc(blockPhase(b))}${dr ? ` · ${esc(playersText(dr))} · ${esc(dr.area)}` : ""}</span></div></div>
+        <span class="small muted">${esc(blockPhase(b))}${dr ? ` · ${esc(dr.level)} · ${esc(playersText(dr))} · ${esc(dr.area)}` : ""}</span></div></div>
       <div class="blk-f">
         <label class="f small min-f" for="blk-m-${i}">Minutes<input type="number" id="blk-m-${i}" min="1" max="120" inputmode="numeric" data-blk="${i}" data-k="minutes" value="${esc(b.minutes)}"></label>
         <label class="f small grow" for="blk-n-${i}">Notes for this block<input type="text" id="blk-n-${i}" maxlength="300" data-blk="${i}" data-k="notes" value="${esc(b.notes || "")}" placeholder="e.g. Focus on body shape"></label>
@@ -3623,9 +3631,14 @@ function updSessTotal(){ const el = document.getElementById("sess-total"); if(el
 function teamLibraryHtml(){
   const d = draft(), team = myTeams().find(t => t.id === d.teamId), age = S.tdAllAges ? null : ageOfTeam(team);
   const q = (S.tdSearch || "").trim().toLowerCase(), ph = S.tdPhase || "All", sk = S.tdSkill || "";
-  const list = TEAM_DRILLS.filter(dr => (ph === "All" || dr.phase === ph) && (!sk || dr.skills.includes(sk)) && tdAgeOk(dr, age)
-    && (!q || [dr.title, dr.summary, dr.phase, (METHODS[dr.method] || {}).name, ...dr.skills.map(k => SKILL_LABEL[k])].join(" ").toLowerCase().includes(q)));
+  const lvl = TD_LEVELS.includes(S.tdLevel) ? S.tdLevel : (levelForAge(ageOfTeam(team)) || "Beginner");
+  const matching = TEAM_DRILLS.filter(dr => (ph === "All" || dr.phase === ph) && (!sk || dr.skills.includes(sk)) && tdAgeOk(dr, age)
+    && (!q || [dr.title, dr.summary, dr.phase, dr.level, (METHODS[dr.method] || {}).name, ...dr.skills.map(k => SKILL_LABEL[k])].join(" ").toLowerCase().includes(q)));
+  const list = matching.filter(dr => dr.level === lvl);
+  const levelTabs = `<div class="subtabs level-tabs" role="tablist" aria-label="Drill level">${TD_LEVELS.map(l => `<button role="tab" data-act="tdLevel" data-id="${l}" aria-selected="${l === lvl}"><span class="lvl-dot lvl-${l.toLowerCase()}" aria-hidden="true"></span>${l} <span class="small muted">(${matching.filter(dr => dr.level === l).length})</span></button>`).join("")}</div>
+    <p class="small muted lvl-note">${esc(TD_LEVEL_NOTE[lvl])}${levelForAge(ageOfTeam(team)) === lvl ? ` Suggested for ${esc(team.ageGroup || team.name)}.` : ""}</p>`;
   return `<div class="panel-note small"><p>Academy-style team practices, written by NextPlay in plain language. Each drill notes the publicly documented coaching method it comes from: rondos and positional play (Ajax and Barcelona), the Ajax TIPS model, Dutch 4v4, Funino, FIFA 11+ and U.S. Soccer's Play-Practice-Play. They aren't any club's own curriculum, and no club endorses NextPlay.</p></div>
+    ${levelTabs}
     <div class="lib-tools stack">
       <div class="fchips" role="group" aria-label="Part of the session">${["All", ...PHASES].map(p => `<button type="button" class="fchip" data-act="tdPhase" data-id="${esc(p)}" aria-pressed="${p === ph}">${esc(p === "All" ? "All parts" : p)}</button>`).join("")}</div>
       <div class="row wrap-f">
@@ -3636,8 +3649,8 @@ function teamLibraryHtml(){
     </div>
     ${DIAGRAM_KEY}
     ${ph !== "All" ? `<p class="small muted">${esc(PHASE_NOTE[ph])}</p>` : ""}
-    <h2 class="sr-only">Drills</h2><p class="small muted" aria-live="polite">${list.length} drill${list.length === 1 ? "" : "s"}</p>
-    ${list.length ? `<div class="dgrid tdgrid">${list.map(dr => teamDrillCard(dr)).join("")}</div>` : `<div class="empty"><p>No drills match. Try another part of the session or skill.</p></div>`}`;
+    <h2 class="sr-only">${esc(lvl)} drills</h2><p class="small muted" aria-live="polite">${list.length} ${esc(lvl.toLowerCase())} drill${list.length === 1 ? "" : "s"}${matching.length > list.length ? ` · ${matching.length - list.length} more in the other levels` : ""}</p>
+    ${list.length ? `<div class="dgrid tdgrid">${list.map(dr => teamDrillCard(dr)).join("")}</div>` : `<div class="empty"><p>No ${esc(lvl.toLowerCase())} drills match. Try another level, part of the session or skill${age != null ? ", or show drills for all ages" : ""}.</p></div>`}`;
 }
 
 function savedSessionsHtml(){
@@ -3726,7 +3739,8 @@ Object.assign(ACTS, {
   sessPrint: ds => { const s = ds.id ? (S.sessions || []).find(x => x.id === ds.id) : (() => { const d = draft(); return {...d, teamId:d.teamId === "all" ? null : d.teamId, sessionDate:d.date}; })();
     if(!s) return; S.printSess = s; openModal(printSessionHtml(s)); },
   printNow: () => window.print(),
-  tdPhase: ds => { S.tdPhase = ds.id; render(); }
+  tdPhase: ds => { S.tdPhase = ds.id; render(); },
+  tdLevel: ds => { S.tdLevel = ds.id; render(); const b = document.querySelector(`[data-act="tdLevel"][data-id="${ds.id}"]`); if(b) b.focus(); }
 });
 ACTS.sessAutoReplace = ACTS.sessAuto;
 ACTS.sessNewConfirm = ACTS.sessNew;

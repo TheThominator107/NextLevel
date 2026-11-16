@@ -14,6 +14,9 @@ export const METHODS = {
   wave: {name:"Overload attacks", from:"Attacking waves with more attackers than defenders (2v1, 3v2) are used by academies across Europe to teach when to pass and when to dribble."},
   pressing: {name:"Pressing & counter-pressing", from:"Pressing as a unit and winning the ball back straight after losing it, popularised in Germany as Gegenpressing and used across modern academies."},
   finishing: {name:"Finishing patterns", from:"Combination play ending in a shot, so strikers practise finishing at match speed after a pass, not from a standing ball."},
+  play: {name:"Playground games", from:"Simple games where every child has a ball and gets lots of touches without waiting in lines, the approach recommended by grassroots programmes from the KNVB to U.S. Soccer."},
+  setpieces: {name:"Set-piece practice", from:"A large share of goals at every level come from set pieces, so professional and academy teams rehearse who runs where and who marks whom."},
+  conditioning: {name:"Fitness with the ball", from:"Short, intense small-sided games are widely used by academies to build match fitness with the ball, so players train fitness and decisions together instead of running laps."},
   defending: {name:"Defending principles", from:"The classic principles taught by most federations: pressure, cover and balance. The nearest player presses and the next covers behind."}
 };
 
@@ -334,6 +337,346 @@ d({id:"t-cooldown", title:"Cool-down and reflection", phase:"Cool-down", minutes
   regress:"Stretches only.",
   diagram:{w:16, h:16, items:[...[0,1,2,3,4,5,6,7].map(i => ["A", 8 + 5 * Math.cos(i * Math.PI / 4), 8 + 5 * Math.sin(i * Math.PI / 4)]),["N",8,8]]}});
 
+/* ================= more drills (added Nov 2026) ================= */
+
+/* ---------- beginner ---------- */
+d({id:"t-dynamic-warmup", level:"Beginner", title:"Dynamic warm-up with the ball", phase:"Warm-up", minutes:10, minAge:6, players:"Whole team, a ball each", area:"25 × 20 yd", equipment:"4 cones, a ball each",
+  skills:["first_touch","dribbling","physicality"], tips:["T","S"], method:"fifa11",
+  summary:"Moving warm-up where every player has a ball: jogging, skips and stretches mixed with easy touches.",
+  setup:"A 25 × 20 yard area. Every player has a ball and starts on one end line.",
+  how:["Dribble slowly to the far line and back with small touches.","Skips and high knees across, then dribble back.","Hip openers and side shuffles across, then dribble back with the weaker foot.","Finish with three short races: dribble across at 50%, 75% and 90% pace."],
+  points:["Touch the ball every step or two.","Look up as you dribble.","Build up speed gradually; full speed only at the end."],
+  progress:"Add a turn at the halfway line on the coach's call.",
+  regress:"Leave the balls out for the first round.",
+  diagram:{w:26, h:20, items:[["A",2,4],["A",2,8],["A",2,12],["A",2,16],["d",2,4,22,4],["d",2,8,22,8],["r",2,12,22,12,0],["d",2,16,22,16],["c",1,1],["c",25,1],["c",1,19],["c",25,19]]}});
+
+d({id:"t-gates-dribble", level:"Beginner", title:"Dribble through the gates", phase:"Warm-up", minutes:10, minAge:6, players:"Whole team, a ball each", area:"25 × 25 yd", equipment:"16 cones (8 gates), a ball each",
+  skills:["dribbling","handling_speed","decision_making"], tips:["T","I","S"], method:"play",
+  summary:"Dribble through as many small gates as you can in a minute. Head up to find the free gate.",
+  setup:"Eight gates, 2 yards wide, spread around a 25-yard square. Every player has a ball.",
+  how:["On 'Go', dribble through as many gates as you can in 60 seconds.","You can't go through the same gate twice in a row.","Count your gates; try to beat your score next round.","Round 2: weaker foot only. Round 3: do a turn after each gate."],
+  points:["Head up between touches to spot an empty gate.","Small touches near the gate, then speed up into space.","Change direction straight after each gate."],
+  progress:"Two players without a ball try to steal one.",
+  regress:"Make the gates wider and the area smaller.",
+  diagram:{w:26, h:26, items:[["c",5,5],["c",7,5],["c",19,4],["c",21,4],["c",12,12],["c",12,14],["c",4,19],["c",6,19],["c",20,20],["c",22,20],["c",14,21],["c",16,21],["A",6,9],["A",17,9],["A",9,16],["A",18,16],["d",6,9,6,5.5],["d",17,9,20,4.5],["d",9,16,12.2,13]]}});
+
+d({id:"t-sharks", level:"Beginner", title:"Sharks and minnows", phase:"Warm-up", minutes:10, minAge:6, players:"8 to 16", area:"25 × 20 yd", equipment:"4 cones, balls, bibs",
+  skills:["dribbling","defending","physicality"], tips:["T","P","S"], method:"play",
+  summary:"Minnows dribble across while sharks try to knock their balls out. A favourite for younger players with lots of 1v1s.",
+  setup:"A 25 × 20 area. Minnows each have a ball on one end line; two sharks stand in the middle.",
+  how:["On 'Go', minnows dribble to the other end line.","Sharks try to win or knock balls out of the area.","Lose your ball and you become a shark.","Keep going until there's one minnow left, then pick new sharks."],
+  points:["Minnows: keep the ball close and change speed past a shark.","Shield the ball with your body when a shark is near.","Sharks: work together and push minnows to the side."],
+  progress:"Minnows must stop the ball on the end line to be safe.",
+  regress:"Sharks walk, or start with one shark.",
+  diagram:{w:26, h:20, items:[["A",2,4],["A",2,8],["A",2,12],["A",2,16],["D",12,7],["D",14,13],["d",2,4,10,5],["d",2,12,11,15],["r",12,7,10,5,0],["r",14,13,11,15,0],["z",0,0,26,20]]}});
+
+d({id:"t-pairs-gates", level:"Beginner", title:"Pass through the gates in pairs", phase:"Technical", minutes:12, minAge:7, players:"Whole team in pairs", area:"30 × 25 yd", equipment:"16 cones, a ball per pair",
+  skills:["passing","first_touch","communication"], tips:["T","I"], method:"play",
+  summary:"Pairs move around the area and score by passing to each other through a gate. Passing, receiving and moving to find space.",
+  setup:"Eight gates, 2 yards wide, spread around a 30 × 25 area. Players in pairs with one ball.",
+  how:["Pass to your partner through any gate; one point per pass.","You can't use the same gate twice in a row.","Play 60-second rounds and count points.","Round 2: the receiver must control and move off in one touch."],
+  points:["Move to the other side of a gate to get the ball.","Pass along the ground with the inside of the foot.","Call your partner's name and point where you want it."],
+  progress:"One-touch passes only, or add a defender pair.",
+  regress:"Wider gates and two touches to control.",
+  diagram:{w:30, h:25, items:[["c",6,5],["c",8,5],["c",20,6],["c",22,6],["c",13,13],["c",13,15],["c",5,19],["c",7,19],["c",22,19],["c",24,19],["A",7,2],["A",7,9],["b",7.5,2.6],["p",7.5,2.6,7,8.2],["A",11,14],["A",16,14],["p",11,14,15.2,14],["r",21,9,24,16,.2],["A",21,9]]}});
+
+d({id:"t-receive-turn", level:"Beginner", title:"Receive and turn in threes", phase:"Technical", minutes:12, minAge:8, players:"Groups of 3", area:"20 × 10 yd per group", equipment:"Cones, a ball per group",
+  skills:["first_touch","dribbling","positional_awareness"], tips:["T","I"], method:"tips",
+  summary:"The middle player receives, turns and passes to the far end. Teaches checking to the ball and opening up to turn.",
+  setup:"Three players in a line: one at each end, 20 yards apart, and one in the middle.",
+  how:["An end player passes to the middle player.","The middle player checks toward the ball, turns with one or two touches and passes to the other end.","Do 6 turns, then swap the middle player.","Use different turns: inside foot, outside foot, Cruyff turn, and an open body turn."],
+  points:["Look over your shoulder before the ball arrives.","Open your body side-on so you can see both ends.","First touch takes the ball across your body, away from where pressure would be."],
+  progress:"A passive defender stands behind the middle player.",
+  regress:"The middle player stops the ball, then turns.",
+  diagram:{w:24, h:10, items:[["A",2,5],["A",12,5],["A",22,5],["b",2.8,5],["p",2.8,5,11,5],["r",12,5,12.5,3.5,.6],["p",12.6,5.2,21,5]]}});
+
+d({id:"t-shoot-two-lines", level:"Beginner", title:"Dribble and shoot, two lines", phase:"Attacking", minutes:12, minAge:7, players:"6 to 14", area:"25 × 25 yd with a goal", equipment:"Goal, cones, balls",
+  skills:["shooting","dribbling","gk_shot_stopping"], tips:["T"], method:"finishing",
+  summary:"Two lines take turns to dribble past a cone and shoot. Lots of shots, and lots of saves for keepers.",
+  setup:"A goal with a keeper. Two lines with balls 22 yards out, left and right, each with a cone 6 yards in front.",
+  how:["The first player dribbles round the cone and shoots before the edge of the box.","The next player in the other line goes when the shot is taken.","Players collect their ball and switch lines.","Keepers rotate every 10 shots."],
+  points:["Look up at the goal before you shoot.","Strike with the laces, toe down, for power; side foot for accuracy.","Shoot across the keeper into the far corner."],
+  progress:"A defender chases from behind the line.",
+  regress:"Shoot from a still ball at 12 yards.",
+  diagram:{w:30, h:26, items:[["G",15,0,"top"],["K",15,1.6],["z",6,0,18,9],["A",7,23],["A",23,23],["c",9,17],["c",21,17],["b",7.6,22.2],["d",7.6,22.2,9.5,15],["s",10.5,13,17.5,0.4]]}});
+
+d({id:"t-line-soccer", level:"Beginner", title:"3v3 line soccer", phase:"Game", minutes:15, minAge:6, players:"6 to 8 per pitch", area:"25 × 20 yd", equipment:"Cones, balls, bibs",
+  skills:["dribbling","decision_making","defending"], tips:["T","I","P"], method:"dutch4v4",
+  summary:"Score by dribbling over the other team's end line under control. Rewards taking players on.",
+  setup:"A 25 × 20 pitch. The end lines are the goals.",
+  how:["Play 3v3.","Score by stopping the ball on the other team's end line with your sole.","After a goal, the other team restarts from their own line.","Play 4-minute games and change opponents."],
+  points:["Look for the gap and run at it.","Pass when a defender commits to you.","Defenders: stay between the ball and your line."],
+  progress:"A goal counts double after a skill move.",
+  regress:"Play 3v2.",
+  diagram:{w:25, h:20, items:[["z",0,0,25,20],["A",6,14],["A",12,15],["A",19,14],["D",7,7],["D",13,8],["D",18,6],["b",12.6,14.4],["d",12.6,14.4,10.5,1]]}});
+
+d({id:"t-knockout", level:"Beginner", title:"King of the ring", phase:"Warm-up", minutes:10, minAge:6, players:"Whole team, a ball each", area:"20 × 20 yd", equipment:"4 cones, a ball each",
+  skills:["dribbling","physicality","positional_awareness"], tips:["T","P"], method:"play",
+  summary:"Everyone protects their own ball and tries to knock others out. Shielding, close control and awareness.",
+  setup:"A 20-yard square. Every player has a ball inside it.",
+  how:["Keep your ball in the square while trying to knock others' balls out.","If your ball goes out, do 5 toe taps outside and come back in.","Play 90-second rounds.","Count how many times you were knocked out; try for fewer each round."],
+  points:["Keep your body between the ball and the nearest player.","Small touches, head up.","Use your arms for balance, not to push."],
+  progress:"Make the square smaller.",
+  regress:"Make the square bigger.",
+  diagram:{w:20, h:20, items:[["z",0,0,20,20],["A",5,5],["A",14,6],["A",9,11],["A",16,14],["A",5,15],["A",11,17],["d",9,11,12,9],["d",14,6,12,8.6],["d",16,14,13,14]]}});
+
+/* ---------- intermediate ---------- */
+d({id:"t-square-overlap", level:"Intermediate", title:"Passing square with overlap", phase:"Technical", minutes:15, minAge:10, players:"8 to 12", area:"20 × 20 yd", equipment:"4 cones, 2 balls",
+  skills:["passing","positional_awareness","communication","separation_speed"], tips:["T","I"], method:"tips",
+  summary:"A passing square where the passer overlaps the receiver, the same run a full-back makes round a winger.",
+  setup:"A cone at each corner of a 20-yard square, 2 or 3 players at each. Balls start at opposite corners.",
+  how:["A passes to B at the next corner and runs round the outside of B.","B takes a touch inside, then plays A into the space in front of them.","A dribbles to the next corner and passes on.","Switch direction every 2 minutes."],
+  points:["The overlap run is curved and fast: go round, not across.","B draws an imaginary defender inside before releasing the pass.","Pass into space ahead of the runner, not to their feet."],
+  progress:"Add a passive defender in front of B.",
+  regress:"Remove the overlap: pass and follow.",
+  diagram:{w:24, h:24, items:[["c",2,2],["c",22,2],["c",22,22],["c",2,22],["A",2,22],["A",22,22],["A",22,2],["A",2,2],["b",2.8,21.4],["p",2.8,21.4,21,22],["d",22,22,20,19],["r",2.6,22.6,23.5,17,.18],["p",20,19,23.4,14]]}});
+
+d({id:"t-rondo-4v2", level:"Intermediate", title:"Rondo 4v2", phase:"Possession", minutes:15, minAge:10, players:"6 per grid", area:"10 × 10 yd", equipment:"4 cones, balls, bibs",
+  skills:["passing","first_touch","decision_making","defending"], tips:["T","I","P"], method:"rondo",
+  summary:"Four keep the ball from two. Fewer passing options than 5v2, so players must move along their line to help.",
+  setup:"A 10-yard square. One player on each side, two defenders in the middle.",
+  how:["The four keep the ball with two touches each.","A split pass between the defenders scores a bonus point.","If a defender wins it, the player who lost it and the one who passed to them swap in.","Play 90-second rounds."],
+  points:["Always give the player on the ball two options, left and right.","Pass to the foot away from pressure.","Defenders: one presses, one blocks the split."],
+  progress:"One touch, or a smaller square.",
+  regress:"Unlimited touches, or 4v1 for the first round.",
+  diagram:{w:14, h:14, items:[["c",2,2],["c",12,2],["c",2,12],["c",12,12],["A",7,1.2],["A",12.8,7],["A",7,12.8],["A",1.2,7],["D",6,6.5],["D",8.5,8],["b",7,1.8],["p",7,1.8,1.8,7],["p",1.2,7,12.2,7]]}});
+
+d({id:"t-gates-possession", level:"Intermediate", title:"Possession through the gates 5v5", phase:"Possession", minutes:18, minAge:9, players:"10 to 12", area:"35 × 30 yd", equipment:"Cones for 6 gates, balls, bibs",
+  skills:["passing","positional_awareness","decision_making","communication"], tips:["I","T"], method:"positional",
+  summary:"Score by passing through any gate to a teammate. Teams must find the free gate, which teaches switching play.",
+  setup:"Six gates, 2 yards wide, spread around a 35 × 30 area. Two teams of five.",
+  how:["Keep the ball as a team.","Score a point by passing through a gate to a teammate who controls it.","You can't score through the same gate twice in a row.","Play 4-minute rounds."],
+  points:["If a gate is guarded, switch to one that isn't.","Move to the other side of a gate before the pass comes.","Defenders: guard the gate nearest the ball."],
+  progress:"Limit players to two touches.",
+  regress:"Play 5v3.",
+  diagram:{w:35, h:30, items:[["c",7,6],["c",9,6],["c",26,5],["c",28,5],["c",17,15],["c",17,17],["c",6,23],["c",8,23],["c",26,24],["c",28,24],["A",6,13],["A",12,18],["A",22,12],["A",26,19],["A",8,26],["D",10,10],["D",16,14],["D",22,17],["D",27,9],["D",10,21],["b",12.6,17.4],["p",12.6,17.4,7,25.4],["r",8,26,7.5,26,0]]}});
+
+d({id:"t-overlap-2v1-wing", level:"Intermediate", title:"Overlap 2v1 down the wing", phase:"Attacking", minutes:18, minAge:11, players:"8 to 12", area:"Half pitch, wide channel", equipment:"Goal, cones, balls, bibs",
+  skills:["passing","communication","decision_making","separation_speed"], tips:["I","S"], method:"wave",
+  summary:"A winger and an overlapping full-back beat one defender down the side, then cross for two strikers.",
+  setup:"A 15-yard wide channel along one touchline. A winger, a full-back behind them and a defender in the channel. Two strikers and a defender in the box.",
+  how:["The full-back passes to the winger and overlaps.","The winger takes on the defender or releases the full-back.","Whoever gets free crosses for the strikers.","Rotate positions after each go; switch wings after 6 goes."],
+  points:["Winger: dribble inside to pull the defender, then release.","Full-back: call 'Overlap!' and time the run.","Strikers: one near post, one far post."],
+  progress:"Add a second defender who tracks the full-back.",
+  regress:"The channel defender is passive.",
+  diagram:{w:40, h:34, items:[["G",20,0,"top"],["K",20,1.6],["z",10,0,20,10],["z",30,0,10,34],["A",34,24],["A",36,31],["D",34,16],["A",17,14],["A",24,14],["D",21,8],["p",36,31,34.6,24.6],["r",36,31,38,9,-.15],["d",34,24,31.5,18],["p",31.5,18,38,10],["p",38,9,18,5],["r",17,14,17.5,5,.1],["r",24,14,25,4,-.1]]}});
+
+d({id:"t-shield-turn", level:"Intermediate", title:"Shield and turn 1v1", phase:"Technical", minutes:12, minAge:9, players:"Groups of 3", area:"15 × 10 yd per group", equipment:"Cones, mini goals or gates, balls",
+  skills:["physicality","first_touch","dribbling"], tips:["T","P"], method:"tips",
+  summary:"Receive with a defender on your back, protect the ball and turn to score. Strength and touch under pressure.",
+  setup:"A server at one end. An attacker with a defender behind them in the middle. A small goal behind the defender.",
+  how:["The server passes into the attacker.","The defender pushes up to pressure from behind.","The attacker shields, then turns to score, or plays back to the server and spins.","Rotate after 4 goes."],
+  points:["Wide stance, knees bent, arm out for balance (no pushing).","Feel where the defender is, then turn the other way.","First touch away from the defender's foot."],
+  progress:"The defender can tackle straight away.",
+  regress:"The defender stays passive for the first touch.",
+  diagram:{w:16, h:16, items:[["mg",8,0.8,"h"],["D",8,6.5],["A",8,8.5],["A",8,14.5],["b",8,13.8],["p",8,13.8,8,9.4],["r",8,8.5,11,3,-.3]]}});
+
+d({id:"t-turn-shoot", level:"Intermediate", title:"Turn and shoot", phase:"Attacking", minutes:15, minAge:10, players:"6 to 12", area:"Penalty area plus 10 yd", equipment:"Goal, cones, balls",
+  skills:["shooting","first_touch","handling_speed"], tips:["T","S"], method:"finishing",
+  summary:"Strikers receive with their back to goal, turn in one touch and shoot. Real match situations at the edge of the box.",
+  setup:"A goal with a keeper. A server 25 yards out. Strikers line up at the top of the box with their back to goal.",
+  how:["The striker checks away, then comes short to receive.","Turn with the first touch and shoot with the second.","Alternate turning left and right.","Add a passive defender after 6 goes."],
+  points:["Check your shoulder before you receive.","Let the ball run across your body to turn.","Shoot early: a quick shot beats a perfect one."],
+  progress:"A live defender, and the striker has 3 seconds.",
+  regress:"Take a set-up touch before the shot.",
+  diagram:{w:30, h:28, items:[["G",15,0,"top"],["K",15,1.6],["z",5,0,20,10],["A",15,25],["A",15,13],["b",15,24.2],["r",15,13,14,15,.4],["p",15,24.2,14.4,15.6],["d",14.4,15.6,12,11.5],["s",12,11.5,18,0.4]]}});
+
+d({id:"t-recovery-chase", level:"Intermediate", title:"Recovery run 1v1", phase:"Defending", minutes:12, minAge:10, players:"6 to 12", area:"30 × 15 yd channel with a goal", equipment:"Goal or mini goal, cones, balls",
+  skills:["defending","separation_speed","physicality"], tips:["S","P"], method:"defending",
+  summary:"The defender starts behind the attacker and must sprint back to get goal-side. Teaches recovery runs and timing tackles.",
+  setup:"A channel with a goal at one end. The attacker starts 25 yards out with the ball; the defender starts 3 yards behind them.",
+  how:["On the whistle, the attacker dribbles at goal.","The defender sprints to get between the attacker and the goal.","The defender wins by tackling or forcing the attacker out of the channel.","Swap roles after each go."],
+  points:["Sprint the shortest line to goal, not to the ball.","Get goal-side first, then tackle.","Don't dive in from behind: show the attacker away from goal."],
+  progress:"Start the defender 5 yards behind.",
+  regress:"Start the defender level with the attacker.",
+  diagram:{w:16, h:30, items:[["G",8,0,"top"],["K",8,1.6],["z",1,0,14,30],["A",8,24],["D",8,27.5],["b",8.6,23.2],["d",8.6,23.2,7,10],["r",8,27.5,6,8,-.2]]}});
+
+d({id:"t-4v4-wide", level:"Intermediate", title:"4v4 + 2 wide players", phase:"Game", minutes:20, minAge:10, players:"10 + 2 keepers", area:"40 × 30 yd with wide channels", equipment:"2 goals, cones, balls, bibs",
+  skills:["passing","positional_awareness","shooting","communication"], tips:["I","T"], method:"ppp",
+  summary:"Two neutral wide players help the team with the ball. Encourages using width and getting crosses and cut-backs in.",
+  setup:"A 40 × 30 pitch with a goal and keeper at each end and a 5-yard channel down each side. One neutral in each channel.",
+  how:["Play 4v4 in the middle; the wide neutrals play for whoever has the ball.","Wide players can't be tackled and have two touches.","A goal from a wide player's pass counts double.","Swap the wide players every 4 minutes."],
+  points:["Look wide early, especially when the middle is crowded.","Make a run into the box as the ball goes wide.","Wide players: cross early or cut back on the ground."],
+  progress:"Wide players must cross first time.",
+  regress:"Wide players can dribble into the middle.",
+  diagram:{w:30, h:40, items:[["G",15,0,"top"],["G",15,40,"bottom"],["K",15,1.6],["K",15,38.4],["z",0,0,5,40],["z",25,0,5,40],["N",2.5,15],["A",11,24],["A",18,22],["A",14,14],["A",19,12],["D",12,18],["D",17,16],["D",11,10],["D",17,28],["b",18.6,21.4],["p",18.6,21.4,27,15.5],["N",27.5,15],["p",27.5,15,15,6],["r",14,14,15,6,0]]}});
+
+d({id:"t-transition-3v3", level:"Intermediate", title:"3v3 waves: attack, then defend", phase:"Transition", minutes:18, minAge:10, players:"9 to 12 (3 or 4 teams of 3)", area:"30 × 25 yd with 2 goals", equipment:"2 goals, cones, balls, bibs",
+  skills:["decision_making","separation_speed","defending","shooting"], tips:["I","S","P"], method:"wave",
+  summary:"A team attacks one way; as soon as the attack ends, they defend against the next team coming the other way.",
+  setup:"Goals at both ends. Team A attacks Team B. Team C waits behind the far goal.",
+  how:["Team A attacks Team B.","When the attack ends, Team B leaves and Team C attacks the other way against Team A.","Team A must switch straight to defending.","Keep the waves going for 3 minutes; count goals."],
+  points:["Switch your mind straight away when the ball is lost.","Nearest player presses the ball; the others get goal-side.","Attack quickly before the defence is set."],
+  progress:"Attacks must finish within 8 seconds.",
+  regress:"The waiting team gives the defenders 3 seconds before starting.",
+  diagram:{w:25, h:32, items:[["mg",12.5,0.8,"h"],["mg",12.5,31.2,"h"],["A",7,13],["A",12,11],["A",18,13],["D",8,8],["D",14,6],["D",17,9],["X",9,30],["X",13,30],["X",17,30],["b",12.6,10.4],["s",12.6,10.4,12.5,1.4],["r",9,30,9,22,0],["r",17,30,17,22,0]]}});
+
+d({id:"t-gk-1v1", level:"Intermediate", title:"Keeper 1v1 breakaways", phase:"Technical", minutes:15, minAge:10, players:"Keepers + 6 to 10", area:"Penalty area plus 20 yd", equipment:"Goal, cones, balls",
+  skills:["gk_positioning","gk_diving","gk_decision_making","shooting"], tips:["T","P","I"], method:"finishing",
+  summary:"Strikers run through on goal; keepers practise closing the angle, staying big and timing the block.",
+  setup:"A goal with a keeper. Strikers line up 30 yards out with balls.",
+  how:["The striker dribbles at goal from 30 yards.","The keeper comes off the line to close the angle and stays set as the shot comes.","The striker can shoot or try to round the keeper.","Rotate keepers every 6 attempts."],
+  points:["Keeper: move while the ball is away from the striker's foot, set when it's close.","Stay big and stay on your feet as long as you can.","Striker: decide early, shoot or go round."],
+  progress:"A defender chases the striker.",
+  regress:"The striker must shoot from the edge of the box.",
+  diagram:{w:30, h:32, items:[["G",15,0,"top"],["K",15,1.6],["z",5,0,20,10],["A",15,29],["b",15.6,28.2],["d",15.6,28.2,15.5,11],["r",15,1.6,15,6,0]]}});
+
+d({id:"t-long-switch", level:"Intermediate", title:"Long passing: switch the play", phase:"Technical", minutes:15, minAge:11, players:"8 to 12", area:"Two 10 × 10 yd zones, 30 yd apart", equipment:"8 cones, balls",
+  skills:["passing","first_touch"], tips:["T"], method:"tips",
+  summary:"Players in two zones switch the ball with long, driven or lofted passes. Builds range and a clean first touch on long balls.",
+  setup:"Two 10-yard zones, 30 yards apart, with 4 to 6 players in each.",
+  how:["Pass short twice inside your zone, then play long to the other zone.","The receiving zone controls the long ball inside the zone.","Count successful switches in 2 minutes.","Then try driven passes along the ground."],
+  points:["Plant foot beside the ball; strike under the middle for a lofted pass.","Lean back slightly for height; over the ball to keep it low.","Receiver: cushion it with the first touch into your zone."],
+  progress:"Move the zones to 40 yards apart.",
+  regress:"Move the zones to 20 yards apart.",
+  diagram:{w:44, h:14, items:[["z",1,2,10,10],["z",33,2,10,10],["A",4,5],["A",8,9],["A",5,10],["A",36,5],["A",40,9],["A",37,10],["b",8.6,8.4],["p",4,5,8,8.4],["p",8.6,8.4,36,5.6]]}});
+
+d({id:"t-corners", level:"Intermediate", title:"Set pieces: corners", phase:"Attacking", minutes:15, minAge:10, players:"10 to 16", area:"Penalty area", equipment:"Goal, cones, balls, bibs",
+  skills:["positional_awareness","communication","shooting","defending"], tips:["I","P"], method:"setpieces",
+  summary:"Practise attacking and defending corners: runs to the near post, far post and penalty spot, and who marks where.",
+  setup:"A goal with a keeper. A taker at the corner, attackers outside the box and defenders set up in the box.",
+  how:["Walk through the plan once: who runs near post, far post, penalty spot and edge of the box.","Take 6 corners from each side.","Defenders clear and push out after each one.","Swap attackers and defenders."],
+  points:["Attackers: start your run late and attack the ball.","Defenders: know your zone or player before the kick, and talk.","Keeper: call early, 'Keeper!' or 'Away!'"],
+  progress:"Play a 2-minute game after each corner so second balls count.",
+  regress:"Throw the ball in by hand so it's easier to reach.",
+  diagram:{w:40, h:22, items:[["G",20,0,"top"],["K",20,1.6],["z",8,0,24,14],["A",39,0.8],["A",16,17],["A",22,18],["A",28,16],["D",17,4],["D",23,5],["D",20,8],["b",38.4,1.2],["p",38.4,1.2,18,4.5],["r",16,17,17,5,.2],["r",22,18,23.5,6,-.2],["r",28,16,20,11,.1]]}});
+
+/* ---------- advanced ---------- */
+d({id:"t-rondo-6v3", level:"Advanced", title:"Rondo 6v3 with a middle player", phase:"Possession", minutes:15, minAge:12, players:"9 per grid", area:"14 × 14 yd", equipment:"4 cones, balls, bibs",
+  skills:["passing","first_touch","positional_awareness","decision_making"], tips:["T","I","P"], method:"rondo",
+  summary:"Five outside and one inside keep the ball from three. The middle player must receive and play through pressure.",
+  setup:"A 14-yard square. Five players on the outside, one attacker inside, three defenders inside.",
+  how:["Keep the ball, two touches outside, one or two inside.","A pass through the middle player scores a point.","If defenders win it, the three swap with the players who lost it.","Play 2-minute rounds."],
+  points:["Middle player: stay between the defenders, check your shoulders.","Outside players: play into the middle when the lane opens.","Defenders: press as a three, cut the middle first."],
+  progress:"One touch outside, or the middle player must play forward.",
+  regress:"Play 6v2.",
+  diagram:{w:16, h:16, items:[["c",1,1],["c",15,1],["c",1,15],["c",15,15],["A",8,0.6],["A",15.4,6],["A",15.4,11],["A",5,15.4],["A",0.6,8],["A",8,8.5],["D",6,6],["D",10.5,6.5],["D",8,12],["b",0.6,8.6],["p",1.2,8.2,7.2,8.5],["p",8.8,8.4,15,10.6]]}});
+
+d({id:"t-switch-6v6", level:"Advanced", title:"Switch-play game 6v6 + 2", phase:"Possession", minutes:20, minAge:12, players:"14", area:"45 × 35 yd split into two halves", equipment:"Cones, balls, bibs",
+  skills:["passing","tactical_understanding","positional_awareness","decision_making"], tips:["I","T"], method:"positional",
+  summary:"Keep it in one half, then switch to the other. Teaches drawing the opponent to one side and attacking the far side.",
+  setup:"A 45 × 35 area split lengthways into two halves. Two teams of six and two neutrals who play for the team with the ball.",
+  how:["Teams keep the ball anywhere.","Score a point for 5 passes in one half followed by a pass into the other half that's controlled.","Neutrals have two touches.","Play 4-minute rounds."],
+  points:["Draw the defenders in with short passes, then switch.","Players on the far side: stay wide and ready.","Defenders: shift across together as the ball moves."],
+  progress:"The switch must be a single pass, no dribbling across.",
+  regress:"Score after 3 passes, not 5.",
+  diagram:{w:45, h:35, items:[["z",0,0,45,35],["z",22.5,0,0,35],["N",22.5,8],["N",22.5,27],["A",6,10],["A",12,17],["A",7,25],["A",16,8],["A",34,12],["A",38,24],["D",9,14],["D",14,12],["D",10,21],["D",17,20],["D",30,17],["D",28,10],["b",12.6,16.4],["p",6,10,12,16.4],["p",12.6,16.4,37.4,23.4]]}});
+
+d({id:"t-build-out", level:"Advanced", title:"Build out from the back 6v4", phase:"Possession", minutes:20, minAge:12, players:"10 + keeper", area:"Half pitch", equipment:"Goal, 3 mini goals or gates, cones, balls, bibs",
+  skills:["gk_distribution","passing","tactical_understanding","decision_making","positional_awareness"], tips:["I","T"], method:"positional",
+  summary:"The keeper and five players play out against four pressers and score through gates at halfway.",
+  setup:"A goal with a keeper. Back four and a defensive midfielder against four pressing forwards. Three gates on the halfway line.",
+  how:["Every attack starts with the keeper.","The team in possession scores by passing or dribbling through a gate.","The pressers score in the big goal if they win it.","Play 6 attacks, then swap the pressing group."],
+  points:["Keeper: be an extra player; angle your body to switch play.","Centre-backs split wide; full-backs high and wide.","Midfielder: show between the pressers, open body to play forward."],
+  progress:"Add a fifth presser.",
+  regress:"Pressers start 10 yards higher and the team gets 3 seconds before they press.",
+  diagram:{w:40, h:40, items:[["G",20,0,"top"],["K",20,2],["mg",8,39.2,"h"],["mg",20,39.2,"h"],["mg",32,39.2,"h"],["A",11,7],["A",29,7],["A",4,15],["A",36,15],["A",20,15],["D",15,10],["D",25,10],["D",20,21],["D",30,20],["b",20.6,2.6],["p",20.6,2.6,11,6.4],["p",11,7,20,14.4],["p",20,15,35.4,15],["d",36,15,32,38]]}});
+
+d({id:"t-unit-shift", level:"Advanced", title:"Defending as a unit: back four shift", phase:"Defending", minutes:18, minAge:13, players:"10 to 12", area:"Half pitch", equipment:"Goal, cones, balls, bibs",
+  skills:["defending","positional_awareness","communication","tactical_understanding"], tips:["I","P"], method:"defending",
+  summary:"A back four and two midfielders slide across as the ball moves between attackers, keeping the gaps closed.",
+  setup:"A goal with a keeper. A back four and two holding midfielders. Five attackers spread across the front pass the ball around them.",
+  how:["Attackers pass across the front slowly at first.","The unit shifts toward the ball: nearest defender presses, others cover.","When a gap opens, attackers can play through and attack goal.","Speed up the passing after 3 minutes."],
+  points:["Shift together, like you're tied by a rope.","Distances: no more than 10 yards between defenders.","Talk: 'Step', 'Drop', 'Cover'."],
+  progress:"Attackers can dribble and switch play long.",
+  regress:"Attackers pass only, no runs.",
+  diagram:{w:40, h:34, items:[["G",20,0,"top"],["K",20,1.6],["D",8,9],["D",16,8],["D",24,8],["D",32,9],["D",15,15],["D",25,15],["A",5,24],["A",14,26],["A",22,27],["A",30,25],["A",37,22],["b",30.6,24.4],["p",22,27,30,25],["r",32,9,31,14,0],["r",24,8,26,10,0],["r",16,8,19,9,0],["r",25,15,28,18,0]]}});
+
+d({id:"t-press-sideline", level:"Advanced", title:"Pressing trap on the sideline", phase:"Defending", minutes:18, minAge:14, players:"12 to 14", area:"40 × 35 yd", equipment:"Cones, mini goals, balls, bibs",
+  skills:["defending","tactical_understanding","communication","physicality"], tips:["I","P","S"], method:"pressing",
+  summary:"Let the ball go wide, then trap it against the touchline with a curved press and players closing the inside options.",
+  setup:"A 40 × 35 area. Six players build up from one end; five pressers defend. Two mini goals behind the pressers.",
+  how:["The six try to pass through to the mini goals.","Pressers let the ball go to the wide player, then press together on that pass.","Winning the ball within 6 seconds of the trap scores 2 points.","Swap groups every 3 minutes."],
+  points:["Curve your run so the wide player can't pass back inside.","Next defenders close the nearest passing options.","Use the touchline as an extra defender."],
+  progress:"Trap must win the ball within 4 seconds.",
+  regress:"The building team must pass wide first.",
+  diagram:{w:35, h:40, items:[["z",0,0,35,40],["mg",11,0.8,"h"],["mg",24,0.8,"h"],["A",8,33],["A",17,35],["A",27,33],["A",3,22],["A",17,25],["A",32,23],["D",9,16],["D",17,15],["D",25,16],["D",13,22],["D",22,21],["b",3.6,21.4],["p",8,33,3.6,22],["r",9,16,4.5,19.5,-.3],["r",13,22,8,26,0],["r",17,15,15,22,0]]}});
+
+d({id:"t-final-third", level:"Advanced", title:"Final-third combinations 4v3", phase:"Attacking", minutes:18, minAge:12, players:"10 + keeper", area:"Final third, 40 × 30 yd", equipment:"Goal, cones, balls, bibs",
+  skills:["passing","shooting","decision_making","positional_awareness"], tips:["I","T"], method:"finishing",
+  summary:"Four attackers use overlaps, underlaps and third-man runs to break three defenders and finish.",
+  setup:"A goal with a keeper. Four attackers start at the edge of the final third; three defenders plus the keeper defend.",
+  how:["The coach plays a ball into the attackers.","Attackers combine to create a shot within 10 seconds.","Defenders win a point for a clearance past halfway.","Rotate attackers and defenders every 5 goes."],
+  points:["Run off the ball: someone always runs in behind.","Third-man: pass in, set back, play the runner.","Finish quickly: one or two touches in the box."],
+  progress:"Make it 4v4, or limit to 8 seconds.",
+  regress:"Make it 4v2.",
+  diagram:{w:40, h:30, items:[["G",20,0,"top"],["K",20,1.6],["z",8,0,24,10],["A",10,22],["A",20,24],["A",30,22],["A",20,15],["D",14,12],["D",22,10],["D",28,13],["b",20.6,23.4],["p",20.6,23.4,20,15.6],["p",20,15.6,11,21.6],["r",30,22,25,5,-.2],["p",11,21.6,25,6],["s",25,5,22,0.4]]}});
+
+d({id:"t-defend-crosses", level:"Advanced", title:"Defending crosses 4v4 in the box", phase:"Defending", minutes:18, minAge:13, players:"10 + keeper", area:"Penalty area with wide servers", equipment:"Goal, cones, balls, bibs",
+  skills:["defending","communication","positional_awareness","gk_decision_making"], tips:["I","P"], method:"defending",
+  summary:"Wide servers cross into a 4v4 in the box. Defenders mark, attack the ball and clear; the keeper decides to come or stay.",
+  setup:"A goal with a keeper. Four attackers against four defenders in the box. A server on each wing with balls.",
+  how:["Servers take turns crossing.","Defenders clear; attackers try to score from the cross or second ball.","Play 10 crosses, then swap roles.","Count clearances that leave the box."],
+  points:["Body position: see the ball and your player.","Attack the ball at its highest point and clear high and wide.","Keeper: call early and decide: come or stay."],
+  progress:"Servers can dribble in and cut back.",
+  regress:"Crosses by hand.",
+  diagram:{w:40, h:24, items:[["G",20,0,"top"],["K",20,1.6],["z",6,0,28,16],["A",2,10],["A",38,10],["A",15,9],["A",21,12],["A",26,8],["A",19,6],["D",15,6],["D",21,9],["D",25,5],["D",18,3.5],["b",2.6,9.4],["p",2.6,9.4,21,7],["r",21,9,21,7,0]]}});
+
+d({id:"t-compact-7v7", level:"Advanced", title:"Compact team game 7v7 with offside lines", phase:"Game", minutes:20, minAge:13, players:"14 + 2 keepers", area:"60 × 45 yd", equipment:"2 goals, cones, balls, bibs",
+  skills:["tactical_understanding","positional_awareness","defending","communication"], tips:["I","P"], method:"pressing",
+  summary:"A game with offside lines and a rule that every outfield player must be past halfway for a goal to count, so teams stay compact.",
+  setup:"A 60 × 45 pitch with goals and keepers. Cone lines 18 yards from each goal act as offside lines.",
+  how:["Play 7v7 with offside from the cone lines.","A goal counts only if the whole team (not the keeper) is in the opponent's half.","If a team concedes while a player is still in the other half, the goal counts double.","Play 2 × 10 minutes."],
+  points:["Move up and back as one block.","Back line: step up together on a backward pass.","Distances between lines no more than 10 to 15 yards."],
+  progress:"Add pressing triggers: a backward pass means the whole team pushes up.",
+  regress:"Remove the double-goal rule.",
+  diagram:{w:45, h:60, items:[["G",22.5,0,"top"],["G",22.5,60,"bottom"],["K",22.5,1.6],["K",22.5,58.4],["z",0,18,45,0],["z",0,42,45,0],["z",0,30,45,0],["A",10,34],["A",22,33],["A",34,34],["A",15,40],["A",29,40],["A",22,22],["A",22,46],["D",10,25],["D",22,26],["D",34,25],["D",15,19],["D",29,19],["D",22,36],["D",22,12],["b",22.6,32.4]]}});
+
+d({id:"t-between-lines", level:"Advanced", title:"Receive between the lines 4v2 + 2", phase:"Possession", minutes:18, minAge:12, players:"10", area:"30 × 20 yd in three zones", equipment:"Cones, balls, bibs",
+  skills:["first_touch","positional_awareness","decision_making","passing"], tips:["I","T","S"], method:"positional",
+  summary:"Two end groups of four pass to each other through a middle zone where two link players receive under pressure.",
+  setup:"Three zones: 10 yards at each end, 10 yards in the middle. Four players in each end zone, two link players and two defenders in the middle.",
+  how:["An end group passes until a link player is free, then plays into them.","The link player turns and passes into the far end zone.","Direct passes end to end don't count.","Swap link players and defenders every 2 minutes."],
+  points:["Link players: find the space behind a defender's shoulder.","Open your body on the half-turn to see the far zone.","End players: pass into the link player's back foot."],
+  progress:"Link players have one touch, or add a third defender.",
+  regress:"One defender in the middle.",
+  diagram:{w:30, h:20, items:[["z",0,0,10,20],["z",10,0,10,20],["z",20,0,10,20],["A",3,4],["A",7,9],["A",3,16],["A",7,15],["A",23,4],["A",27,10],["A",23,16],["A",27,15],["A",13,6],["A",17,14],["D",14,10],["D",16,7],["b",7.6,8.4],["p",7.6,8.4,12.4,6.2],["p",13.6,6.2,22.4,4]]}});
+
+d({id:"t-ssg-intervals", level:"Advanced", title:"3v3 intensity intervals", phase:"Game", minutes:18, minAge:13, players:"12 (4 teams of 3)", area:"25 × 20 yd", equipment:"4 mini goals, balls around the pitch, bibs",
+  skills:["physicality","separation_speed","decision_making","defending"], tips:["S","P"], method:"conditioning",
+  summary:"Short, all-out 3v3 games with rest between. Builds match fitness with the ball instead of running laps.",
+  setup:"A 25 × 20 pitch with two mini goals at each end and spare balls around the edge. Four teams of three.",
+  how:["Two teams play 2 minutes flat out while two teams rest and collect balls.","A new ball goes in straight away when one goes out.","Swap after 2 minutes; each team plays 4 or 5 games.","Keep a league table."],
+  points:["Full effort while you play, full rest while you don't.","Press straight away when you lose the ball.","Get water during every rest."],
+  progress:"90-second games with 90 seconds rest.",
+  regress:"3-minute games with longer rest.",
+  note:"Hard work: use once a week at most, not the day before a match, and keep water nearby.",
+  diagram:{w:25, h:20, items:[["mg",8,0.7,"h"],["mg",17,0.7,"h"],["mg",8,19.3,"h"],["mg",17,19.3,"h"],["A",7,12],["A",13,10],["A",18,13],["D",8,7],["D",14,6],["D",17,8],["b",13.6,9.4],["p",13.6,9.4,18,12.4],["s",18,12.4,17,1.2]]}});
+
+d({id:"t-three-teams", level:"Advanced", title:"Three-team transition 4v4 + 4", phase:"Transition", minutes:18, minAge:12, players:"12 (3 teams of 4)", area:"30 × 30 yd", equipment:"Cones, balls, three sets of bibs",
+  skills:["passing","decision_making","defending","separation_speed"], tips:["I","S","P"], method:"pressing",
+  summary:"Two teams keep the ball together against one. The team that loses it becomes the defenders straight away.",
+  setup:"A 30-yard square with three teams of four. Two teams in possession (8), one team defending (4).",
+  how:["The two possession teams keep the ball together: 8v4.","When the defenders win it, the team that lost it becomes the new defenders.","Every 10 passes is a point for the passers.","Play 6 minutes and count points per team."],
+  points:["Losing the ball: react in the first second.","Winners: get the first pass away from pressure fast.","Use the whole square to stretch the defenders."],
+  progress:"Two touches maximum.",
+  regress:"Score after 6 passes.",
+  diagram:{w:30, h:30, items:[["z",0,0,30,30],["A",4,5],["A",15,3],["A",26,6],["A",4,25],["A",26,25],["A",15,27],["A",9,15],["A",22,15],["D",11,9],["D",19,10],["D",12,20],["D",19,19],["b",9.6,14.4],["p",4,5,9,14.4],["p",9.6,14.4,22,15]]}});
+
+d({id:"t-counter-5v4", level:"Advanced", title:"Counter-attack 5v4 after a regain", phase:"Transition", minutes:20, minAge:12, players:"12 + 2 keepers", area:"Three-quarter pitch", equipment:"2 goals, cones, balls, bibs",
+  skills:["separation_speed","decision_making","passing","shooting","positional_awareness"], tips:["S","I"], method:"pressing",
+  summary:"Win the ball in midfield, then attack fast 5v4 before the other team gets back. Practises the first pass and the runs.",
+  setup:"A long pitch with goals and keepers. A midfield zone in the middle. Five attackers wait outside the zone; four defenders and a 2v2 in the middle.",
+  how:["The coach plays a ball into the middle zone; the 2v2 fights for it.","The pair that wins it plays forward and joins a counter with three teammates: 5v4 to goal.","They have 12 seconds to score.","The other pair tracks back to help defend."],
+  points:["First look forward: the earliest pass is the best one.","Wide players sprint wide to stretch the defence.","Run in straight lines, then cut across defenders late."],
+  progress:"10 seconds to score.",
+  regress:"15 seconds, or 5v3.",
+  diagram:{w:40, h:56, items:[["G",20,0,"top"],["G",20,56,"bottom"],["K",20,1.6],["K",20,54.4],["z",0,24,40,10],["A",17,29],["A",23,30],["D",19,27],["D",22,32],["A",6,22],["A",34,22],["A",20,20],["D",12,12],["D",20,10],["D",28,12],["D",20,16],["b",17.6,28.4],["p",17.6,28.4,6,22.6],["r",34,22,32,8,-.15],["r",20,20,22,6,0],["p",6,22,31,9]]}});
+
+/* every drill sits in one level */
+const LEVEL_OF = {"t-fifa11":"Beginner","t-rondo-4v1":"Beginner","t-four-corner":"Beginner","t-ball-mastery-grid":"Beginner","t-1v1-attack":"Beginner","t-2v1-goal":"Beginner",
+  "t-finishing-combo":"Beginner","t-1v1-defend":"Beginner","t-dutch-4v4":"Beginner","t-funino":"Beginner","t-cooldown":"Beginner","t-gk-shooting":"Beginner","t-scrimmage-condition":"Beginner",
+  "t-y-passing":"Intermediate","t-rondo-5v2":"Intermediate","t-3v2-waves":"Intermediate","t-cross-finish":"Intermediate","t-2v2-cover":"Intermediate","t-ssg-5v5-gk":"Intermediate",
+  "t-endzone":"Intermediate","t-gk-distribution":"Intermediate","t-heading-game":"Intermediate",
+  "t-rondo-transition":"Advanced","t-positional-4v4-3":"Advanced","t-three-zone":"Advanced","t-press-trigger":"Advanced","t-counter-4v3":"Advanced","t-counterpress":"Advanced","t-third-man":"Advanced"};
+D.forEach(x => { if(!x.level) x.level = LEVEL_OF[x.id] || "Intermediate"; });
+export const LEVELS = ["Beginner","Intermediate","Advanced"];
+export const LEVEL_NOTE = {
+  Beginner:"Simple rules, lots of touches and small numbers. Right for younger or newer teams, and good warm-ups for any age.",
+  Intermediate:"More players and more decisions: support angles, overlaps, pressure and cover, set pieces.",
+  Advanced:"Team tactics at game speed: positional play, pressing traps, building out, compact defending and fast transitions."
+};
+
 export const TEAM_DRILLS = D;
 export const teamDrillById = id => D.find(x => x.id === id);
 export const playersText = dr => /^\d+( to \d+)?$/.test(dr.players) ? dr.players + " players" : dr.players;
@@ -362,7 +705,8 @@ export function diagramSvg(dr, label){
   const items = g.items.slice().sort((a, b) => ("prsdz".includes(a[0][0]) && a[0] !== "s" ? -1 : 0) - ("prsdz".includes(b[0][0]) && b[0] !== "s" ? -1 : 0));
   items.forEach(it => {
     const [k, x, y, a3, a4, a5] = it;
-    if(k === "z") s += `<rect x="${sx(x)}" y="${sy(y)}" width="${a3}" height="${a4}" fill="#fff" fill-opacity=".06" stroke="#fff" stroke-opacity=".75" stroke-width="${sw * .8}" stroke-dasharray="${r * .5} ${r * .4}"/>`;
+    if(k === "z" && (!a3 || !a4)) s += `<line x1="${sx(x)}" y1="${sy(y)}" x2="${sx(x + (a3 || 0))}" y2="${sy(y + (a4 || 0))}" stroke="#fff" stroke-opacity=".75" stroke-width="${sw * .8}" stroke-dasharray="${r * .5} ${r * .4}"/>`;
+    else if(k === "z") s += `<rect x="${sx(x)}" y="${sy(y)}" width="${a3}" height="${a4}" fill="#fff" fill-opacity=".06" stroke="#fff" stroke-opacity=".75" stroke-width="${sw * .8}" stroke-dasharray="${r * .5} ${r * .4}"/>`;
     else if(k === "p" || k === "s" || k === "d") s += line(x, y, a3, a4, k);
     else if(k === "r"){ const bend = a5 || 0, mx = (x + a3) / 2 - (a4 - y) * bend, my = (y + a4) / 2 + (a3 - x) * bend, len = Math.hypot(a3 - x, a4 - y) || 1, k1 = r * 1.05;
       const sxp = x + (mx - x) / Math.hypot(mx - x, my - y || 1) * k1, syp = y + (my - y) / Math.hypot(mx - x || 1, my - y) * k1;
@@ -381,8 +725,9 @@ export function diagramSvg(dr, label){
     else if(k === "D") s += dot(BLUE);
     else if(k === "N") s += dot(YELLOW, "N");
     else if(k === "K") s += dot(GREEN, "GK");
+    else if(k === "X") s += dot("#8a94a6");
     else if(k === "b") s += `<circle cx="${sx(x)}" cy="${sy(y)}" r="${r * .45}" fill="#fff" stroke="${NAVY}" stroke-width="${sw * .6}"/>`;
   });
   return `<svg class="tdiag" viewBox="0 0 ${W.toFixed(2)} ${H.toFixed(2)}" role="img" aria-label="${(label || dr.title).replace(/"/g, "&quot;")}: diagram of the setup">${s}</svg>`;
 }
-export const DIAGRAM_KEY = `<div class="tkey" aria-hidden="true"><span><i style="background:${ORANGE}"></i>Attack / team in possession</span><span><i style="background:${BLUE}"></i>Defend</span><span><i style="background:${YELLOW}"></i>Neutral</span><span><i style="background:${GREEN}"></i>Keeper</span><span><b class="k-pass"></b>Pass</span><span><b class="k-run"></b>Run / dribble</span><span><b class="k-shot"></b>Shot</span></div>`;
+export const DIAGRAM_KEY = `<div class="tkey" aria-hidden="true"><span><i style="background:${ORANGE}"></i>Attack / team in possession</span><span><i style="background:${BLUE}"></i>Defend</span><span><i style="background:${YELLOW}"></i>Neutral</span><span><i style="background:${GREEN}"></i>Keeper</span><span><i style="background:#8a94a6"></i>Waiting</span><span><b class="k-pass"></b>Pass</span><span><b class="k-run"></b>Run / dribble</span><span><b class="k-shot"></b>Shot</span></div>`;
