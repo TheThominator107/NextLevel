@@ -71,108 +71,75 @@ function timelineHtml(rs, opts={}){
 }
 const TAGS = ["First touch","Weak foot","Passing range","Scanning","1v1 attacking","1v1 defending","Finishing","Crossing","Heading","Shielding","Positioning","Decision making","Speed","Work rate","Communication","Confidence on the ball","Leadership","Composure"];
 const POSITIONS = ["Goalkeeper","Defender","Midfielder","Forward","Not set"];
-const CATS = ["Ball mastery","Passing","Dribbling","Shooting","Defending","Awareness","Speed & agility","Strength","Game understanding","Mindset","Goalkeeping"];
+const CATS = ["Ball mastery","First touch","Passing","Dribbling","Shooting","Speed & agility","Defending","Fitness","Goalkeeping"];
 
 /* skills: review attributes a drill trains (used for recommendations); tags: matching "Work on" tags; gk: goalkeeper drill.
    Step-by-step instructions live in Supabase (drill_steps) behind Home Training; only the free samples carry steps here. */
 const BUILTIN_DRILLS = [
-  /* ---- first touch & ball mastery ---- */
-  {free:true,id:"b-toe-taps",title:"Toe taps",category:"Ball mastery",minutes:5,equipment:"Ball",level:"Beginner",skills:["first_touch","handling_speed"],tags:["Confidence on the ball"],steps:["Ball still in front of you, tap the top with the sole of each foot in turn.","Stay on the balls of your feet and keep your head up.","3 rounds of 30 seconds, 30 seconds rest.","Make it harder: move the ball in a circle while tapping."]},
-  {id:"b-sole-roll",title:"Sole rolls and pull-backs",category:"Ball mastery",minutes:8,equipment:"Ball",level:"Beginner",skills:["first_touch","dribbling"],tags:["Confidence on the ball"]},
-  {id:"b-juggle",title:"Juggling ladder",category:"Ball mastery",minutes:10,equipment:"Ball",level:"Intermediate",skills:["first_touch"],tags:["First touch","Composure"]},
-  {id:"b-first-touch",title:"Open-body first touch",category:"Passing",minutes:10,equipment:"Ball, wall, 2 cones",level:"Intermediate",skills:["first_touch","positional_awareness","decision_making"],tags:["First touch","Composure"]},
-  {id:"b-volley",title:"Volleys and half-volleys",category:"Shooting",minutes:10,equipment:"Ball, wall or goal",level:"Advanced",skills:["first_touch","shooting"],tags:["Finishing","Composure"]},
-
-  /* ---- passing ---- */
-  {free:true,id:"b-wall-pass",title:"Two-touch wall passes",category:"Passing",minutes:10,equipment:"Ball, wall",level:"Beginner",skills:["passing","first_touch"],tags:["Passing range"],steps:["Stand 3 to 5 yards from a wall.","Pass with the inside of your right foot, take one touch to control, pass again.","Do 25 passes, then switch to your left foot for 25.","Make it harder: step back to 8 yards and use one touch only."]},
-  {id:"b-long-pass",title:"Long-pass targets",category:"Passing",minutes:15,equipment:"Ball(s), 4 cones",level:"Advanced",skills:["passing","tactical_understanding"],tags:["Passing range","Crossing"]},
-  {id:"b-weak-foot",title:"Weak-foot only",category:"Ball mastery",minutes:15,equipment:"Ball",level:"Intermediate",skills:["passing","shooting","dribbling"],tags:["Weak foot"]},
-
-  /* ---- shooting ---- */
-  {id:"b-targets",title:"Target finishing",category:"Shooting",minutes:15,equipment:"Ball(s), goal or wall, tape",level:"Beginner",skills:["shooting"],tags:["Finishing"]},
-  {id:"b-dribble-shoot",title:"Dribble, set and shoot",category:"Shooting",minutes:12,equipment:"Ball, 3 cones, goal or wall",level:"Intermediate",skills:["shooting","dribbling","decision_making"],tags:["Finishing","1v1 attacking"]},
-
-  /* ---- dribbling & speed with the ball ---- */
-  {id:"b-cone-weave",title:"Cone weave dribble",category:"Dribbling",minutes:10,equipment:"Ball, 6 cones (or shoes)",level:"Beginner",skills:["dribbling","handling_speed"],tags:["Confidence on the ball"]},
-  {id:"b-speed-dribble",title:"Speed dribble races",category:"Dribbling",minutes:10,equipment:"Ball, 2 cones, timer",level:"Intermediate",skills:["handling_speed","dribbling","separation_speed"],tags:["Speed"]},
-  {id:"b-change-pace",title:"Change of pace and direction",category:"Dribbling",minutes:10,equipment:"Ball, 4 cones",level:"Intermediate",skills:["separation_speed","dribbling","handling_speed"],tags:["1v1 attacking","Speed"]},
-  {id:"b-shield",title:"Shield the ball",category:"Dribbling",minutes:10,equipment:"Ball, a helper",level:"Intermediate",skills:["physicality","dribbling"],tags:["Shielding"]},
-  {id:"b-1v1-line",title:"1v1 to the line",category:"Dribbling",minutes:12,equipment:"Ball, 4 cones, a helper",level:"Advanced",skills:["dribbling","defending","separation_speed"],tags:["1v1 attacking","1v1 defending"]},
-
-  /* ---- speed & strength ---- */
-  {id:"b-5-10-5",title:"5-10-5 shuttle",category:"Speed & agility",minutes:10,equipment:"3 cones",level:"Intermediate",skills:["separation_speed","physicality"],tags:["Speed"]},
-  {id:"b-first-step",title:"First-step burst",category:"Speed & agility",minutes:8,equipment:"2 cones, a helper (optional)",level:"Intermediate",skills:["separation_speed"],tags:["Speed","1v1 attacking"]},
-  {id:"b-strength",title:"Young player strength circuit",category:"Strength",minutes:15,equipment:"None (bodyweight only)",level:"Beginner",skills:["physicality"],tags:["Shielding","Heading"]},
-  {id:"b-recovery",title:"Recovery runs",category:"Defending",minutes:10,equipment:"3 cones",level:"Intermediate",skills:["defending","physicality"],tags:["Work rate"]},
-
-  /* ---- defending ---- */
-  {id:"b-jockey",title:"Jockey footwork",category:"Defending",minutes:8,equipment:"2 cones",level:"Beginner",skills:["defending"],tags:["1v1 defending"]},
-
-  /* ---- awareness, decisions, tactics, mindset ---- */
-  {id:"b-scan",title:"Shoulder checks",category:"Awareness",minutes:8,equipment:"Ball, wall, a helper",level:"Advanced",skills:["positional_awareness","decision_making","communication"],tags:["Scanning"]},
-  {id:"b-color-gates",title:"Colour gate decisions",category:"Awareness",minutes:10,equipment:"Ball, 6 cones in 3 colours, a helper",level:"Intermediate",skills:["decision_making","positional_awareness","handling_speed"],tags:["Decision making","Scanning"]},
-  {id:"b-pro-watch",title:"Watch a pro in your position",category:"Game understanding",minutes:15,equipment:"A match on TV or online",level:"Beginner",skills:["tactical_understanding","positional_awareness","coachability"],tags:["Positioning","Decision making"]},
-  {id:"b-draw-shape",title:"Draw the team shape",category:"Game understanding",minutes:10,equipment:"Paper and pen",level:"Intermediate",skills:["tactical_understanding","positional_awareness"],tags:["Positioning"]},
-  {id:"b-talk",title:"Talk the game",category:"Mindset",minutes:8,equipment:"Ball, a helper",level:"Beginner",skills:["communication","decision_making"],tags:["Communication","Leadership"]},
-  {id:"b-reflect",title:"Session reflection",category:"Mindset",minutes:5,equipment:"Notebook or phone",level:"Beginner",skills:["coachability","communication"],tags:["Work rate","Leadership"]},
-
-  /* ---- goalkeepers ---- */
-  {id:"g-set-catch",title:"Set position and catch",category:"Goalkeeping",minutes:10,equipment:"Ball, a helper",level:"Beginner",gk:true,skills:["gk_ball_handling","gk_shot_stopping","gk_positioning"],tags:[]},
-  {id:"g-w-catch",title:"W-catch, basket and scoop",category:"Goalkeeping",minutes:8,equipment:"Ball, wall",level:"Beginner",gk:true,skills:["gk_ball_handling"],tags:[]},
-  {id:"g-collapse",title:"Collapse dive progression",category:"Goalkeeping",minutes:12,equipment:"Ball, soft grass or a mat, a helper",level:"Intermediate",gk:true,skills:["gk_diving","gk_shot_stopping"],tags:[]},
-  {id:"g-reaction",title:"Reaction saves",category:"Goalkeeping",minutes:8,equipment:"Tennis ball or ball, wall",level:"Advanced",gk:true,skills:["gk_shot_stopping","gk_diving"],tags:[]},
-  {id:"g-angles",title:"Narrow the angle",category:"Goalkeeping",minutes:10,equipment:"4 cones or markers",level:"Advanced",gk:true,skills:["gk_positioning","gk_decision_making"],tags:["Positioning"]},
-  {id:"g-shuffle",title:"Shuffle and set",category:"Goalkeeping",minutes:8,equipment:"2 cones, a ball",level:"Beginner",gk:true,skills:["gk_positioning","gk_shot_stopping"],tags:[]},
-  {id:"g-distribution",title:"Distribution targets",category:"Goalkeeping",minutes:15,equipment:"Ball(s), 2 cones or a helper",level:"Intermediate",gk:true,skills:["gk_distribution"],tags:["Passing range"]},
-  {id:"g-come-stay",title:"Come or stay?",category:"Goalkeeping",minutes:10,equipment:"Ball, a helper",level:"Advanced",gk:true,skills:["gk_decision_making","gk_communication"],tags:["Decision making","Communication"]},
-  {id:"g-organiser",title:"Organiser calls",category:"Goalkeeping",minutes:10,equipment:"A match on TV or online",level:"Advanced",gk:true,skills:["gk_communication","gk_positioning"],tags:["Communication","Leadership"]},
-  /* ---- added November 2026 ---- */
-  {id:"b-inside-outside",title:"Inside-outside touches",category:"Ball mastery",minutes:6,equipment:"Ball",level:"Beginner",skills:["first_touch", "handling_speed", "dribbling"],tags:["Confidence on the ball"]},
-  {id:"b-tick-tock",title:"Tick-tocks",category:"Ball mastery",minutes:5,equipment:"Ball",level:"Beginner",skills:["first_touch", "handling_speed"],tags:["Confidence on the ball"]},
-  {id:"b-cushion",title:"Throw, cushion and control",category:"Ball mastery",minutes:8,equipment:"Ball",level:"Beginner",skills:["first_touch"],tags:["First touch", "Composure"]},
-  {id:"b-push-stop",title:"Push and stop",category:"Dribbling",minutes:8,equipment:"Ball, 2 cones",level:"Beginner",skills:["dribbling", "handling_speed"],tags:["Confidence on the ball"]},
-  {id:"b-pass-gate",title:"Pass through the gate",category:"Passing",minutes:10,equipment:"Ball, 2 cones, wall or helper",level:"Beginner",skills:["passing"],tags:["Passing range"]},
-  {id:"b-laces",title:"Laces strike basics",category:"Shooting",minutes:10,equipment:"Ball, wall or goal",level:"Beginner",skills:["shooting"],tags:["Finishing"]},
-  {id:"b-quick-feet",title:"Quick-feet ladder",category:"Speed & agility",minutes:8,equipment:"Chalk, tape or sticks to make a ladder",level:"Beginner",skills:["handling_speed", "separation_speed"],tags:["Speed"]},
-  {id:"b-balance",title:"Single-leg balance and reach",category:"Strength",minutes:8,equipment:"None",level:"Beginner",skills:["physicality"],tags:["Shielding"]},
-  {id:"b-stance",title:"Defending stance and poke",category:"Defending",minutes:8,equipment:"Ball, a helper",level:"Beginner",skills:["defending"],tags:["1v1 defending"]},
-  {id:"b-weekly-goal",title:"Set a weekly goal",category:"Mindset",minutes:5,equipment:"Notebook or phone",level:"Beginner",skills:["coachability"],tags:["Leadership"]},
-  {id:"b-call-ball",title:"Call for the ball",category:"Mindset",minutes:6,equipment:"Ball, a helper",level:"Beginner",skills:["communication"],tags:["Communication"]},
-  {id:"g-scoop",title:"Ground balls: scoop and smother",category:"Goalkeeping",minutes:8,equipment:"Ball, a wall or a helper",level:"Beginner",gk:true,skills:["gk_ball_handling", "gk_shot_stopping"],tags:[]},
-  {id:"g-roll-out",title:"Roll-outs to a target",category:"Goalkeeping",minutes:8,equipment:"Ball, 2 cones",level:"Beginner",gk:true,skills:["gk_distribution"],tags:[]},
-  {id:"b-four-turns",title:"Four turns",category:"Dribbling",minutes:12,equipment:"Ball, 1 cone",level:"Intermediate",skills:["dribbling", "handling_speed", "decision_making"],tags:["1v1 attacking"]},
-  {id:"b-receive-turn",title:"Receive and turn off the wall",category:"Passing",minutes:10,equipment:"Ball, wall, 1 cone",level:"Intermediate",skills:["first_touch", "positional_awareness"],tags:["First touch", "Scanning"]},
-  {id:"b-one-two",title:"One-two and go",category:"Passing",minutes:10,equipment:"Ball, wall or helper, 2 cones",level:"Intermediate",skills:["passing", "separation_speed", "decision_making"],tags:["Passing range", "Speed"]},
-  {id:"b-crossing",title:"Crossing to a target zone",category:"Passing",minutes:12,equipment:"Ball(s), 4 cones",level:"Intermediate",skills:["passing"],tags:["Crossing"]},
-  {id:"b-first-time",title:"First-time finishing",category:"Shooting",minutes:12,equipment:"Ball, wall or helper, goal or target",level:"Intermediate",skills:["shooting", "first_touch"],tags:["Finishing", "Composure"]},
-  {id:"b-angle-finish",title:"Finishing from tight angles",category:"Shooting",minutes:12,equipment:"Ball, goal or wall, 3 cones",level:"Intermediate",skills:["shooting", "decision_making"],tags:["Finishing"]},
-  {id:"b-skill-moves",title:"Skill move ladder",category:"Dribbling",minutes:12,equipment:"Ball, 3 cones",level:"Intermediate",skills:["dribbling"],tags:["1v1 attacking", "Confidence on the ball"]},
-  {id:"b-block-tackle",title:"Block tackle timing",category:"Defending",minutes:10,equipment:"Ball, a helper",level:"Intermediate",skills:["defending", "physicality"],tags:["1v1 defending"]},
-  {id:"b-press-cover",title:"Press and cover angles",category:"Defending",minutes:12,equipment:"4 cones, a helper",level:"Intermediate",skills:["defending", "positional_awareness"],tags:["Positioning", "1v1 defending"]},
-  {id:"b-jump-land",title:"Jump and land",category:"Strength",minutes:10,equipment:"None",level:"Intermediate",skills:["physicality", "separation_speed"],tags:["Speed"]},
-  {id:"b-scan-switch",title:"Scan and switch direction",category:"Awareness",minutes:10,equipment:"Ball, wall, 4 cones",level:"Intermediate",skills:["positional_awareness", "decision_making"],tags:["Scanning", "Decision making"]},
-  {id:"g-low-dive",title:"Low diving saves",category:"Goalkeeping",minutes:12,equipment:"Ball, soft grass or a mat, a helper",level:"Intermediate",gk:true,skills:["gk_diving", "gk_shot_stopping"],tags:[]},
-  {id:"g-cross-catch",title:"Catching crosses at height",category:"Goalkeeping",minutes:12,equipment:"Ball, a helper",level:"Intermediate",gk:true,skills:["gk_ball_handling", "gk_decision_making"],tags:[]},
-  {id:"g-goal-kicks",title:"Goal kicks and drop kicks",category:"Goalkeeping",minutes:15,equipment:"Ball(s), 2 cones",level:"Intermediate",gk:true,skills:["gk_distribution"],tags:[]},
-  {id:"b-switch-play",title:"Switch of play under pressure",category:"Passing",minutes:12,equipment:"Ball, wall, 4 cones",level:"Advanced",skills:["passing", "tactical_understanding", "decision_making"],tags:["Passing range", "Scanning"]},
-  {id:"b-driven-pass",title:"Driven passes across the body",category:"Passing",minutes:12,equipment:"Ball, 2 cones",level:"Advanced",skills:["passing"],tags:["Passing range"]},
-  {id:"b-chip",title:"Chips and lofted finishes",category:"Shooting",minutes:12,equipment:"Ball, goal, a helper or a cone 'keeper'",level:"Advanced",skills:["shooting", "decision_making"],tags:["Finishing", "Composure"]},
-  {id:"b-curl",title:"Curl it round the wall",category:"Shooting",minutes:15,equipment:"Ball, goal, 2 cones or a helper as the wall",level:"Advanced",skills:["shooting"],tags:["Finishing"]},
-  {id:"b-1v1-recover",title:"1v1 to goal with a recovering defender",category:"Dribbling",minutes:15,equipment:"Ball, goal, a helper",level:"Advanced",skills:["dribbling", "shooting", "separation_speed", "decision_making"],tags:["1v1 attacking", "Finishing"]},
-  {id:"b-combo-moves",title:"Combination moves at speed",category:"Dribbling",minutes:12,equipment:"Ball, 5 cones",level:"Advanced",skills:["dribbling", "handling_speed"],tags:["1v1 attacking", "Speed"]},
-  {id:"b-aerial",title:"Aerial control from long balls",category:"Ball mastery",minutes:12,equipment:"Ball, a helper",level:"Advanced",skills:["first_touch"],tags:["First touch", "Composure"]},
-  {id:"b-tight-space",title:"Receiving with pressure from behind",category:"Awareness",minutes:12,equipment:"Ball, wall, a helper",level:"Advanced",skills:["first_touch", "physicality", "positional_awareness"],tags:["Shielding", "Scanning"]},
-  {id:"b-accel-decel",title:"Acceleration and deceleration",category:"Speed & agility",minutes:12,equipment:"4 cones",level:"Advanced",skills:["separation_speed", "physicality"],tags:["Speed"]},
-  {id:"b-defend-2v1",title:"2v1 defending: delay and deny",category:"Defending",minutes:12,equipment:"Ball, 4 cones, 2 helpers",level:"Advanced",skills:["defending", "communication", "decision_making"],tags:["1v1 defending", "Positioning"]},
-  {id:"b-third-man",title:"Third-man runs on paper",category:"Game understanding",minutes:10,equipment:"Paper and pen, or a match to watch",level:"Advanced",skills:["tactical_understanding", "positional_awareness"],tags:["Positioning", "Decision making"]},
-  {id:"b-press-triggers",title:"Spot the pressing triggers",category:"Game understanding",minutes:15,equipment:"A match on TV or online",level:"Advanced",skills:["tactical_understanding", "defending", "decision_making"],tags:["Work rate", "Decision making"]},
-  {id:"b-film-review",title:"Review your own game film",category:"Game understanding",minutes:20,equipment:"A recording of one of your games",level:"Advanced",skills:["coachability", "tactical_understanding"],tags:["Decision making", "Leadership"]},
-  {id:"b-lead-warmup",title:"Lead the warm-up",category:"Mindset",minutes:10,equipment:"Cones, a group",level:"Advanced",skills:["communication", "coachability"],tags:["Leadership", "Communication"]},
-  {id:"g-top-corner",title:"Top-corner diving saves",category:"Goalkeeping",minutes:12,equipment:"Ball, soft grass or a mat, a helper",level:"Advanced",gk:true,skills:["gk_diving", "gk_shot_stopping"],tags:[]},
-  {id:"g-breakaway",title:"1v1 breakaways: spread and smother",category:"Goalkeeping",minutes:12,equipment:"Ball, a helper",level:"Advanced",gk:true,skills:["gk_shot_stopping", "gk_decision_making", "gk_positioning"],tags:[]},
-  {id:"g-back-pass",title:"Back-passes under pressure",category:"Goalkeeping",minutes:12,equipment:"Ball, 2 cones, a helper",level:"Advanced",gk:true,skills:["gk_distribution", "gk_decision_making"],tags:[]},
-  {id:"g-penalties",title:"Reading penalties",category:"Goalkeeping",minutes:10,equipment:"Ball, a helper, goal",level:"Advanced",gk:true,skills:["gk_decision_making", "gk_diving"],tags:[]},
+  /* Solo drills for ages 10 to 18: a ball, a few cones and a wall. Built from tools/drills.py; edit that file, not this list. */
+  {free:true,id:"b-toe-taps",title:"Toe taps",category:"Ball mastery",minutes:6,equipment:"Ball",level:"Beginner",skills:["first_touch", "handling_speed"],tags:["Confidence on the ball"],goal:"Quick, light feet and a feel for the ball with the sole: the base for every other touch.",setup:"A ball and 2 yards of flat space.",steps:["Stand behind the ball with your knees soft and weight on the balls of your feet.", "Tap the top of the ball with the sole of your right foot, then your left, in a steady rhythm.", "Only the front of the foot touches the ball. Don't push it away.", "Keep your arms relaxed and your eyes up between touches."],reps:"4 × 30 seconds, 30 seconds rest. Count your touches each round.",points:["Light touches: the ball shouldn't move.", "Stay on your toes; your heels never touch the ground.", "Eyes up: glance at the ball, then look ahead."],easier:"Go slower and look down. Hold onto a wall with one hand for balance.",harder:"Move around the ball in a full circle while tapping, then change direction."},
+  {id:"b-tick-tock",title:"Tick-tocks",category:"Ball mastery",minutes:6,equipment:"Ball",level:"Beginner",skills:["first_touch", "dribbling", "handling_speed"],tags:["Confidence on the ball", "Weak foot"],goal:"Fast, soft touches with the inside of both feet: close control in tight spaces."},
+  {id:"b-sole-roll",title:"Sole rolls across the body",category:"Ball mastery",minutes:6,equipment:"Ball",level:"Beginner",skills:["first_touch", "dribbling"],tags:["Confidence on the ball"],goal:"Control the ball with the sole so it stays glued to you when you move sideways."},
+  {id:"b-inside-outside",title:"Inside-outside touches",category:"Ball mastery",minutes:6,equipment:"Ball",level:"Beginner",skills:["first_touch", "dribbling"],tags:["Confidence on the ball", "Weak foot"],goal:"Use the inside and outside of the same foot to move the ball and keep it close."},
+  {id:"b-pull-push",title:"Pull-back and push",category:"Ball mastery",minutes:6,equipment:"Ball",level:"Beginner",skills:["first_touch", "dribbling"],tags:["Confidence on the ball"],goal:"Drag the ball back with the sole and push it forward again: the start of most turns."},
+  {id:"b-juggle-basics",title:"Juggling: kick, bounce, catch",category:"Ball mastery",minutes:8,equipment:"Ball",level:"Beginner",skills:["first_touch"],tags:["First touch"],goal:"Learn to strike the ball softly and straight up: the first step to juggling."},
+  {id:"b-cushion",title:"Throw, cushion and control",category:"First touch",minutes:8,equipment:"Ball",level:"Beginner",skills:["first_touch"],tags:["First touch", "Composure"],goal:"Take the pace off a dropping ball so it stays within a step of you."},
+  {free:true,id:"b-wall-pass",title:"Two-touch wall passes",category:"Passing",minutes:10,equipment:"Ball, wall",level:"Beginner",skills:["passing", "first_touch"],tags:["Weak foot"],goal:"Clean, firm passes with the inside of the foot and a controlled first touch.",setup:"Stand 5 yards from a solid wall.",steps:["Pass the ball against the wall with the inside of your right foot.", "Control the return with one touch, setting it for your next pass.", "Pass with the left foot next time.", "Keep the ball on the ground all the time."],reps:"4 × 1 minute, 30 seconds rest. Count your passes.",points:["Plant foot beside the ball, pointing at the wall.", "Ankle locked and toe up when you pass.", "Strike through the middle of the ball so it stays down."],easier:"Stand closer (3 yards) and stop the ball before each pass.",harder:"Move back to 8 yards, or pass with your weaker foot only."},
+  {id:"b-pass-gate",title:"Wall passes through a gate",category:"Passing",minutes:10,equipment:"Ball, wall, 2 cones",level:"Beginner",skills:["passing"],tags:["Weak foot", "Passing range"],goal:"Accurate passing: put the ball through a small gate on its way to the wall."},
+  {id:"b-wall-control",title:"Control with every surface",category:"First touch",minutes:10,equipment:"Ball, wall",level:"Beginner",skills:["first_touch"],tags:["First touch"],goal:"Comfortable receiving with the inside, outside and sole of both feet."},
+  {id:"b-cone-weave",title:"Cone weave dribble",category:"Dribbling",minutes:10,equipment:"Ball, 6 cones",level:"Beginner",skills:["dribbling", "handling_speed"],tags:["Confidence on the ball"],goal:"Close control through tight gaps using both feet."},
+  {id:"b-push-stop",title:"Push and stop",category:"Dribbling",minutes:8,equipment:"Ball, 2 cones",level:"Beginner",skills:["dribbling", "first_touch"],tags:["Confidence on the ball"],goal:"Change from running with the ball to a full stop and back: a key dribbling skill."},
+  {id:"b-box-dribble",title:"Dribble the box",category:"Dribbling",minutes:10,equipment:"Ball, 4 cones",level:"Beginner",skills:["dribbling", "handling_speed"],tags:["Confidence on the ball", "Weak foot"],goal:"Keep the ball close while turning corners with both feet."},
+  {id:"b-basic-turns",title:"Hook turns",category:"Dribbling",minutes:10,equipment:"Ball, 2 cones",level:"Beginner",skills:["dribbling", "first_touch"],tags:["Confidence on the ball"],goal:"Turn away from trouble with the inside and outside hook."},
+  {id:"b-laces",title:"Laces strike at a wall target",category:"Shooting",minutes:10,equipment:"Ball, wall, 2 cones",level:"Beginner",skills:["shooting"],tags:["Finishing"],goal:"A clean, low, powerful strike with the laces."},
+  {id:"b-quick-feet",title:"Cone quick feet",category:"Speed & agility",minutes:8,equipment:"6 cones",level:"Beginner",skills:["handling_speed", "separation_speed"],tags:["Speed"],goal:"Fast, light footwork and coordination."},
+  {id:"b-balance",title:"Balance and reach",category:"Fitness",minutes:8,equipment:"3 cones",level:"Beginner",skills:["physicality"],tags:["Work rate"],goal:"Strong ankles, knees and hips that protect against injury."},
+  {id:"g-w-catch",title:"W-catch, basket and scoop",category:"Goalkeeping",minutes:8,equipment:"Ball, wall",level:"Beginner",skills:["gk_ball_handling", "gk_shot_stopping"],tags:["First touch"],goal:"Safe catching technique at head height, chest height and on the ground.",gk:true},
+  {id:"g-shuffle",title:"Shuffle and set",category:"Goalkeeping",minutes:8,equipment:"Ball, wall, 2 cones",level:"Beginner",skills:["gk_positioning", "gk_shot_stopping"],tags:["Positioning"],goal:"Move across the goal without crossing your feet and be set before the shot.",gk:true},
+  {id:"g-roll-out",title:"Roll-outs to a target",category:"Goalkeeping",minutes:8,equipment:"Ball, 2 cones",level:"Beginner",skills:["gk_distribution"],tags:["Passing range"],goal:"Quick, accurate bowling distribution to start attacks.",gk:true},
+  {id:"b-v-pull",title:"V pull-backs",category:"Ball mastery",minutes:8,equipment:"Ball",level:"Intermediate",skills:["first_touch", "dribbling"],tags:["Confidence on the ball"],goal:"Change direction with the sole and inside of the same foot."},
+  {id:"b-juggle",title:"Juggling ladder",category:"First touch",minutes:10,equipment:"Ball",level:"Intermediate",skills:["first_touch"],tags:["First touch", "Composure"],goal:"Soft touch and control with every surface."},
+  {id:"b-weak-foot",title:"Weak-foot only",category:"Passing",minutes:12,equipment:"Ball, wall, 4 cones",level:"Intermediate",skills:["passing", "dribbling", "first_touch"],tags:["Weak foot"],goal:"Make your weaker foot a real option."},
+  {id:"b-first-touch",title:"Open-body first touch",category:"First touch",minutes:10,equipment:"Ball, wall, 2 cones",level:"Intermediate",skills:["first_touch", "positional_awareness", "decision_making"],tags:["First touch", "Composure", "Scanning"],goal:"Receive side-on and take your first touch into space to play forward."},
+  {id:"b-receive-turn",title:"Receive and turn off the wall",category:"First touch",minutes:10,equipment:"Ball, wall, 1 cone",level:"Intermediate",skills:["first_touch", "positional_awareness", "decision_making"],tags:["Scanning", "Composure"],goal:"Turn with your first touch, like a midfielder checking away from a defender."},
+  {id:"b-scan",title:"Shoulder checks",category:"First touch",minutes:8,equipment:"Ball, wall, 4 cones",level:"Intermediate",skills:["positional_awareness", "decision_making", "first_touch"],tags:["Scanning"],goal:"Build the habit of looking over both shoulders before every touch."},
+  {free:true,id:"b-wall-one-touch",title:"One-touch wall passing",category:"Passing",minutes:10,equipment:"Ball, wall",level:"Intermediate",skills:["passing", "first_touch", "handling_speed"],tags:["Weak foot"],goal:"Quick, accurate one-touch passing with both feet.",setup:"Stand 4 yards from a wall.",steps:["Pass against the wall with your right foot.", "Pass the rebound back first time with your left foot.", "Keep alternating feet without stopping the ball.", "Stay on your toes, ready to move to the ball."],reps:"4 × 45 seconds, 30 seconds rest. Count passes.",points:["Body faces the wall.", "Small steps to get in line.", "Pass with the inside of the foot every time."],easier:"Two touches: control, then pass.",harder:"Move back to 6 yards, or move sideways along the wall as you pass."},
+  {id:"b-one-two",title:"One-two off the wall and go",category:"Passing",minutes:10,equipment:"Ball, wall, 2 cones",level:"Intermediate",skills:["passing", "separation_speed", "decision_making"],tags:["1v1 attacking"],goal:"Beat a defender with a give-and-go."},
+  {id:"b-four-turns",title:"Four turns",category:"Dribbling",minutes:12,equipment:"Ball, 2 cones",level:"Intermediate",skills:["dribbling", "first_touch"],tags:["Confidence on the ball"],goal:"Four turns that get you out of tight spaces."},
+  {id:"b-skill-moves",title:"Skill move ladder",category:"Dribbling",minutes:12,equipment:"Ball, 3 cones",level:"Intermediate",skills:["dribbling", "separation_speed"],tags:["1v1 attacking"],goal:"Use a move to beat a defender, then speed away."},
+  {id:"b-change-pace",title:"Change of pace and direction",category:"Dribbling",minutes:10,equipment:"Ball, 4 cones",level:"Intermediate",skills:["dribbling", "separation_speed"],tags:["1v1 attacking", "Speed"],goal:"Slow down to set up the defender, then accelerate away."},
+  {id:"b-speed-dribble",title:"Speed dribble and stop",category:"Dribbling",minutes:10,equipment:"Ball, 2 cones",level:"Intermediate",skills:["dribbling", "separation_speed"],tags:["Speed"],goal:"Run fast with the ball, then stop under control."},
+  {id:"b-dribble-shoot",title:"Dribble, set and shoot",category:"Shooting",minutes:12,equipment:"Ball, wall, 5 cones",level:"Intermediate",skills:["shooting", "dribbling"],tags:["Finishing"],goal:"Combine dribbling and finishing at game speed."},
+  {id:"b-wall-return-finish",title:"Wall return, set and finish",category:"Shooting",minutes:12,equipment:"Ball, wall, 4 cones",level:"Intermediate",skills:["shooting", "first_touch"],tags:["Finishing", "Composure"],goal:"Score after receiving: control, set and strike."},
+  {id:"b-5-10-5",title:"5-10-5 shuttle",category:"Speed & agility",minutes:10,equipment:"3 cones",level:"Intermediate",skills:["separation_speed", "physicality"],tags:["Speed"],goal:"Quick change of direction."},
+  {id:"b-jockey",title:"Jockey footwork",category:"Defending",minutes:8,equipment:"2 cones",level:"Intermediate",skills:["defending", "physicality"],tags:["1v1 defending"],goal:"Defend side-on and keep up with an attacker."},
+  {id:"b-jump-land",title:"Cone hops: jump and land",category:"Fitness",minutes:10,equipment:"4 cones",level:"Intermediate",skills:["physicality"],tags:["Work rate"],goal:"Power and safe landings that protect your knees."},
+  {id:"g-collapse",title:"Collapse saves off the wall",category:"Goalkeeping",minutes:12,equipment:"Ball, wall",level:"Intermediate",skills:["gk_diving", "gk_shot_stopping"],tags:["Composure"],goal:"Save shots close to your body by falling sideways.",gk:true},
+  {id:"g-reaction",title:"Reaction saves off the wall",category:"Goalkeeping",minutes:8,equipment:"Ball, wall",level:"Intermediate",skills:["gk_shot_stopping", "gk_ball_handling"],tags:["Composure"],goal:"Fast hands and quick feet on rebounds.",gk:true},
+  {id:"g-distribution",title:"Distribution to targets",category:"Goalkeeping",minutes:15,equipment:"Ball, 4 cones",level:"Intermediate",skills:["gk_distribution"],tags:["Passing range"],goal:"Accurate throws to start attacks.",gk:true},
+  {id:"b-combo-moves",title:"Combination moves at speed",category:"Dribbling",minutes:12,equipment:"Ball, 5 cones",level:"Advanced",skills:["dribbling", "separation_speed", "handling_speed"],tags:["1v1 attacking"],goal:"Link two moves together at game speed to beat a defender who doesn't buy the first one."},
+  {id:"b-aerial",title:"Aerial control off the wall",category:"First touch",minutes:12,equipment:"Ball, wall",level:"Advanced",skills:["first_touch", "decision_making"],tags:["First touch", "Composure"],goal:"Bring a high, dropping ball under control with chest, thigh or foot."},
+  {id:"b-volley",title:"Volleys and half-volleys",category:"Shooting",minutes:10,equipment:"Ball, wall, 2 cones",level:"Advanced",skills:["shooting", "first_touch"],tags:["Finishing", "Composure"],goal:"Strike a dropping ball cleanly and keep it down."},
+  {id:"b-switch-play",title:"Receive, scan and switch",category:"Passing",minutes:12,equipment:"Ball, wall, 4 cones",level:"Advanced",skills:["passing", "positional_awareness", "decision_making"],tags:["Scanning", "Passing range"],goal:"Change the point of attack quickly, like a central midfielder."},
+  {id:"b-driven-pass",title:"Driven passes at a wall target",category:"Passing",minutes:12,equipment:"Ball, wall, 2 cones",level:"Advanced",skills:["passing"],tags:["Passing range"],goal:"Low, fast passes over distance that a teammate can control."},
+  {id:"b-long-pass",title:"Long passes into a box",category:"Passing",minutes:15,equipment:"Ball, 4 cones",level:"Advanced",skills:["passing"],tags:["Passing range"],goal:"Hit long, lofted passes that land where you want them."},
+  {id:"b-curl",title:"Curl round the wall",category:"Shooting",minutes:15,equipment:"Ball, wall, 5 cones",level:"Advanced",skills:["shooting"],tags:["Finishing"],goal:"Bend the ball round a defensive wall into the corner."},
+  {id:"b-chip",title:"Chips into a box",category:"Passing",minutes:12,equipment:"Ball, 7 cones",level:"Advanced",skills:["passing", "shooting"],tags:["Finishing", "Passing range"],goal:"Lift the ball over a defender or keeper and land it softly."},
+  {id:"b-first-time",title:"First-time finishing",category:"Shooting",minutes:12,equipment:"Ball, wall, 4 cones",level:"Advanced",skills:["shooting", "first_touch"],tags:["Finishing", "Composure"],goal:"Finish without a controlling touch: the fastest way to score."},
+  {id:"b-tight-space",title:"Receive, protect and spin",category:"First touch",minutes:12,equipment:"Ball, wall, 1 cone",level:"Advanced",skills:["first_touch", "physicality", "dribbling"],tags:["Shielding", "Composure"],goal:"Receive with your back to pressure, protect the ball and turn away."},
+  {id:"b-weak-finish",title:"Weak-foot finishing",category:"Shooting",minutes:12,equipment:"Ball, wall, 4 cones",level:"Advanced",skills:["shooting"],tags:["Weak foot", "Finishing"],goal:"Score with your weaker foot so defenders can't force you one way."},
+  {id:"b-accel-decel",title:"Acceleration and deceleration",category:"Speed & agility",minutes:12,equipment:"4 cones",level:"Advanced",skills:["separation_speed", "physicality"],tags:["Speed"],goal:"Sprint, brake under control and go again: how you get away from defenders."},
+  {id:"b-arrowhead",title:"Arrowhead agility with the ball",category:"Speed & agility",minutes:12,equipment:"Ball, 4 cones",level:"Advanced",skills:["dribbling", "separation_speed", "handling_speed"],tags:["Speed", "Confidence on the ball"],goal:"Sharp cuts with the ball at full speed."},
+  {id:"b-recovery",title:"Recovery runs",category:"Defending",minutes:10,equipment:"3 cones",level:"Advanced",skills:["defending", "separation_speed"],tags:["1v1 defending", "Work rate"],goal:"Sprint back goal-side when your team loses the ball."},
+  {id:"b-defend-approach",title:"Approach, break down and block",category:"Defending",minutes:10,equipment:"Ball, wall",level:"Advanced",skills:["defending", "physicality"],tags:["1v1 defending"],goal:"Close an attacker down fast, slow down, and win the ball."},
+  {id:"b-dribble-intervals",title:"Dribble intervals",category:"Fitness",minutes:15,equipment:"Ball, 2 cones",level:"Advanced",skills:["physicality", "dribbling"],tags:["Work rate", "Speed"],goal:"Keep your touch when you're tired, like late in a game."},
+  {id:"b-game-sim",title:"Game-speed wall circuit",category:"Passing",minutes:15,equipment:"Ball, wall, 6 cones",level:"Advanced",skills:["passing", "first_touch", "dribbling", "shooting", "decision_making"],tags:["Composure", "Finishing"],goal:"Pass, receive, turn, dribble and finish in one sequence at match speed."},
+  {id:"g-low-dive",title:"Low diving saves off the wall",category:"Goalkeeping",minutes:12,equipment:"Ball, wall",level:"Advanced",skills:["gk_diving", "gk_shot_stopping"],tags:["Composure"],goal:"Dive to save low shots near the post.",gk:true},
+  {id:"g-angles",title:"Narrow the angle",category:"Goalkeeping",minutes:10,equipment:"6 cones",level:"Advanced",skills:["gk_positioning", "gk_decision_making"],tags:["Positioning"],goal:"Stand in the right place to cover the most goal on every shot.",gk:true},
+  {id:"g-goal-kicks",title:"Goal kicks and drop kicks",category:"Goalkeeping",minutes:15,equipment:"Ball, 4 cones",level:"Advanced",skills:["gk_distribution"],tags:["Passing range"],goal:"Long, accurate kicks to start attacks.",gk:true}
 ];
+/* drills that were retired: old assignments open the closest current drill */
+const LEGACY_DRILLS = {"b-targets": "b-laces", "b-shield": "b-tight-space", "b-1v1-line": "b-change-pace", "b-first-step": "b-accel-decel", "b-strength": "b-balance", "b-stance": "b-defend-approach", "b-block-tackle": "b-defend-approach", "b-press-cover": "b-recovery", "b-defend-2v1": "b-jockey", "b-scan-switch": "b-scan", "b-color-gates": "b-scan", "b-talk": "b-wall-pass", "b-call-ball": "b-wall-pass", "b-crossing": "b-long-pass", "b-angle-finish": "b-first-time", "b-1v1-recover": "b-dribble-shoot", "g-set-catch": "g-w-catch", "g-scoop": "g-w-catch", "g-cross-catch": "g-w-catch", "g-come-stay": "g-angles", "g-breakaway": "g-low-dive", "g-penalties": "g-low-dive", "g-top-corner": "g-low-dive", "g-back-pass": "g-distribution"};
 
 const S = {
   db:null, user:null, uid:null, canWrite:true, me:undefined, club:null,
@@ -252,7 +219,7 @@ function overall(r){
   return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null;
 }
 const allDrills = () => BUILTIN_DRILLS.concat(S.drills.map(d => ({...d, custom:true, steps:Array.isArray(d.steps)?d.steps:[]})));
-const drillById = id => allDrills().find(d => d.id === id);
+const drillById = id => allDrills().find(d => d.id === id) || (LEGACY_DRILLS[id] ? allDrills().find(d => d.id === LEGACY_DRILLS[id]) : undefined);
 const SKILL_LABEL = Object.fromEntries(FIELD_SKILLS.concat(GK_SKILLS).map(s => [s.k, s.label]));
 /* coach "Work on" tags -> review attributes */
 const TAG_SKILLS = {
@@ -460,9 +427,11 @@ const ASSETS = {
 /* drill instructions (Home Training) */
 async function loadSteps(){
   if(!sb || !S.uid){ S.drillSteps = {}; S.stepsLoaded = false; return; }
-  const {data, error} = await sb.from("drill_steps").select("drill_id,steps");
+  /* update 017 adds setup, reps, coaching points and easier / harder; older databases only have the steps */
+  let {data, error} = await sb.from("drill_steps").select("drill_id,steps,setup,reps,points,easier,harder");
+  if(error) ({data, error} = await sb.from("drill_steps").select("drill_id,steps"));
   if(error){ console.warn("drill_steps", error.message); S.drillSteps = {}; S.stepsError = true; S.stepsLoaded = true; render(); return; }
-  S.drillSteps = Object.fromEntries((data||[]).map(r => [r.drill_id, r.steps]));
+  S.drillSteps = Object.fromEntries((data||[]).map(r => [r.drill_id, {steps:r.steps || [], setup:r.setup || "", reps:r.reps || "", points:r.points || [], easier:r.easier || "", harder:r.harder || ""}]));
   S.stepsError = false; S.stepsLoaded = true; render();
 }
 
@@ -846,10 +815,22 @@ function chartHtml(rs){
 }
 
 function stepsLocked(){ return !S.uid || (!isStaff() && !familyHasHome()); }
-function stepsFor(d){ return (d.steps && d.steps.length) ? d.steps : ((S.drillSteps || {})[d.id] || null); }
+/* full instructions: inline for free samples and club drills, otherwise from drill_steps (Home Training) */
+function drillInfo(d){
+  if(d.steps && d.steps.length) return {steps:d.steps, setup:d.setup || "", reps:d.reps || "", points:d.points || [], easier:d.easier || "", harder:d.harder || ""};
+  const r = (S.drillSteps || {})[d.id];
+  return r && (r.steps || []).length ? r : null;
+}
+function stepsFor(d){ const i = drillInfo(d); return i ? i.steps : null; }
 function drillStepsHtml(d, opts){
-  const st = stepsFor(d);
-  if(st) return `<details ${opts.open?"open":""}><summary>How to do it</summary><ol>${st.map(x=>`<li>${esc(x)}</li>`).join("")}</ol></details>`;
+  const st = drillInfo(d);
+  if(st) return `<details class="drill-how" ${opts.open?"open":""}><summary>How to do it</summary>
+    ${st.setup ? `<p class="dh-row"><b>Set up</b> ${esc(st.setup)}</p>` : ""}
+    <ol>${st.steps.map(x=>`<li>${esc(x)}</li>`).join("")}</ol>
+    ${st.reps ? `<p class="dh-row"><b>Sets & reps</b> ${esc(st.reps)}</p>` : ""}
+    ${(st.points || []).length ? `<div class="dh-points"><b>Coaching points</b><ul>${st.points.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+    ${st.easier || st.harder ? `<div class="dh-adjust">${st.easier ? `<p><span class="pill plain">Easier</span> ${esc(st.easier)}</p>` : ""}${st.harder ? `<p><span class="pill warn">Harder</span> ${esc(st.harder)}</p>` : ""}</div>` : ""}
+  </details>`;
   if(S.uid && isStaff() && S.stepsError) return `<p class="small muted">Instructions couldn't load. Ask your club admin to run database update 005.</p>`;
   if(S.uid && !S.stepsLoaded) return `<p class="small muted">Loading instructions…</p>`;
   const target = S.uid ? `data-act="go" data-view="plans"` : `href="#pricing"`;
@@ -878,6 +859,7 @@ function drillCard(d, opts={}){
     <div class="row between"><h3>${esc(d.title)}</h3><span class="row" style="gap:6px">${d.free && !stepsLocked() ? "" : d.free ? '<span class="pill good">Free sample</span>' : ""}${a && byFamily(a) ? '<span class="pill good">Added from recommendations</span>' : ""}${d.gk?'<span class="pill warn">Goalkeeper</span>':""}${d.custom?'<span class="pill plain">Club drill</span>':""}</span></div>
     ${hasAnim(d.id) ? animSvg(d.id, d.title) : ""}
     <div class="dmeta"><span>${esc(d.category)}</span><span>· ${esc(d.minutes)} min</span><span>· ${esc(d.equipment)}</span><span>· ${esc(levelOf(d))}</span></div>
+    ${d.goal ? `<p class="dgoal">${esc(d.goal)}</p>` : ""}
     ${(d.skills||[]).length ? `<div class="trains small"><span class="muted">Trains:</span> ${(d.skills).map(k => esc(SKILL_LABEL[k] || k)).join(" · ")}</div>` : ""}
     ${drillStepsHtml(d, opts)}
     ${foot}
@@ -2538,8 +2520,8 @@ function paywallBanner(){
 function pageDrills(){
   const list = BUILTIN_DRILLS;
   return `<section class="page-hero stack"><span class="eyebrow">Drills</span>
-    <h1>${BUILTIN_DRILLS.length} drills players can do at home</h1>
-    <p class="lead">A ball, a wall and a little space. Drills are sorted into Beginner, Intermediate and Advanced, and each lists the skills it trains. Signed-in players get the ones that match their coach's latest review.</p></section>
+    <h1>${BUILTIN_DRILLS.length} solo drills for ages 10 to 18</h1>
+    <p class="lead">Everything is done on your own with a ball, a few cones and a wall. Each drill has a clear setup, sets and reps, coaching points, and an easier and a harder version, sorted into Beginner, Intermediate and Advanced. Signed-in players get the drills that match their coach's latest review.</p></section>
   ${paywallBanner()}
   ${drillLibraryHtml(list)}
   <div class="card stack callout"><h2>Get drills picked for you</h2><p>When your coach reviews you on ${APP_NAME}, we recommend the drills that work on exactly what they flagged.</p>${cta("Start as a coach","Sign up as a parent or player")}</div>`;
@@ -3068,11 +3050,12 @@ const SKILL_GROUPS = (() => {
 if(!S.openSkills) S.openSkills = new Set();
 function drillMatches(d, q){
   if(!q) return true;
-  const hay = (d.title + " " + d.category + " " + (d.equipment||"") + " " + (d.skills||[]).map(k => SKILL_LABEL[k] || "").join(" ")).toLowerCase();
+  const hay = (d.title + " " + d.category + " " + (d.equipment||"") + " " + (d.goal||"") + " " + (d.tags||[]).join(" ") + " " + (d.skills||[]).map(k => SKILL_LABEL[k] || "").join(" ")).toLowerCase();
   return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w));
 }
 const LEVELS = ["Beginner","Intermediate","Advanced"];
-const LEVEL_NOTE = {Beginner:"Simple technique you can do on your own with a ball.", Intermediate:"Combines skills, adds speed and pressure, sometimes with a helper.", Advanced:"Game-speed decisions, harder technique and position-specific work."};
+const LEVEL_NOTE = {Beginner:"Core technique: clean touches, simple passing and striking. A good start for ages 10 and up, and a warm-up for everyone.",
+  Intermediate:"Combines skills and adds speed: receiving on the half-turn, turns, finishing and footwork.", Advanced:"Game-speed technique and decisions: switching play, long passing, finishing first time and position-specific work."};
 /* every drill sits in exactly one level; older club drills marked "All levels" count as Beginner */
 const levelOf = d => LEVELS.includes(d.level) ? d.level : "Beginner";
 function drillLibraryHtml(list, opts = {}){

@@ -72,7 +72,7 @@ const T = {
     }
     if(kind === "juggle"){
       for(let i = 0; i < 4; i++){ const t = i * 0.9, right = i % 2 === 0;
-        k.push(K(t, {body: B, lf: right ? L : [79.3, 46.4, 1.7], rf: right ? [80.7, 46.4, 1.7] : R, b: [80, 46, 0.36]}, "Keep it up: feet, then alternate"));
+        k.push(K(t, {body: B, lf: right ? L : [79.3, 46.4, 1.7], rf: right ? [80.7, 46.4, 1.7] : R, b: [80, 46, 0.36]}, cap2 || "Keep it up: feet, then alternate"));
         k.push(K(t + 0.45, {lf: L, rf: R, b: [80, 46, 1.15]})); }
       k.push(K(3.6, {rf: [80.7, 46.4, 1.7], b: [80, 46, 0.36]}));
       return {dur: 3.6, scene, actors: A, keys: k};
@@ -82,6 +82,52 @@ const T = {
       k.push(K(1.5, {b: [81.8, 47.2, 1.28], rf: [82, 47.9, 4.6]}, "Cushion on the thigh")); k.push(K(1.9, {b: [81.4, 46.6, 1.6], rf: [82, 48.4, 3.4]}));
       k.push(K(2.5, {b: [80.9, 45.8, 0], rf: R}, "Let it drop")); k.push(K(2.95, {rf: [81.2, 46.5, TOP], b: [80.9, 45.8, 0]}, "Stop it with the sole")); k.push(K(3.8, {}));
       return {dur: 3.8, scene, actors: A, keys: k, hold: [[0, 0.42]]};
+    }
+    if(kind === "across"){
+      // sole rolls: the right sole rolls it across to the middle, the left sole takes it on and back
+      const on = (f, x) => ({[f]: [x + (f === "rf" ? 0.3 : -0.3), 46.7, TOP], b: [x, 46, 0]});
+      k.push(K(0, {body: B, lf: L, ...on("rf", 83.4)}, "Right sole rolls it across"));
+      k.push(K(0.55, on("rf", 80.4))); k.push(K(0.7, {rf: [82, 48.6, 1.2], ...on("lf", 79.9)}, "Left sole takes it on…"));
+      k.push(K(0.85, {rf: R})); k.push(K(1.4, on("lf", 76.6)));
+      k.push(K(1.95, on("lf", 79.6), "…and rolls it back")); k.push(K(2.1, {lf: [78, 48.6, 1.2], ...on("rf", 80.1)}));
+      k.push(K(2.25, {lf: L})); k.push(K(2.8, on("rf", 83.4), "Small hops, sole stays on the ball"));
+      return {dur: 2.8, scene, actors: A, keys: k};
+    }
+    if(kind === "pullpush"){
+      // right foot: sole on top, pull it back, push it forward again; then the left foot
+      let t = 0;
+      [["rf", 82.2, R, "Right sole on the ball"], ["lf", 77.8, L, "Now the left foot"]].forEach(([f, x, home, cap0]) => {
+        const sx = f === "rf" ? 0.25 : -0.25;
+        k.push(K(t, {body: B, [f]: [x + sx, 45.5, TOP], b: [x, 44.8, 0]}, cap0)); t += 0.5;
+        k.push(K(t, {[f]: [x + sx, 48.3, TOP], b: [x, 47.6, 0]}, "Pull it back under your foot")); t += 0.2;
+        k.push(K(t, {[f]: [x + sx * 2, 50.4, 0.8]})); t += 0.25;
+        k.push(K(t, {[f]: [x + sx, 49.2, 0.4], b: [x, 47.6, 0]}, "…push it forward")); t += 0.35;
+        k.push(K(t, {[f]: [x + sx, 47.6, 0.3], b: [x, 44.8, 0]})); t += 0.3;
+        k.push(K(t, {[f]: home})); t += 0.2; });
+      k.push(K(t, {rf: [82.45, 45.5, TOP], b: [82.2, 44.8, 0]}));
+      return {dur: t, scene, actors: A, keys: k};
+    }
+    if(kind === "vpull"){
+      // V: sole pulls it back across the body, the inside of the same foot pushes it forward the other way
+      let t = 0;
+      [["rf", 1, R, "Pull back across your body…"], ["lf", -1, L, "Same with the left foot"]].forEach(([f, s, home, cap0]) => {
+        const X = x => 80 + s * (x - 80);
+        k.push(K(t, {body: B, [f]: [X(83.3), 45.7, TOP], b: [X(83), 45, 0]}, cap0)); t += 0.5;
+        k.push(K(t, {[f]: [X(80.5), 48.5, TOP], b: [X(80.2), 47.8, 0]})); t += 0.2;
+        k.push(K(t, {[f]: [X(82.2), 48.4, 0.6]})); t += 0.25;
+        k.push(K(t, {[f]: [X(81.1), 47.6, 0.35], b: [X(80.2), 47.8, 0]}, "…inside of the same foot pushes it forward")); t += 0.35;
+        k.push(K(t, {[f]: [X(80.2), 46.6, 0.3], b: [X(77), 44.8, 0]})); t += 0.25;
+        k.push(K(t, {[f]: home})); t += 0.15; });
+      k.push(K(t, {rf: [83.3, 45.7, TOP], b: [83, 45, 0]}));
+      return {dur: t, scene, actors: A, keys: k};
+    }
+    if(kind === "jugglebasic"){
+      // drop it from the hands, kick it up softly, let it bounce, catch it
+      k.push(K(0, {body: B, lf: L, rf: R, b: [80, 46.8, 1.05]}, "Drop it onto your laces")); k.push(K(0.35, {b: [80, 46.8, 1.05]}));
+      k.push(K(0.75, {b: [80.6, 46.4, 0.3], rf: [80.8, 47.2, 1.6]}, "Kick it softly straight up")); k.push(K(0.95, {rf: R}));
+      k.push(K(1.25, {b: [80.6, 46.2, 1.15]})); k.push(K(1.75, {b: [80.4, 46, 0]}, "Let it bounce once")); k.push(K(2.15, {b: [80.2, 46.4, 0.85]}, "Catch it"));
+      k.push(K(2.65, {b: [80, 46.8, 1.05]})); k.push(K(3.1, {}));
+      return {dur: 3.1, scene, actors: A, keys: k, hold: [[0, 0.38], [2.05, 3.1]]};
     }
     // circle: small touches round in a circle with the weaker foot
     const ring = [[83, 43.9], [85.6, 46.5], [83, 49.1], [80.4, 46.5]];
@@ -459,7 +505,7 @@ const T = {
   },
 
   // bodyweight work
-  body(kind){ const z = {circuit: [80, 45, 1.5], jump: [80, 52, 1.25], balance: [86, 48, 1.5]}[kind]; return {...this._body(kind), zoom: z}; },
+  body(kind){ const z = {circuit: [80, 45, 1.5], balance: [86, 48, 1.5]}[kind]; return {...this._body(kind), ...(z ? {zoom: z} : {})}; },
   _body(kind){
     const k = [];
     if(kind === "circuit"){
@@ -478,58 +524,200 @@ const T = {
       return {dur: ex.length * T0 + 0.4, scene: [["grass", "close"]], actors: {body: "body", lf: "foot", rf: "foot"}, keys: k};
     }
     if(kind === "jump"){
-      k.push(K(0, {body: [56, 50, 0]}, "Jump up, land softly")); k.push(K(0.3, {body: [56, 50, 0.3]})); k.push(K(0.65, {body: [56, 50, -0.4]})); k.push(K(1.0, {body: [56, 50, 0.3]}, "Knees bent over toes"));
-      k.push(K(1.5, {body: [80, 50, -0.4]}, "Jump forward")); k.push(K(1.95, {body: [80, 50, 0.3]})); k.push(K(2.45, {body: [104, 50, -0.4]})); k.push(K(2.9, {body: [104, 50, 0.3]}, "Quiet landings"));
+      k.push(K(0, {body: [56, 50, 0]}, "Both feet: jump the cone")); k.push(K(0.3, {body: [56, 50, 0.3]})); k.push(K(0.75, {body: [68, 50, -0.45]})); k.push(K(1.1, {body: [80, 50, 0.35]}, "Land softly, knees over toes"));
+      k.push(K(1.5, {body: [80, 50, 0.3]}, "Hold it for a second")); k.push(K(1.95, {body: [92, 50, -0.45]}, "Next cone")); k.push(K(2.3, {body: [104, 50, 0.35]})); k.push(K(2.9, {body: [104, 50, 0.3]}, "Quiet landings"));
       k.push(K(3.3, {body: [104, 50, 0]})); k.push(K(4.5, {body: [56, 50, 0]}, "Walk back and go again"));
-      return {dur: 4.7, scene: [["grass", "close"]], actors: {body: "body"}, keys: k, wide: true};
+      return {dur: 4.7, scene: field([["cone", 68, 50], ["cone", 92, 50]]), actors: {body: "body"}, keys: k};
     }
     // balance & reach: stand on the left leg, reach with the right
     const H0 = [82.4, 50, 0.7];
     k.push(K(0, {body: [80, 50, 0], lf: [78.4, 50, 0], rf: H0}, "Stand on one leg, knee soft"));
-    [[82.4, 41.5, "Reach forward"], [90.5, 50, "To the side"], [84, 57, "Behind you"]].forEach((r, i) => { k.push(K(0.8 + i * 1.1, {rf: [r[0], r[1], 0.8]}, r[2])); k.push(K(1.35 + i * 1.1, {rf: H0})); });
+    [[82.4, 42.2, "Tap the front cone"], [89.8, 50, "The side cone"], [84, 56.6, "The cone behind"]].forEach((r, i) => { k.push(K(0.8 + i * 1.1, {rf: [r[0], r[1], 0.8]}, r[2])); k.push(K(1.35 + i * 1.1, {rf: H0})); });
     k.push(K(4.2, {}));
-    return {dur: 4.2, scene: [["grass", "close"], ["path", [[82.4, 50], [82.4, 41.5]], "dash"], ["path", [[82.4, 50], [90.5, 50]], "dash"], ["path", [[82.4, 50], [84, 57]], "dash"]], actors: {body: "body", lf: "foot", rf: "foot"}, keys: k};
+    return {dur: 4.2, scene: [["grass", "close"], ["cone", 82.4, 40.6], ["cone", 91.4, 50], ["cone", 84.2, 58]], actors: {body: "body", lf: "foot", rf: "foot"}, keys: k};
   }
 };
 
-/* ---------- the 80 drills ---------- */
+/* ---------- solo drills: one player, a ball, cones and a wall ----------
+   A small builder: each call adds keyframes in order, so a script reads like the drill's steps. */
+const WALL = ["wall", 30, 9, 130, 9];
+const TARGET = (w = 24) => ["gate", 80, 12, w, ORANGE];
+function solo(scene, p0, o = {}){
+  const k = [], actors = {p: o.kind || "player"}, holds = [];
+  let t = 0, P = p0.slice(), B = null;
+  if(o.ball !== false){ actors.b = "ball"; B = o.b ? o.b.slice() : [P[0] + 0.6, P[1] - 3.2, 0]; }
+  const pos = (withBall = true) => ({p: P.slice(), ...(B && withBall ? {b: B.slice()} : {})});
+  const push = (dt, ps, c) => { t += dt; k.push(K(t, ps, c)); };
+  k.push(K(0, pos(), o.cap));
+  const unit = (a, b) => { const d = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return [(b[0] - a[0]) / d, (b[1] - a[1]) / d, d]; };
+  const api = {
+    /* move with the ball at your feet; v = speed in field units per second */
+    dribble(pts, c, v = 26){ pts.forEach((q, i) => { const [ux, uy, d] = unit(P, q); P = q.slice(); B = [P[0] + ux * 3.2, P[1] + uy * 3.2, 0]; push(d / v, pos(), i ? undefined : c); }); return api; },
+    /* move without the ball (it stays where it is) */
+    run(pts, c, v = 32){ pts.forEach((q, i) => { const d = Math.hypot(q[0] - P[0], q[1] - P[1]) || 1; P = q.slice(); push(d / v, {p: P.slice()}, i ? undefined : c); }); return api; },
+    hold(dt, c){ push(dt, pos(), c); return api; },
+    /* strike: a short set-up with the ball still, then it travels to `to` = [x, y, height]. foot "L" or "R" */
+    kick(to, c, dur = 0.6, o2 = {}){
+      const [ux, uy] = unit(P, to), side = o2.foot === "L" ? -1.1 : 1.1;
+      B = [P[0] + ux * 2.9 - uy * side, P[1] + uy * 2.9 + ux * side, 0];
+      push(o2.set ?? 0.35, pos(), c); B = [to[0], to[1], to[2] || 0];
+      if(o2.via) o2.via.forEach(q => push(dur / (o2.via.length + 1), {b: [q[0], q[1], q[2] || 0]}));
+      push(o2.via ? dur / (o2.via.length + 1) : dur, {b: B.slice()}); return api; },
+    /* the ball moves on its own (off the wall, a bounce); the player can move at the same time */
+    ball(to, dur, c, pTo){ B = [to[0], to[1], to[2] || 0]; if(pTo) P = pTo.slice(); push(dur, {b: B.slice(), ...(pTo ? {p: P.slice()} : {})}, c); return api; },
+    /* the ball comes back to the player's feet (from the wall), the player can step to meet it */
+    back(c, dur = 0.7, pTo, foot){ if(pTo) P = pTo.slice(); const side = foot === "L" ? -1.2 : foot === "R" ? 1.2 : 0.5; B = [P[0] + side, P[1] - 3.2, 0]; push(dur, pos(), c); return api; },
+    /* a small touch that moves the ball and the player together */
+    touch(to, c, dur = 0.4, pTo){ B = [to[0], to[1], 0]; if(pTo) P = pTo.slice(); push(dur, pos(), c); return api; },
+    hands(dt){ holds.push([t, t + dt]); return api; },
+    at: () => t,
+    done(extra = {}){ push(0.3, pos()); return {dur: t, scene, actors, keys: k, ...(holds.length ? {hold: holds} : {}), ...extra}; }
+  };
+  return api;
+}
+/* goalkeeper on their own: the wall in front, the goal behind */
+function gkSolo(scene, reps, o = {}){
+  const k = [], KP = o.kp || [80, 17], WY = o.wy || 46, held = [KP[0], KP[1] + 2.5, 0.85]; let t = 0;
+  k.push(K(0, {k: KP, b: held}, reps[0].pre ? reps[0].pre[0][2] : reps[0].throwCap || reps[0].cap));
+  reps.forEach(r => {
+    if(r.pre) r.pre.forEach(([dt, kp, c]) => { t += dt; k.push(K(t, {k: kp, b: [kp[0], kp[1] + 2.5, 0.85]}, c)); });
+    const from = r.from || KP;
+    t += 0.35; k.push(K(t, {k: from, b: [from[0], from[1] + 2.5, 0.85]}, r.cap0 && r !== reps[0] ? r.cap0 : undefined));
+    t += 0.45; k.push(K(t, {b: [r.wall[0], WY - 0.5, r.wall[1]]}, r.throwCap));
+    t += r.speed || 0.5; k.push(K(t, {b: r.to, k: r.k || [r.to[0], KP[1], r.dive || 0]}, r.cap));
+    t += 0.5; k.push(K(t, {b: r.to, k: r.k || [r.to[0], KP[1], r.dive || 0]}));
+    t += 0.5; k.push(K(t, {k: KP, b: held}, r.after));
+  });
+  t += 0.3; k.push(K(t, {}));
+  return {dur: t, scene: field([...goalTop, ["wall", 50, WY, 110, WY], ...(o.extra || [])]), actors: {k: "keeper", b: "ball"}, keys: k};
+}
+
+/* ---------- the 60 solo drills ---------- */
 const SCRIPTS = {
-  "b-toe-taps": () => T.mastery("tap"), "b-sole-roll": () => T.mastery("roll"), "b-juggle": () => T.mastery("juggle"),
-  "b-tick-tock": () => T.mastery("side"), "b-inside-outside": () => T.mastery("inout"), "b-cushion": () => T.mastery("cushion"),
-  "b-weak-foot": () => T.mastery("circle", "Weaker foot only, every touch"),
-  "b-wall-pass": () => T.wall({alt: true, caps: ["Inside of the foot", "One touch to control", "Then the other foot"]}),
-  "b-pass-gate": () => T.wall({scene: [["gate", 80, 36, 10, ORANGE]], caps: ["Through the gate", "Ankle locked, toe up", "Plant foot beside the ball"]}),
-  "b-first-touch": () => T.wall({scene: [["cone", 62, 62], ["cone", 98, 62]], recv: ["Open your body", "Open your body"], after: [[62, 56, "First touch past the cone"], [98, 56, "Then the other side"]], n: 2}),
-  "b-receive-turn": () => ({...T.wall({scene: [["cone", 80, 84]], recv: ["Check your shoulder, receive on the back foot"], after: [[86, 74, "Turn in one touch"]], n: 2})}),
-  "b-scan": () => T.wall({helper: [80, 82], say: ["3!", "5!"], recv: ["Check, call the number, then receive"], caps: ["Pass", "Pass"], n: 2}),
-  "b-scan-switch": () => T.wall({scene: [["gate", 36, 62, 10, BLUE, true], ["gate", 124, 62, 10, "#e0b400", true]], helper: [80, 84], say: ["Left!", "Right!"], recv: ["Shoulder check…"], after: [[44, 62, "…first touch to that gate"], [116, 62, "…first touch to that gate"]], n: 2}),
-  "b-talk": () => T.wall({partner: true, say: ["Man on!", "Time!", "Turn!"], recv: ["One touch back", "Touch and look up", "Turn away"], n: 3}),
-  "b-tight-space": () => T.wall({helper: [80, 70], recv: ["Check, then receive and protect it"], after: [[66, 64, "Spin away from the pressure"]], n: 2}),
+  /* ball mastery: close-ups of the feet */
+  "b-toe-taps": () => T.mastery("tap"), "b-tick-tock": () => T.mastery("side"), "b-sole-roll": () => T.mastery("across"),
+  "b-inside-outside": () => T.mastery("inout"), "b-pull-push": () => T.mastery("pullpush"), "b-v-pull": () => T.mastery("vpull"),
+  "b-juggle-basics": () => T.mastery("jugglebasic"), "b-juggle": () => T.mastery("juggle", "Feet only, then alternate feet"), "b-cushion": () => T.mastery("cushion"),
+
+  /* wall passing and first touch */
+  "b-wall-pass": () => T.wall({alt: true, caps: ["Inside of the foot, ankle locked", "One touch to set it", "Then the other foot"]}),
+  "b-pass-gate": () => T.wall({scene: [["gate", 80, 36, 18, ORANGE]], caps: ["Through the gate to the wall", "Look at the gate, then the ball", "Point if it misses the cones"]}),
+  "b-wall-control": () => T.wall({caps: ["Pass firmly"], recv: ["Control: inside of the foot", "Control: outside of the foot", "Control: sole on top"], n: 3}),
+  "b-first-touch": () => T.wall({scene: [["cone", 62, 62], ["cone", 98, 62]], caps: ["Pass to the wall"], recv: ["Open your body, back foot", "Open your body, back foot"], after: [[62, 56, "First touch past the cone"], [98, 56, "Then the other side"]], n: 2}),
+  "b-receive-turn": () => T.wall({scene: [["cone", 80, 84]], caps: ["Pass to the wall"], recv: ["Check your shoulder, receive on the back foot"], after: [[86, 74, "Turn round the cone in one touch"]], n: 2}),
+  "b-scan": () => T.wall({scene: [["cone", 56, 82], ["cone", 104, 82]], caps: ["Pass to the wall"], recv: ["Look over both shoulders while it travels"], after: [[62, 76, "First touch toward a cone"], [98, 76, "Then the other cone"]], n: 2}),
+  "b-wall-one-touch": () => { const s = solo(field([WALL]), [80, 50], {cap: "One touch, alternate feet"});
+    for(let i = 0; i < 6; i++){ const L = i % 2 === 1, x = 80 + (L ? -1.6 : 1.6); s.kick([x, 9.5, 0], i === 0 ? "Right foot…" : i === 1 ? "…left foot, first time" : undefined, 0.42, {foot: L ? "L" : "R", set: i ? 0.06 : 0.3}).back(i === 3 ? "Small steps to get in line" : undefined, 0.42, [80, 50], L ? "R" : "L"); }
+    return s.done(); },
   "b-one-two": () => {
-    const k = [K(0, {p: [24, 66]}, "Dribble at the 'defender'"), K(1.0, {p: [56, 62]})]; carry(k);
-    k.push(K(1.4, {b: [72, 11, 0]}, "Pass to the wall…")); k.push(K(1.6, {p: [62, 60]})); k.push(K(2.4, {p: [104, 44], b: [104, 41, 0]}, "…sprint past and take the return"));
+    const k = [K(0, {p: [24, 66]}, "Dribble at the 'defender' cone"), K(1.0, {p: [56, 62]})]; carry(k);
+    k.push(K(1.4, {b: [72, 11, 0]}, "Pass to the wall early…")); k.push(K(1.6, {p: [62, 60]})); k.push(K(2.4, {p: [104, 44], b: [104, 41, 0]}, "…sprint past and take it in your stride"));
     k.push(K(3.2, {p: [140, 40], b: [144, 39, 0]})); k.push(K(3.6, {}));
-    return {dur: 3.8, scene: field([...wallTop, ["cone", 72, 56, ORANGE, "big"]]), actors: {p: "player", b: "ball"}, keys: k};
+    return {dur: 3.8, scene: field([WALL, ["cone", 72, 56, ORANGE, "big"]]), actors: {p: "player", b: "ball"}, keys: k};
   },
+  "b-weak-foot": () => solo(field([WALL, TARGET(20), ["cone", 66, 70], ["cone", 80, 70], ["cone", 94, 70]]), [80, 54], {cap: "Weaker foot only: pass…", b: [78.8, 50.8, 0]})
+    .kick([79, 9.5, 0], undefined, 0.5, {foot: "L"}).back("…control with the weaker foot", 0.6, [80, 54], "L")
+    .kick([79, 9.5, 0], undefined, 0.5, {foot: "L", set: 0.15}).back(undefined, 0.6, [80, 54], "L")
+    .dribble([[60, 62], [73, 76], [87, 64], [100, 76], [86, 60]], "Dribble the cones, weaker foot", 24)
+    .kick([76, 9.5, 0.12], "Strike with the weaker foot", 0.45, {foot: "L"}).ball([79, 30, 0], 0.6).done(),
+
+  /* passing over distance */
+  "b-driven-pass": () => solo(field([WALL, TARGET(18)]), [84, 82], {cap: "Approach from a slight angle"})
+    .run([[86, 84]], undefined, 20).kick([80, 9.5, 0.08], "Laces through the middle: low and fast", 0.6).ball([81, 40, 0], 0.5)
+    .back("Control the rebound", 0.6, [82, 80]).kick([79, 9.5, 0.08], "Short, punchy follow-through", 0.6, {foot: "L"}).ball([80, 44, 0], 0.5).back(undefined, 0.6, [82, 80]).done(),
+  "b-long-pass": () => T.pass("long"),
+  "b-switch-play": () => solo(field([WALL, ["gate", 46, 62, 14, BLUE, true], ["gate", 114, 62, 14, BLUE, true]]), [80, 62], {cap: "Pass to the wall"})
+    .kick([80, 9.5, 0], undefined, 0.6).back("Check both shoulders as it comes back", 0.75).touch([72, 60.5], "First touch toward the gate", 0.4, [76, 62])
+    .kick([46, 62, 0.15], "Long, driven pass through the gate", 0.7, {set: 0.15}).ball([36, 62, 0], 0.4)
+    .ball([80.6, 58.8, 0], 1.0, "Now the other side", [80, 62]).kick([80, 9.5, 0], undefined, 0.6, {set: 0.2}).back(undefined, 0.75)
+    .touch([88, 60.5], "Open up to the right", 0.4, [84, 62]).kick([114, 62, 0.15], undefined, 0.7, {set: 0.15}).ball([124, 62, 0], 0.4).done(),
+  "b-chip": () => solo(field([["cone", 70, 50], ["cone", 80, 50], ["cone", 90, 50], ["box", 70, 22, 20, 16]]), [80, 86], {cap: "Dribble toward the cones"})
+    .dribble([[80, 70]], undefined, 22).kick([80, 50, 1.05], "Stab under the ball", 0.45, {set: 0.2}).ball([80, 30, 0.04], 0.45, "Over the 'defender', soft into the box").ball([80, 26, 0], 0.4).done(),
+
+  /* dribbling and turning */
   "b-cone-weave": () => T.dribble("weave"), "b-skill-moves": () => T.dribble("skill"), "b-combo-moves": () => T.dribble("combo"),
-  "b-push-stop": () => T.dribble("pushstop"), "b-speed-dribble": () => T.dribble("race"), "b-change-pace": () => T.dribble("pace"),
-  "b-four-turns": () => T.dribble("turns"), "b-color-gates": () => T.dribble("gates"),
-  "b-5-10-5": () => T.run("5105"), "b-first-step": () => T.run("first"), "b-accel-decel": () => T.run("accel"), "b-quick-feet": () => T.run("ladder"), "b-recovery": () => T.run("recovery"),
-  "b-targets": () => T.shoot("targets"), "b-laces": () => T.shoot("laces"), "b-volley": () => T.shoot("volley"), "b-first-time": () => T.shoot("firsttime"),
-  "b-angle-finish": () => T.shoot("angle"), "b-dribble-shoot": () => T.shoot("dribbleshoot"), "b-chip": () => T.shoot("chip"), "b-curl": () => T.shoot("curl"), "b-1v1-recover": () => T.shoot("1v1"),
-  "b-long-pass": () => T.pass("long"), "b-driven-pass": () => T.pass("driven"), "b-crossing": () => T.pass("cross"), "b-switch-play": () => T.pass("switch"),
-  "b-jockey": () => T.defend("jockey"), "b-stance": () => T.defend("stance"), "b-block-tackle": () => T.defend("block"), "b-press-cover": () => T.defend("press"),
-  "b-1v1-line": () => T.defend("line"), "b-defend-2v1": () => T.defend("2v1"), "b-shield": () => T.defend("shield"),
-  "b-aerial": () => T.aerial(),
-  "b-third-man": () => T.board("thirdman"), "b-draw-shape": () => T.board("shape"), "b-pro-watch": () => T.board("watch"), "b-film-review": () => T.board("film"),
-  "b-press-triggers": () => T.board("triggers"), "b-lead-warmup": () => T.board("lead"), "b-call-ball": () => T.board("call"),
-  "b-reflect": () => T.note("reflect"), "b-weekly-goal": () => T.note("goal"),
-  "b-strength": () => T.body("circuit"), "b-jump-land": () => T.body("jump"), "b-balance": () => T.body("balance"),
-  "g-set-catch": () => T.gk("setcatch"), "g-w-catch": () => T.gk("setcatch"), "g-scoop": () => T.gk("scoop"), "g-collapse": () => T.gk("collapse"),
-  "g-low-dive": () => T.gk("lowdive"), "g-top-corner": () => T.gk("topcorner"), "g-reaction": () => T.gk("reaction"), "g-angles": () => T.gk("angles"),
-  "g-shuffle": () => T.gk("shuffle"), "g-come-stay": () => T.gk("comestay"), "g-cross-catch": () => T.gk("cross"), "g-breakaway": () => T.gk("breakaway"),
-  "g-penalties": () => T.gk("penalty"), "g-roll-out": () => T.gk("rollout"), "g-goal-kicks": () => T.gk("goalkicks"), "g-distribution": () => T.gk("dist"),
-  "g-back-pass": () => T.gk("backpass"), "g-organiser": () => T.board("organiser")
+  "b-push-stop": () => T.dribble("pushstop"), "b-speed-dribble": () => T.dribble("race"), "b-change-pace": () => T.dribble("pace"), "b-four-turns": () => T.dribble("turns"),
+  "b-box-dribble": () => solo(field([["cone", 62, 30], ["cone", 98, 30], ["cone", 98, 66], ["cone", 62, 66]]), [58, 70], {cap: "Round the outside, right foot"})
+    .dribble([[100, 70], [102, 28], [58, 26], [56, 68]], undefined, 26).dribble([[64, 64], [96, 32]], "Then an X, corner to corner", 26).dribble([[96, 64], [64, 32]], undefined, 26).done(),
+  "b-basic-turns": () => solo(field([["cone", 36, 48], ["cone", 124, 48]]), [36, 52], {cap: "Dribble to the far cone"})
+    .dribble([[112, 52]], undefined, 30).dribble([[106, 54]], "Inside hook: back the way you came", 14).dribble([[44, 52]], "Accelerate away", 34)
+    .dribble([[112, 50]], undefined, 30).dribble([[106, 47]], "Now the outside hook", 14).dribble([[40, 50]], undefined, 34).done(),
+  "b-dribble-intervals": () => solo(field([["cone", 20, 48], ["cone", 140, 48]]), [22, 50], {cap: "Full speed: push it ahead"})
+    .dribble([[136, 50]], undefined, 46).touch([139, 50], "Stop it dead", 0.3).hold(0.4).dribble([[24, 52]], "Jog back with the ball", 16).hold(0.3, "Rest, then go again").done(),
+
+  /* shooting at a target on the wall */
+  "b-laces": () => solo(field([WALL, TARGET()]), [80, 62], {cap: "Plant foot beside the ball"})
+    .kick([75, 9.5, 0.12], "Laces, knee over the ball", 0.45).ball([79, 32, 0], 0.6).back("Score between the cones", 0.8)
+    .kick([86, 9.5, 0.1], "Keep it low", 0.45).ball([82, 32, 0], 0.6).back(undefined, 0.8).done(),
+  "b-dribble-shoot": () => solo(field([WALL, TARGET(), ["cone", 80, 78], ["cone", 80, 64], ["cone", 80, 50]]), [80, 90], {cap: "Dribble through the cones"})
+    .dribble([[72, 78], [88, 64], [72, 50], [82, 40]], undefined, 24).touch([84, 34], "Set it out of your feet", 0.3, [83, 38])
+    .kick([74, 9.5, 0.1], "Shoot within two touches", 0.45, {set: 0.15}).ball([78, 30, 0], 0.5).run([[80, 26]], "Follow it in", 34).done(),
+  "b-wall-return-finish": () => solo(field([WALL, TARGET()]), [50, 64], {cap: "Pass to the wall from the angle"})
+    .kick([62, 9.5, 0], undefined, 0.55).ball([72, 50, 0], 0.65, "First touch across your body", [70, 56]).touch([78, 46], undefined, 0.35, [76, 50])
+    .kick([86, 9.5, 0.1], "Strike with your second touch", 0.45, {set: 0.15}).ball([82, 30, 0], 0.6).done(),
+  "b-first-time": () => solo(field([WALL, TARGET()]), [52, 62], {cap: "Pass to the wall at an angle"})
+    .kick([64, 9.5, 0], undefined, 0.55).ball([84, 50, 0], 0.6, "Move to meet it…", [82, 54])
+    .kick([74, 9.5, 0.08], "…and strike it first time", 0.45, {set: 0.04}).ball([78, 30, 0], 0.6).done(),
+  "b-weak-finish": () => solo(field([WALL, TARGET(), ["cone", 112, 76]]), [112, 80], {cap: "Dribble in from the cone"})
+    .dribble([[94, 58]], undefined, 26).touch([88, 52], "Set it on your weaker foot", 0.35, [91, 56])
+    .kick([72, 9.5, 0.1], "Low strike, weaker foot", 0.45, {foot: "L", set: 0.15}).ball([76, 30, 0], 0.6).done(),
+  "b-volley": () => solo(field([WALL, TARGET()]), [80, 56], {cap: "Toss it up", b: [80.4, 53.4, 0.85]})
+    .hands(0.4).hold(0.4).ball([80.6, 52.6, 1.6], 0.45).ball([80.8, 52.4, 0.42], 0.4, "Volley: knee over, toes down")
+    .kick([76, 9.5, 0.25], undefined, 0.45, {set: 0.02}).ball([79, 34, 0], 0.6)
+    .ball([80.4, 53.4, 0.85], 0.7, "Half-volley next", [80, 56]).hands(0.4).hold(0.4).ball([80.6, 52.6, 1.5], 0.4).ball([80.8, 52.3, 0], 0.4, "Strike it as it bounces")
+    .ball([80.8, 52.2, 0.1], 0.08).kick([84, 9.5, 0.12], undefined, 0.45, {set: 0.02}).ball([81, 34, 0], 0.6).done(),
+  "b-curl": () => solo(field([WALL, TARGET(28), ["cone", 86, 48], ["cone", 90, 48], ["cone", 94, 48]]), [104, 78], {cap: "Inside of the foot, wrap round the ball", b: [100.5, 74, 0]})
+    .hold(0.3).kick([90, 9.5, 0.25], "Bend it round the 'wall'", 0.95, {via: [[84, 52, 0.32], [80, 32, 0.38]], set: 0.3}).ball([88, 26, 0], 0.6, "Into the corner").done(),
+  "b-aerial": () => solo(field([WALL]), [80, 68], {cap: "Kick it high against the wall"})
+    .kick([80, 9.5, 1.6], undefined, 0.7).ball([80, 34, 2.2], 0.55, "Move your feet early").ball([81, 63.6, 0.62], 0.6, "Cushion it on the thigh", [81, 67])
+    .ball([81.2, 64, 0.05], 0.35).touch([90, 62], "Second touch into space", 0.4, [87, 66]).done(),
+
+  /* receiving under pressure and game-speed work */
+  "b-tight-space": () => solo(field([WALL, ["cone", 80, 74, NAVY, "big"]]), [80, 64], {cap: "Pass to the wall"})
+    .kick([80, 9.5, 0], undefined, 0.55).run([[76, 52]], "Check away…", 30).run([[80, 62]], "…and come back side-on", 30).back("Receive, arm out, protect it", 0.35, [80, 62], "L")
+    .dribble([[90, 66], [96, 80]], "Spin off the cone and go", 20).done(),
+  "b-game-sim": () => solo(field([WALL, TARGET(), ["cone", 46, 34], ["cone", 46, 48], ["cone", 46, 62], ["cone", 46, 76]]), [80, 62], {cap: "Pass to the wall"})
+    .kick([80, 9.5, 0], undefined, 0.55).back("Receive on the half-turn", 0.7).dribble([[70, 70], [52, 86]], "Turn and go", 28)
+    .dribble([[42, 76], [50, 62], [42, 48], [50, 34], [62, 28]], "Dribble through the cones", 28)
+    .kick([76, 9.5, 0.1], "Finish within two touches", 0.45, {set: 0.15}).ball([76, 30, 0], 0.6).done(),
+
+  /* speed, agility and fitness */
+  "b-5-10-5": () => T.run("5105"), "b-accel-decel": () => T.run("accel"),
+  "b-quick-feet": () => solo(field(Array.from({length: 6}, (_, i) => ["cone", 50 + i * 12, 48])), [36, 48], {ball: false, cap: "One foot between each pair"})
+    .run([[56, 45], [62, 51], [68, 45], [74, 51], [80, 45], [86, 51], [92, 45], [98, 51], [104, 45], [116, 48]], undefined, 40)
+    .run([[130, 48]], "Sprint out", 52).run([[124, 52], [36, 52]], "Jog back, next pattern", 26).done(),
+  "b-arrowhead": () => solo(field([["cone", 30, 52], ["cone", 80, 52], ["cone", 96, 30], ["cone", 112, 52]]), [30, 56], {cap: "Dribble at speed to the middle cone"})
+    .dribble([[78, 56]], undefined, 34).dribble([[94, 34]], "Cut to the side cone", 26).dribble([[112, 48]], "Cut again to the top cone", 26)
+    .dribble([[90, 60], [34, 58]], "Back to the start", 34).done(),
+  "b-balance": () => T.body("balance"), "b-jump-land": () => T.body("jump"),
+
+  /* defending on your own */
+  "b-jockey": () => T.defend("jockey"),
+  "b-recovery": () => solo(field([["cone", 116, 34], ["cone", 44, 62]]), [112, 36], {ball: false, cap: "Jog forward 'in attack'"})
+    .run([[126, 32]], undefined, 16).run([[100, 50], [60, 62], [46, 60]], "Lost it! Sprint back goal-side", 44).run([[45, 60]], "Arrive side-on, low and ready", 6).hold(0.5)
+    .run([[112, 36]], "Jog back", 22).done(),
+  "b-defend-approach": () => solo(field([WALL]), [80, 82], {cap: "Pass firmly to the wall"})
+    .kick([80, 9.5, 0], undefined, 0.55).ball([80, 36, 0], 0.9, "Sprint to close it down", [80, 52]).run([[79, 44]], "Break down: short steps, side-on", 10)
+    .run([[78.6, 40.4]], "Step in and block it", 14).ball([70, 46, 0], 0.4).hold(0.4).done(),
+
+  /* goalkeeping on your own */
+  "g-w-catch": null,
+  "g-shuffle": () => gkSolo([["cone", 66, 22], ["cone", 94, 22]], [{pre: [[0.55, [68, 17], "Shuffle, feet never cross"], [0.6, [92, 17]], [0.5, [80, 17], "Set: weight forward, hands ready"]],
+    wall: [80, 0.5], to: [80, 19.6, 0.42], cap: "Catch the rebound"}]),
+  "g-collapse": () => gkSolo([], [{wall: [74, 0.3], throwCap: "Throw it so it comes back low and wide", to: [70, 17.5, 0.03], k: [72, 17, 1], cap: "Fall sideways, hands first"},
+    {wall: [86, 0.3], to: [90, 17.5, 0.03], k: [88, 17, 1], cap: "Then the other side", after: "Up quickly, back to set"}]),
+  "g-low-dive": () => gkSolo([], [{wall: [70, 0.3], throwCap: "Rebound low and wide", to: [60, 16, 0.05], k: [62, 16, 1], speed: 0.55, cap: "Step toward it and dive low"},
+    {wall: [90, 0.3], to: [100, 16, 0.05], k: [98, 16, 1], speed: 0.55, cap: "Bottom hand behind the ball"}]),
+  "g-reaction": () => gkSolo([], [{wall: [78, 0.5], throwCap: "Throw it hard at the wall", to: [85, 19, 0.4], k: [84, 17], speed: 0.32, cap: "Feet first, then hands"},
+    {wall: [82, 0.3], to: [74, 19, 0.15], k: [75, 17], speed: 0.32, cap: "Change the height every throw"}], {wy: 36}),
+  "g-angles": () => {
+    const k = [], spots = [[44, 58, [72, 21], "Ball at the left cone: line to the goal centre"], [80, 62, [80, 23], "Centre: one or two steps off the line"], [116, 58, [88, 21], "Right cone: shuffle across and set"]];
+    k.push(K(0, {k: [80, 17]}, spots[0][3]));
+    spots.forEach((s, i) => { k.push(K(i * 1.7 + 0.8, {k: s[2]}, i ? s[3] : undefined)); k.push(K(i * 1.7 + 1.5, {k: s[2]})); });
+    k.push(K(5.6, {k: [80, 17]}));
+    return {dur: 5.8, fit: [[60, 10], [100, 10], [56, 40], [104, 40]], scene: field([...goalTop, ["cone", 44, 58], ["cone", 80, 62], ["cone", 116, 58], ["path", [[80, 12], [44, 58]], "dash"], ["path", [[80, 12], [116, 58]], "dash"]]), actors: {k: "keeper"}, keys: k};
+  },
+  "g-roll-out": () => T.gk("rollout"), "g-distribution": () => T.gk("dist"), "g-goal-kicks": () => T.gk("goalkicks")
 };
 // a wall-catch keeper drill throws at a wall in front instead of facing a shooter
 SCRIPTS["g-w-catch"] = () => {
@@ -594,7 +782,7 @@ const CAM = {
   "b-5-10-5": "bottom", "b-first-step": "right", "b-accel-decel": "right", "b-quick-feet": "right", "b-recovery": "left",
   "b-color-gates": "bottom", "b-switch-play": "top", "b-jockey": "bottom", "b-stance": "bottom", "b-block-tackle": "bottom",
   "b-press-cover": "bottom", "b-1v1-line": "bottom", "b-defend-2v1": "left", "b-shield": "bottom", "b-aerial": "top",
-  "b-call-ball": "left", "b-chip": "bottom", "b-lead-warmup": "bottom", "b-one-two": "right"
+  "b-chip": "top", "b-jump-land": "right", "b-one-two": "right", "b-basic-turns": "bottom", "b-defend-approach": "top", "b-curl": "top", "b-arrowhead": "bottom", "g-angles": "bottom"
 };
 function camFor(id, s){
   if(s.scene.some(e => ["board", "screen", "paper"].includes(e[0]))) return {flat: true};
@@ -815,9 +1003,10 @@ const SKINS = ["#f1c9a5", "#e0ac7e", "#c98f62", "#b07a4f", "#96623c", "#7a4a2b",
 const HAIRS = ["#17110d", "#2b1d14", "#4a2f1c", "#7a5230", "#b98a4a"];
 const KITS = {att: {shirt: ORANGE, shorts: NAVY, sock: ORANGE}, def: {shirt: BLUE, shorts: "#f3f5f8", sock: BLUE}};
 // who defends in each drill (everyone else is on the ball)
-const DEF = {"b-tight-space": ["h"], "b-1v1-recover": ["h"], "b-switch-play": ["h"], "b-shield": ["h"], "g-back-pass": ["h"], "b-jockey": ["p"], "b-stance": ["p"],
+const DEF = {"b-defend-approach": ["p"], "b-tight-space": ["h"], "b-1v1-recover": ["h"], "b-switch-play": ["h"], "b-shield": ["h"], "g-back-pass": ["h"], "b-jockey": ["p"], "b-stance": ["p"],
   "b-block-tackle": ["p"], "b-press-cover": ["p"], "b-1v1-line": ["p"], "b-defend-2v1": ["p"], "b-recovery": ["p"]};
-const FLAGS = {"g-roll-out": {throws: 1}, "g-w-catch": {throws: 1}, "g-distribution": {throws: 1}, "g-back-pass": {kfeet: 1}, "g-goal-kicks": {kfeet: 1}};
+const FLAGS = {"g-roll-out": {throws: 1}, "g-w-catch": {throws: 1}, "g-distribution": {throws: 1}, "g-goal-kicks": {kfeet: 1},
+  "g-shuffle": {throws: 1}, "g-collapse": {throws: 1}, "g-low-dive": {throws: 1}, "g-reaction": {throws: 1}};
 const DT = 1 / 60, TW = 0.3, TF = 0.32;
 const lerp = (a, b, t) => a + (b - a) * t, clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const mix3 = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2] || 0, b[2] || 0, t)];
@@ -1091,8 +1280,8 @@ function showCaption(st, t){
   const s = st.s; let cur = null;
   for(const row of s.capSeq){ if(row[0] <= t + 0.001) cur = row; else break; }
   const txt = cur ? cur[1] : "", n = cur ? cur[2] : 0;
-  if(txt !== st.cap){
-    st.cap = txt; st.capEl.textContent = txt;
+  if(txt + "|" + n !== st.cap){
+    st.cap = txt + "|" + n; st.capEl.textContent = txt;
     if(st.stepEl) st.stepEl.textContent = s.capTotal > 1 && txt ? `${n + 1}/${s.capTotal}` : "";
     if(st.started && st.capEl.animate) try { st.capEl.animate([{opacity: 0, transform: "translateY(3px)"}, {opacity: 1, transform: "none"}], {duration: 260, easing: "ease-out"}); } catch(_){}
   }
