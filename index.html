@@ -434,6 +434,7 @@ ol.numbered{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6p
 .skip:focus{left:8px}
 @media (max-width:900px){
   .home-hero{grid-template-columns:1fr;gap:20px}.hh-copy h1{font-size:2.5rem}
+  .home-hero .hh-art{order:-1} /* phones and tablets: the intro video comes first */
   .aud-grid{grid-template-columns:1fr 1fr}.home-facts{grid-template-columns:1fr 1fr}
   .home-facts div:nth-child(3){border-left:0}.home-facts div:nth-child(n+3){border-top:1px solid var(--line)}
   .safety-band,.prog-list{grid-template-columns:1fr}
