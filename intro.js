@@ -91,7 +91,7 @@ function sceneHtml(s){
 
 export function introHtml(){
   return `<div class="iv-wrap">
-    <div class="iv" data-intro role="region" aria-label="Introduction to NextPass: an animated tour, about ${Math.round(INTRO_DURATION)} seconds, no sound">
+    <div class="iv" data-intro role="region" aria-label="Introduction to NextPass: an animated tour, about ${Math.round(INTRO_DURATION)} seconds, with optional music">
       <div class="iv-stage" aria-hidden="true">
         <div class="iv-bg"></div>
         ${SCENES.map((s, i) => `<section class="iv-scene iv-${s.id}" data-scene="${i}">${sceneHtml(s)}</section>`).join("")}
@@ -101,6 +101,7 @@ export function introHtml(){
     </div>
     <div class="iv-controls">
       <button type="button" class="btn sm iv-play" data-iv="toggle" aria-label="Pause the introduction"><span class="iv-ico" aria-hidden="true"></span><span class="iv-pl">Pause</span></button>
+      <button type="button" class="btn sm iv-snd" data-iv="sound" aria-pressed="false"><span class="iv-sico" aria-hidden="true"></span>Sound</button>
       <div class="iv-chaps" role="group" aria-label="Jump to a part of the introduction">${SCENES.map((s, i) => s.chap ? `<button type="button" class="iv-chap" data-iv="chap" data-i="${i}">${esc(s.chap)}</button>` : "").join("")}</div>
     </div>
     <details class="iv-text small"><summary>Read the introduction as text</summary><ol>${SCENES.map(s => `<li>${s.chap ? `<b>${esc(s.chap)}.</b> ` : ""}${esc(s.text)}</li>`).join("")}</ol></details>
@@ -111,7 +112,21 @@ export function introHtml(){
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const ease = x => { x = clamp(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
 const reduced = () => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch(_){ return false; } };
-const state = {t:0, playing:true, last:null, raf:null, root:null, visible:true, userPaused:false};
+const state = {t:0, playing:true, last:null, raf:null, root:null, visible:true, userPaused:false, sound:false, audio:null};
+const JINGLE = "audio/intro-jingle.mp3";
+
+/* the music follows the video's clock; it only plays after someone turns the sound on */
+function syncAudio(){
+  const a = state.audio; if(!a) return;
+  const on = state.sound && state.playing && state.visible && !document.hidden && state.root && state.root.isConnected;
+  if(!on){ if(!a.paused) a.pause(); return; }
+  if(!a.src) return;                                     /* still loading */
+  const now = performance.now();
+  if(!a.seeking && (Math.abs(a.currentTime - state.t) > .3 || a.ended) && now - (state.lastSeek || 0) > 400){
+    state.lastSeek = now; try { a.currentTime = state.t; } catch(_){}
+  }
+  if(a.paused) a.play().catch(() => {});
+}
 
 function fx(el, p, kind){
   const o = p, m = 1 - p;
@@ -152,6 +167,7 @@ function syncControls(wrap, idx){
   wrap.querySelectorAll('[data-iv="toggle"]').forEach(b => b.setAttribute("aria-label", label));
   const pl = wrap.querySelector(".iv-pl"); if(pl) pl.textContent = state.playing ? "Pause" : "Play";
   wrap.querySelector(".iv").classList.toggle("paused", !state.playing);
+  const sb = wrap.querySelector(".iv-snd"); if(sb){ sb.setAttribute("aria-pressed", String(state.sound)); sb.classList.toggle("on", state.sound); }
   wrap.querySelectorAll(".iv-chap").forEach(b => { if(+b.dataset.i === idx) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
 }
 
@@ -159,13 +175,13 @@ function scale(wrap){ const iv = wrap.querySelector(".iv"), st = wrap.querySelec
 
 function loop(now){
   state.raf = null;
-  const wrap = state.root; if(!wrap || !wrap.isConnected){ state.root = null; return; }
+  const wrap = state.root; if(!wrap || !wrap.isConnected){ state.root = null; syncAudio(); if(state.audio) state.audio.pause(); return; }
   if(state.playing && state.visible && !document.hidden){
     if(state.last != null) state.t = (state.t + Math.min(.1, (now - state.last) / 1000)) % INTRO_DURATION;
     state.last = now;
-    const idx = renderAt(wrap, state.t); syncControls(wrap, idx);
+    const idx = renderAt(wrap, state.t); syncControls(wrap, idx); syncAudio();
     state.raf = requestAnimationFrame(loop);
-  } else state.last = null;
+  } else { state.last = null; syncAudio(); }
 }
 const kickLoop = () => { if(!state.raf && state.root) state.raf = requestAnimationFrame(loop); };
 
@@ -183,14 +199,25 @@ export function introMount(root = document){
     const b = e.target.closest("[data-iv]"); if(!b) return;
     if(b.dataset.iv === "toggle"){ state.playing = !state.playing; state.userPaused = !state.playing; }
     if(b.dataset.iv === "chap"){ state.t = SCENES[+b.dataset.i].start + .01; }
+    if(b.dataset.iv === "sound"){
+      state.sound = !state.sound;
+      if(state.sound){
+        if(!state.audio){
+          /* loaded as a blob so it can jump to any moment, whatever the server */
+          state.audio = new Audio();
+          fetch(JINGLE).then(r => r.blob()).then(bl => { state.audio.src = URL.createObjectURL(bl); syncAudio(); }).catch(() => { state.audio.src = JINGLE; syncAudio(); });
+        }
+        state.playing = true; state.userPaused = false;
+      }
+    }
     state.last = null;
-    syncControls(wrap, renderAt(wrap, state.t)); kickLoop();
+    syncControls(wrap, renderAt(wrap, state.t)); syncAudio(); kickLoop();
   });
   syncControls(wrap, renderAt(wrap, state.t));
   kickLoop();
 }
-document.addEventListener("visibilitychange", () => { state.last = null; kickLoop(); });
+document.addEventListener("visibilitychange", () => { state.last = null; syncAudio(); kickLoop(); });
 
 /* for exporting the video file and for tests: draw one exact moment */
-export function introSeek(t){ const wrap = state.root; if(!wrap) return; state.playing = false; state.t = t; syncControls(wrap, renderAt(wrap, t)); }
-if(typeof window !== "undefined") window.__introSeek = introSeek;
+export function introSeek(t){ const wrap = state.root; if(!wrap) return; state.playing = false; state.t = t; syncControls(wrap, renderAt(wrap, t)); syncAudio(); }
+if(typeof window !== "undefined"){ window.__introSeek = introSeek; window.__introState = state; }
