@@ -1,4 +1,4 @@
--- NextPlay update 013: college recruiting (players 16+, college coach accounts)
+-- NextPass update 013: college recruiting (players 16+, college coach accounts)
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Needs updates 009 to 012 first.
 --
@@ -55,7 +55,7 @@ begin
   if auth.uid() is null then raise exception 'Please sign in first.'; end if;
   select role into r from members where id = auth.uid();
   if r = 'college' then return; end if;
-  if r is not null then raise exception 'This email already has a NextPlay account. Use your school email for a college coach account.'; end if;
+  if r is not null then raise exception 'This email already has a NextPass account. Use your school email for a college coach account.'; end if;
   select lower(email) into mail from auth.users where id = auth.uid();
   if mail is null or mail !~ '\.edu$' then raise exception 'College coach accounts need a school email address ending in .edu.'; end if;
   if char_length(trim(coalesce(my_name, ''))) = 0 or char_length(trim(coalesce(p_school, ''))) = 0 then

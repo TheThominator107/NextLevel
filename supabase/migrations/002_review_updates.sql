@@ -1,4 +1,4 @@
--- NextPlay update 002: review update notes + protect review history
+-- NextPass update 002: review update notes + protect review history
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 
 -- 1. A short "what changed" note saved with every review

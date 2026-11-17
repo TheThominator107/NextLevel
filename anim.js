@@ -1,4 +1,4 @@
-/* NextPlay drill animations.
+/* NextPass drill animations.
    A small engine draws a top-down scene (grass, cones, wall, goal) and moves "actors"
    (player, helper, keeper, ball) between keyframes. Each drill has a short script below.
    Only animations on screen run; tap to pause or play; reduced-motion users tap to play. */
@@ -914,7 +914,7 @@ function defs3(u, c){
   </defs>`;
 }
 /* the corner badge and the progress line, shared by both kinds of scene */
-const BUG = `<g aria-hidden="true"><rect x="3" y="3" width="25.5" height="5.8" rx="1.1" fill="${NAVY}" fill-opacity=".78"/><rect x="3" y="3" width="1.1" height="5.8" fill="${ORANGE}"/><text x="16.3" y="7.2" font-size="3.15" font-weight="800" letter-spacing=".3" text-anchor="middle" fill="#fff" font-family="${DISPLAY_FONT}">NEXTPLAY</text></g>`;
+const BUG = `<g aria-hidden="true"><rect x="3" y="3" width="25.5" height="5.8" rx="1.1" fill="${NAVY}" fill-opacity=".78"/><rect x="3" y="3" width="1.1" height="5.8" fill="${ORANGE}"/><text x="16.3" y="7.2" font-size="3.15" font-weight="800" letter-spacing=".3" text-anchor="middle" fill="#fff" font-family="${DISPLAY_FONT}">NEXTPASS</text></g>`;
 const PROGRESS = `<rect x="0" y="${H - 1}" width="${W}" height="1" fill="#0a1423" fill-opacity=".35"/><rect data-prog x="0" y="${H - 1}" width="0" height="1" fill="${ORANGE}"/>`;
 
 function groundPoly(c, corners, attrs){ return `<polygon points="${pts(corners.map(q => proj(c, q[0], q[1], q[2] || 0)))}" ${attrs}/>`; }

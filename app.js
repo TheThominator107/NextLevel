@@ -2,7 +2,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { animSvg, animScan, animToggle, hasAnim } from "./anim.js";
 import { TEAM_DRILLS, teamDrillById, METHODS, PHASES, PHASE_NOTE, TIPS_LABEL, diagramSvg, DIAGRAM_KEY, playersText, LEVELS as TD_LEVELS, LEVEL_NOTE as TD_LEVEL_NOTE } from "./teamdrills.js";
 "use strict";
-const APP_NAME = "NextPlay";
+const APP_NAME = "NextPass";
 
 const FIELD_SKILLS = [
   {k:"first_touch",label:"First Touch",group:"Technical"},
@@ -287,7 +287,7 @@ function familyHasHome(){
 /* the club a player is on right now (families can have players at different clubs) */
 const clubOf = p => !p || !p.clubId ? null : isStaff() ? (S.club && S.club.id === p.clubId ? S.club : null) : (S.clubs || []).find(c => c.id === p.clubId) || null;
 const clubNameOf = p => (clubOf(p) || {}).name || "";
-/* a current club that isn't on NextPlay, from the profile's club history */
+/* a current club that isn't on NextPass, from the profile's club history */
 const outsideClub = pr => ((pr && pr.history || []).find(h => h.to === "Present") || {}).club || "";
 /* the coach's position, or the family's main position */
 const posText = p => p.position && p.position !== "Not set" ? p.position : (((profileFor(p.id) || {}).positions || [])[0] ? positionLabel(profileFor(p.id).positions[0]) : "");
@@ -537,8 +537,8 @@ function fixView(){
 }
 
 /* ---------- views ---------- */
-/* NextPlay wordmark (words only; the standalone mark lives in /brand) */
-const logoHtml = () => `<img class="logo-mark" src="brand/mark.svg" alt="" width="36" height="36"><span class="wordmark"><span class="wm-word">Next</span><span class="wm-word wm-play">Play</span></span>`;
+/* NextPass wordmark (words only; the standalone mark lives in /brand) */
+const logoHtml = () => `<img class="logo-mark" src="brand/mark.svg" alt="" width="36" height="36"><span class="wordmark"><span class="wm-word">Next</span><span class="wm-word wm-pass">Pass</span></span>`;
 const brandSvg = "";
 
 function topbar(){
@@ -988,7 +988,7 @@ function playerSetupFields(px){
       <div class="stack" style="gap:4px"><label class="btn sm" for="${px}-photo">Add profile picture</label><input type="file" id="${px}-photo" name="photo" accept="image/jpeg,image/png,image/webp,image/gif" data-preview="${px}-photo-prev" hidden><span class="small muted">Optional. You can add or change it later.</span></div></div>
     ${clubPickHtml(px)}`;
 }
-/* current club: search NextPlay, or name a club that isn't on it yet, or none */
+/* current club: search NextPass, or name a club that isn't on it yet, or none */
 function clubPickHtml(px){
   return `<fieldset class="plain clubpick" data-scope="${px}"><legend><b>Current club</b></legend>
     <div class="seg-choice" role="radiogroup">
@@ -1515,7 +1515,7 @@ function staffRecruit(){
   const body = v === "shortlist" ? shortlistHtml() : v === "sent" ? `<div class="card stack"><h2>Messages you've sent</h2><p class="small muted">Families see your name, your club and your email, and reply by email.</p>${sentList("None yet.")}</div>` : scoutView();
   return `<div class="stack" style="gap:4px"><h1>Recruit</h1><p class="muted small">Find players for your teams in the Youth clubs section. Parents choose to be listed, and can turn it off at any time.</p></div>${tabs}${body}`;
 }
-/* NextPlay owners: approve pro scouts */
+/* NextPass owners: approve pro scouts */
 function scoutApprovals(){
   if(!S.owner) return "";
   const all = S.scouts || [], pend = all.filter(x => x.status === "pending"), rest = all.filter(x => x.status !== "pending");
@@ -2815,12 +2815,12 @@ function legalPage(kind){
     P("Agreeing to these terms", `By creating an account or using ${APP_NAME} you agree to these terms. If you're using ${APP_NAME} for a club or organization, you agree on its behalf.`),
     P("Accounts", L("Give accurate information and keep your password safe.", "Accounts for players under 13 must be created and run by a parent or guardian. Players aged 13 to 17 need a parent or guardian's permission.", "College coach accounts need a current school email address. Pro scout accounts are only active after we approve them, and we can remove that approval.", "You're responsible for what happens under your account.")),
     P("Your content", `Families own their players' profiles and the content they add. Coaches and clubs keep responsibility for the reviews, notes and references they write. You give ${APP_NAME} permission to store and show your content to the people allowed to see it, only to run the service.`),
-    P("Acceptable use", "Don't use NextPlay to:", L("harass, bully or embarrass anyone, especially a child;", "contact a player other than through their family, or ask a minor to move a conversation elsewhere;", "pretend to be someone you're not, or claim a role or organization you don't have;", "copy, scrape or collect other people's information;", "upload anything you don't have the right to share, or anything unlawful or sexual;", "try to break, overload or get around the security of the service."), "We can remove content or suspend accounts that break these rules, and report concerns about a child's safety to the authorities."),
+    P("Acceptable use", "Don't use NextPass to:", L("harass, bully or embarrass anyone, especially a child;", "contact a player other than through their family, or ask a minor to move a conversation elsewhere;", "pretend to be someone you're not, or claim a role or organization you don't have;", "copy, scrape or collect other people's information;", "upload anything you don't have the right to share, or anything unlawful or sexual;", "try to break, overload or get around the security of the service."), "We can remove content or suspend accounts that break these rules, and report concerns about a child's safety to the authorities."),
     P("Plans and payment", `Prices are shown on the <a href="#pricing">Pricing</a> page. We'll always tell you the price and get your agreement before you're charged. College coach and approved scout accounts are free.`),
     P("Recruiting", `${APP_NAME} helps families share information with college coaches, scouts and clubs. We don't act as an agent, we don't guarantee any offer, and we're not responsible for decisions made by schools, clubs or scouts. College coaches are responsible for following the recruiting rules that apply to them.`),
     P("Drills and physical activity", "Drills involve physical activity. Players should warm up, use a safe space and stop if something hurts. Parents decide which drills suit their child. Drills aren't medical or professional advice."),
     P("The service", `We work hard to keep ${APP_NAME} available and accurate, but it's provided as it is, and features may change. To the extent the law allows, we aren't liable for indirect losses, and our total liability is limited to what you paid us in the 12 months before a claim.`),
-    P("Ending your account", "You can stop using NextPlay and ask us to delete your account at any time. We can suspend or close accounts that break these terms."),
+    P("Ending your account", "You can stop using NextPass and ask us to delete your account at any time. We can suspend or close accounts that break these terms."),
     P("Changes and contact", `If we change these terms in a way that matters, we'll tell you on the site first. These terms are governed by the laws of the State of Ohio. Questions: <a href="#contact">contact us</a>.`)
   ];
   return `<section class="page-hero stack"><span class="eyebrow">${kind === "privacy" ? "Privacy" : "Terms"}</span>
@@ -3637,7 +3637,7 @@ function teamLibraryHtml(){
   const list = matching.filter(dr => dr.level === lvl);
   const levelTabs = `<div class="subtabs level-tabs" role="tablist" aria-label="Drill level">${TD_LEVELS.map(l => `<button role="tab" data-act="tdLevel" data-id="${l}" aria-selected="${l === lvl}"><span class="lvl-dot lvl-${l.toLowerCase()}" aria-hidden="true"></span>${l} <span class="small muted">(${matching.filter(dr => dr.level === l).length})</span></button>`).join("")}</div>
     <p class="small muted lvl-note">${esc(TD_LEVEL_NOTE[lvl])}${levelForAge(ageOfTeam(team)) === lvl ? ` Suggested for ${esc(team.ageGroup || team.name)}.` : ""}</p>`;
-  return `<div class="panel-note small"><p>Academy-style team practices, written by NextPlay in plain language. Each drill notes the publicly documented coaching method it comes from: rondos and positional play (Ajax and Barcelona), the Ajax TIPS model, Dutch 4v4, Funino, FIFA 11+ and U.S. Soccer's Play-Practice-Play. They aren't any club's own curriculum, and no club endorses NextPlay.</p></div>
+  return `<div class="panel-note small"><p>Academy-style team practices, written by NextPass in plain language. Each drill notes the publicly documented coaching method it comes from: rondos and positional play (Ajax and Barcelona), the Ajax TIPS model, Dutch 4v4, Funino, FIFA 11+ and U.S. Soccer's Play-Practice-Play. They aren't any club's own curriculum, and no club endorses NextPass.</p></div>
     ${levelTabs}
     <div class="lib-tools stack">
       <div class="fchips" role="group" aria-label="Part of the session">${["All", ...PHASES].map(p => `<button type="button" class="fchip" data-act="tdPhase" data-id="${esc(p)}" aria-pressed="${p === ph}">${esc(p === "All" ? "All parts" : p)}</button>`).join("")}</div>
@@ -3970,7 +3970,7 @@ async function onSession(session, event){
 }
 
 (async () => {
-  const cfg = window.NEXTPLAY_CONFIG || {};
+  const cfg = window.NEXTPASS_CONFIG || window.NEXTPLAY_CONFIG || {}; /* NEXTPLAY_CONFIG: older config.js files */
   const m = /^profile-([a-z0-9]+)$/.exec(location.hash.slice(1));
   if(m) S.publicSlug = m[1];
   try { S.portal = localStorage.getItem("np.portal") || null; } catch(_){}

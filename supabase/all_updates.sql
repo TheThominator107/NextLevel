@@ -1,11 +1,11 @@
--- NextPlay: ALL database updates (002 to 018) in one file.
+-- NextPass: ALL database updates (002 to 018) in one file.
 -- Paste into Supabase -> SQL Editor -> New query -> Run.
 -- Safe to run no matter which updates you have already run, and safe to run more than once.
 -- If Supabase asks you to confirm a 'destructive operation', click 'Run this query' (it only removes old, unused parts).
 
 
 -- =================== 002_review_updates.sql ===================
--- NextPlay update 002: review update notes + protect review history
+-- NextPass update 002: review update notes + protect review history
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 
 -- 1. A short "what changed" note saved with every review
@@ -25,7 +25,7 @@ create policy reviews_del on public.reviews for delete to authenticated
 
 
 -- =================== 003_family_drills.sql ===================
--- NextPlay update 003: families can add recommended home drills to their own player's week
+-- NextPass update 003: families can add recommended home drills to their own player's week
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 
 drop policy if exists assign_family_insert on public.assignments;
@@ -46,7 +46,7 @@ create policy assign_family_delete on public.assignments for delete to authentic
 
 
 -- =================== 004_contact_messages.sql ===================
--- NextPlay update 004: "Contact Us" form messages
+-- NextPass update 004: "Contact Us" form messages
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Read messages in Supabase -> Table Editor -> contact_messages. Visitors can send but never read them.
 
@@ -73,7 +73,7 @@ grant insert on public.contact_messages to anon, authenticated;
 
 
 -- =================== 005_drill_paywall.sql ===================
--- NextPlay update 005: drill instructions behind the Home Training paywall
+-- NextPass update 005: drill instructions behind the Home Training paywall
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Step-by-step instructions now live here; only coaches and families with Home Training can read them.
 
@@ -141,7 +141,7 @@ on conflict (drill_id) do update set steps = excluded.steps;
 
 
 -- =================== 006_private_messages_meetings.sql ===================
--- NextPlay update 006: private coach / player / parent chat + meeting room
+-- NextPass update 006: private coach / player / parent chat + meeting room
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Who can see a player's private chat and meetings: the club's coaches and that player's own family accounts
 -- (parents and the player's own login). Nobody else - not other families, not other clubs.
@@ -226,7 +226,7 @@ end $$;
 
 
 -- =================== 007_team_coaches.sql ===================
--- NextPlay update 007: assign coaches to teams; private messages & meetings only for a player's own team coaches
+-- NextPass update 007: assign coaches to teams; private messages & meetings only for a player's own team coaches
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- After this, a coach sees private conversations and meetings only for players on teams they're assigned to.
 -- The club admin still sees all of them (safeguarding oversight). Coaches who aren't assigned to any team
@@ -303,7 +303,7 @@ end $$;
 
 
 -- =================== 008_public_private_profiles.sql ===================
--- NextPlay update 008: profiles are Public or Private
+-- NextPass update 008: profiles are Public or Private
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Public:  the shareable profile (photo, positions, strengths, bio, videos, club history, coach references).
 -- Private: the shareable link shows only the player's name, club and age.
@@ -354,7 +354,7 @@ grant execute on function public.get_public_profile(text) to anon, authenticated
 
 
 -- =================== 009_family_owned_players.sql ===================
--- NextPlay update 009: parents sign up freely and request to join a team
+-- NextPass update 009: parents sign up freely and request to join a team
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 --
 -- What changes:
@@ -817,7 +817,7 @@ end $$;
 
 
 -- =================== 010_player_setup_and_search.sql ===================
--- NextPlay update 010: date of birth for players + a better club / team search
+-- NextPass update 010: date of birth for players + a better club / team search
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Needs update 009 first.
 --
@@ -959,7 +959,7 @@ grant  execute on function public.get_public_profile(text)      to anon, authent
 
 
 -- =================== 011_recruitment_profile.sql ===================
--- NextPlay update 011: the Recruitment Profile
+-- NextPass update 011: the Recruitment Profile
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Needs updates 009 and 010 first.
 --
@@ -1017,7 +1017,7 @@ grant execute on function public.get_public_profile(text) to anon, authenticated
 
 
 -- =================== 012_coach_recruiting.sql ===================
--- NextPlay update 012: coach recruiting (find players, shortlist, invite to a team)
+-- NextPass update 012: coach recruiting (find players, shortlist, invite to a team)
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Needs updates 009, 010 and 011 first.
 --
@@ -1231,7 +1231,7 @@ end $$;
 
 
 -- =================== 013_college_recruiting.sql ===================
--- NextPlay update 013: college recruiting (players 16+, college coach accounts)
+-- NextPass update 013: college recruiting (players 16+, college coach accounts)
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Needs updates 009 to 012 first.
 --
@@ -1288,7 +1288,7 @@ begin
   if auth.uid() is null then raise exception 'Please sign in first.'; end if;
   select role into r from members where id = auth.uid();
   if r = 'college' then return; end if;
-  if r is not null then raise exception 'This email already has a NextPlay account. Use your school email for a college coach account.'; end if;
+  if r is not null then raise exception 'This email already has a NextPass account. Use your school email for a college coach account.'; end if;
   select lower(email) into mail from auth.users where id = auth.uid();
   if mail is null or mail !~ '\.edu$' then raise exception 'College coach accounts need a school email address ending in .edu.'; end if;
   if char_length(trim(coalesce(my_name, ''))) = 0 or char_length(trim(coalesce(p_school, ''))) = 0 then
@@ -1566,7 +1566,7 @@ end $$;
 
 
 -- =================== 014_more_drills.sql ===================
--- NextPlay update 014: 45 more home drills (step-by-step instructions)
+-- NextPass update 014: 45 more home drills (step-by-step instructions)
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- The drill list itself is in the app; this adds the instructions families with Home Training can read.
 
@@ -1622,7 +1622,7 @@ on conflict (drill_id) do update set steps = excluded.steps;
 
 
 -- =================== 015_club_unlimited.sql ===================
--- NextPlay update 015: Club Unlimited plan
+-- NextPass update 015: Club Unlimited plan
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 --
 --  * Each club is on one of two plans: 'team' ($19.99 a month per team) or 'unlimited' ($199 a month, unlimited teams).
@@ -1638,10 +1638,10 @@ exception when duplicate_object then null; end $$;
 
 
 -- =================== 016_recruiting_sections.sql ===================
--- NextPlay update 016: three recruiting sections
+-- NextPass update 016: three recruiting sections
 --   College     (16 and over)  college coaches with a .edu email (unchanged)
---   Pro         (16 and over)  pro scouts and academy staff, each approved by a NextPlay owner
---   Youth clubs (any age)      coaches and admins of clubs on NextPlay; the parent opts in,
+--   Pro         (16 and over)  pro scouts and academy staff, each approved by a NextPass owner
+--   Youth clubs (any age)      coaches and admins of clubs on NextPass; the parent opts in,
 --                              and under-16s are never on a public link
 -- Safe to run more than once. Needs updates 002-015 (or all_updates.sql) first.
 
@@ -1653,7 +1653,7 @@ alter table public.members drop constraint if exists members_club_by_role;
 alter table public.members add constraint members_club_by_role
   check ((role in ('family','college','pro') and club_id is null) or (role in ('admin','coach') and club_id is not null));
 
--- NextPlay owners: the people who approve pro scouts. Add yourself once (see the end of this file).
+-- NextPass owners: the people who approve pro scouts. Add yourself once (see the end of this file).
 create table if not exists public.platform_admins (
   user_id    uuid primary key references auth.users(id) on delete cascade,
   created_at timestamptz not null default now()
@@ -1720,7 +1720,7 @@ begin
   if auth.uid() is null then raise exception 'Please sign in first.'; end if;
   select role into r from members where id = auth.uid();
   if r = 'pro' then return; end if;
-  if r is not null then raise exception 'This email already has a NextPlay account. Use a different email for a pro scout account.'; end if;
+  if r is not null then raise exception 'This email already has a NextPass account. Use a different email for a pro scout account.'; end if;
   select lower(email) into mail from auth.users where id = auth.uid();
   if char_length(trim(coalesce(my_name, ''))) = 0 or char_length(trim(coalesce(p_org, ''))) = 0 then
     raise exception 'Please add your name and your club or organization.'; end if;
@@ -1764,7 +1764,7 @@ $$;
 create or replace function public.decide_scout(sid uuid, approve boolean) returns void
 language plpgsql security definer set search_path = public as $$
 begin
-  if not is_platform_admin() then raise exception 'Only NextPlay owners can approve scouts.'; end if;
+  if not is_platform_admin() then raise exception 'Only NextPass owners can approve scouts.'; end if;
   update pro_scouts set status = case when approve then 'approved' else 'declined' end, decided_at = now() where id = sid;
   if not found then raise exception 'Scout not found.'; end if;
 end $$;
@@ -1955,14 +1955,14 @@ end $$;
 
 -- Done. You should see "Success. No rows returned".
 --
--- ONE MORE STEP, once: make yourself a NextPlay owner so you can approve pro scouts.
--- Run this line on its own, with the email you sign in to NextPlay with:
+-- ONE MORE STEP, once: make yourself a NextPass owner so you can approve pro scouts.
+-- Run this line on its own, with the email you sign in to NextPass with:
 --
 --   insert into public.platform_admins (user_id) select id from auth.users where lower(email) = lower('you@example.com') on conflict do nothing;
 
 
 -- =================== 017_solo_drills.sql ===================
--- NextPlay update 017: the new solo drill library (60 drills for ages 10 to 18, done alone with a ball, cones and a wall)
+-- NextPass update 017: the new solo drill library (60 drills for ages 10 to 18, done alone with a ball, cones and a wall)
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once. Needs update 005.
 -- Adds the setup, sets and reps, coaching points and easier / harder versions to each drill's instructions.
 
@@ -2043,7 +2043,7 @@ on conflict (drill_id) do update set setup = excluded.setup, steps = excluded.st
 
 
 -- =================== 018_team_sessions.sql ===================
--- NextPlay update 018: team training sessions
+-- NextPass update 018: team training sessions
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Coaches build training sessions for a team from the team drill library.
 -- Only coaches and admins in the club can see or change them.

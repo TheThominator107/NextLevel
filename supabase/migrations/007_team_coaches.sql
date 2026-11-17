@@ -1,4 +1,4 @@
--- NextPlay update 007: assign coaches to teams; private messages & meetings only for a player's own team coaches
+-- NextPass update 007: assign coaches to teams; private messages & meetings only for a player's own team coaches
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- After this, a coach sees private conversations and meetings only for players on teams they're assigned to.
 -- The club admin still sees all of them (safeguarding oversight). Coaches who aren't assigned to any team

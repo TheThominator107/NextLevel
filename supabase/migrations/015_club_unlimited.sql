@@ -1,4 +1,4 @@
--- NextPlay update 015: Club Unlimited plan
+-- NextPass update 015: Club Unlimited plan
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 --
 --  * Each club is on one of two plans: 'team' ($19.99 a month per team) or 'unlimited' ($199 a month, unlimited teams).

@@ -31,7 +31,7 @@ open(p, "w").write(s)
 q = lambda t: "$s$" + t + "$s$"
 arr = lambda xs: "array[" + ", ".join(q(x) for x in xs) + "]::text[]"
 vals = ",\n".join(f"  ({q(d['id'])}, {q(d['setup'])}, {arr(d['steps'])}, {q(d['reps'])}, {arr(d['points'])}, {q(d['easier'])}, {q(d['harder'])})" for d in D)
-sql = f"""-- NextPlay update 017: the new solo drill library ({len(D)} drills for ages 10 to 18, done alone with a ball, cones and a wall)
+sql = f"""-- NextPass update 017: the new solo drill library ({len(D)} drills for ages 10 to 18, done alone with a ball, cones and a wall)
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once. Needs update 005.
 -- Adds the setup, sets and reps, coaching points and easier / harder versions to each drill's instructions.
 

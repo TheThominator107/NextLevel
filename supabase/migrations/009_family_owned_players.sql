@@ -1,4 +1,4 @@
--- NextPlay update 009: parents sign up freely and request to join a team
+-- NextPass update 009: parents sign up freely and request to join a team
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 --
 -- What changes:

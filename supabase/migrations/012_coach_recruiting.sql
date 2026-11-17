@@ -1,4 +1,4 @@
--- NextPlay update 012: coach recruiting (find players, shortlist, invite to a team)
+-- NextPass update 012: coach recruiting (find players, shortlist, invite to a team)
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Needs updates 009, 010 and 011 first.
 --

@@ -1,4 +1,4 @@
-# NextPlay solo drill library: the single source for the drill list in app.js and the
+# NextPass solo drill library: the single source for the drill list in app.js and the
 # instructions in the database (supabase/migrations/017_solo_drills.sql).
 # Every drill is done alone with a ball, cones and a wall. Ages 10 to 18.
 # Run: python3 tools/build_drills.py

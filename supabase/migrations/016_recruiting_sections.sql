@@ -1,7 +1,7 @@
--- NextPlay update 016: three recruiting sections
+-- NextPass update 016: three recruiting sections
 --   College     (16 and over)  college coaches with a .edu email (unchanged)
---   Pro         (16 and over)  pro scouts and academy staff, each approved by a NextPlay owner
---   Youth clubs (any age)      coaches and admins of clubs on NextPlay; the parent opts in,
+--   Pro         (16 and over)  pro scouts and academy staff, each approved by a NextPass owner
+--   Youth clubs (any age)      coaches and admins of clubs on NextPass; the parent opts in,
 --                              and under-16s are never on a public link
 -- Safe to run more than once. Needs updates 002-015 (or all_updates.sql) first.
 
@@ -13,7 +13,7 @@ alter table public.members drop constraint if exists members_club_by_role;
 alter table public.members add constraint members_club_by_role
   check ((role in ('family','college','pro') and club_id is null) or (role in ('admin','coach') and club_id is not null));
 
--- NextPlay owners: the people who approve pro scouts. Add yourself once (see the end of this file).
+-- NextPass owners: the people who approve pro scouts. Add yourself once (see the end of this file).
 create table if not exists public.platform_admins (
   user_id    uuid primary key references auth.users(id) on delete cascade,
   created_at timestamptz not null default now()
@@ -80,7 +80,7 @@ begin
   if auth.uid() is null then raise exception 'Please sign in first.'; end if;
   select role into r from members where id = auth.uid();
   if r = 'pro' then return; end if;
-  if r is not null then raise exception 'This email already has a NextPlay account. Use a different email for a pro scout account.'; end if;
+  if r is not null then raise exception 'This email already has a NextPass account. Use a different email for a pro scout account.'; end if;
   select lower(email) into mail from auth.users where id = auth.uid();
   if char_length(trim(coalesce(my_name, ''))) = 0 or char_length(trim(coalesce(p_org, ''))) = 0 then
     raise exception 'Please add your name and your club or organization.'; end if;
@@ -124,7 +124,7 @@ $$;
 create or replace function public.decide_scout(sid uuid, approve boolean) returns void
 language plpgsql security definer set search_path = public as $$
 begin
-  if not is_platform_admin() then raise exception 'Only NextPlay owners can approve scouts.'; end if;
+  if not is_platform_admin() then raise exception 'Only NextPass owners can approve scouts.'; end if;
   update pro_scouts set status = case when approve then 'approved' else 'declined' end, decided_at = now() where id = sid;
   if not found then raise exception 'Scout not found.'; end if;
 end $$;
@@ -315,7 +315,7 @@ end $$;
 
 -- Done. You should see "Success. No rows returned".
 --
--- ONE MORE STEP, once: make yourself a NextPlay owner so you can approve pro scouts.
--- Run this line on its own, with the email you sign in to NextPlay with:
+-- ONE MORE STEP, once: make yourself a NextPass owner so you can approve pro scouts.
+-- Run this line on its own, with the email you sign in to NextPass with:
 --
 --   insert into public.platform_admins (user_id) select id from auth.users where lower(email) = lower('you@example.com') on conflict do nothing;

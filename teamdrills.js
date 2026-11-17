@@ -1,4 +1,4 @@
-/* NextPlay team drill library: academy-style practices for a coach to run with a team.
+/* NextPass team drill library: academy-style practices for a coach to run with a team.
    These are well-known coaching games, written up in our own words, with a note on the
    publicly documented method each one comes from. They are not any club's own curriculum. */
 

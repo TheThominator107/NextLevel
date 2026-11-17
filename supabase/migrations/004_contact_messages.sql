@@ -1,4 +1,4 @@
--- NextPlay update 004: "Contact Us" form messages
+-- NextPass update 004: "Contact Us" form messages
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Read messages in Supabase -> Table Editor -> contact_messages. Visitors can send but never read them.
 

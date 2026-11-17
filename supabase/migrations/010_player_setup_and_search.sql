@@ -1,4 +1,4 @@
--- NextPlay update 010: date of birth for players + a better club / team search
+-- NextPass update 010: date of birth for players + a better club / team search
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Needs update 009 first.
 --

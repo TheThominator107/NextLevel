@@ -1,4 +1,4 @@
--- NextPlay update 011: the Recruitment Profile
+-- NextPass update 011: the Recruitment Profile
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Needs updates 009 and 010 first.
 --

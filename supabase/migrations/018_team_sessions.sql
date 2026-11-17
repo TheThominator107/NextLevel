@@ -1,4 +1,4 @@
--- NextPlay update 018: team training sessions
+-- NextPass update 018: team training sessions
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Coaches build training sessions for a team from the team drill library.
 -- Only coaches and admins in the club can see or change them.

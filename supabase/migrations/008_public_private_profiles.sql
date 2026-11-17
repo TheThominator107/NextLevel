@@ -1,4 +1,4 @@
--- NextPlay update 008: profiles are Public or Private
+-- NextPass update 008: profiles are Public or Private
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Public:  the shareable profile (photo, positions, strengths, bio, videos, club history, coach references).
 -- Private: the shareable link shows only the player's name, club and age.

@@ -1,4 +1,4 @@
--- NextPlay update 005: drill instructions behind the Home Training paywall
+-- NextPass update 005: drill instructions behind the Home Training paywall
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Step-by-step instructions now live here; only coaches and families with Home Training can read them.
 

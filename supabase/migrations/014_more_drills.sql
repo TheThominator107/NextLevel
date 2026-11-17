@@ -1,4 +1,4 @@
--- NextPlay update 014: 45 more home drills (step-by-step instructions)
+-- NextPass update 014: 45 more home drills (step-by-step instructions)
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- The drill list itself is in the app; this adds the instructions families with Home Training can read.
 

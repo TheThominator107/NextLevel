@@ -1,4 +1,4 @@
--- NextPlay update 003: families can add recommended home drills to their own player's week
+-- NextPass update 003: families can add recommended home drills to their own player's week
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 
 drop policy if exists assign_family_insert on public.assignments;

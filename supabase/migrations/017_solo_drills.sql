@@ -1,4 +1,4 @@
--- NextPlay update 017: the new solo drill library (60 drills for ages 10 to 18, done alone with a ball, cones and a wall)
+-- NextPass update 017: the new solo drill library (60 drills for ages 10 to 18, done alone with a ball, cones and a wall)
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once. Needs update 005.
 -- Adds the setup, sets and reps, coaching points and easier / harder versions to each drill's instructions.
 

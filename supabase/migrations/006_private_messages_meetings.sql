@@ -1,4 +1,4 @@
--- NextPlay update 006: private coach / player / parent chat + meeting room
+-- NextPass update 006: private coach / player / parent chat + meeting room
 -- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
 -- Who can see a player's private chat and meetings: the club's coaches and that player's own family accounts
 -- (parents and the player's own login). Nobody else - not other families, not other clubs.
