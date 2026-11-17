@@ -1,5 +1,6 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
 import { animSvg, animScan, animToggle, hasAnim } from "./anim.js";
+import { introHtml, introMount } from "./intro.js";
 import { TEAM_DRILLS, teamDrillById, METHODS, PHASES, PHASE_NOTE, TIPS_LABEL, diagramSvg, DIAGRAM_KEY, playersText, LEVELS as TD_LEVELS, LEVEL_NOTE as TD_LEVEL_NOTE } from "./teamdrills.js";
 "use strict";
 const APP_NAME = "NextPass";
@@ -586,6 +587,7 @@ function render(){
   app.innerHTML = `<a class="skip" href="#main-content" data-act="skipMain">Skip to content</a>` + topbar() + `<main id="main-content" tabindex="-1">${banners}${body}</main>` + (!S.uid || S.publicPage ? siteFooter() : "");
   setTitle();
   animScan(app);
+  introMount(app);
   const ci2 = document.getElementById("chat-input");
   if(ci2 && keep && prevTeam === S.chatTeam){ ci2.value = keep.v; const a = document.getElementById("chat-ann"); if(a) a.checked = !!keep.ann; if(keep.f){ ci2.focus(); try{ ci2.setSelectionRange(keep.s, keep.e); }catch(_){} } }
   const th2 = document.getElementById("thread");
@@ -2637,7 +2639,7 @@ function homeView(){
       <div class="row hh-cta"><button type="button" class="btn primary lg" data-act="pickPortal" data-id="coach" data-mode="signup">Start your club</button><button type="button" class="btn lg" data-act="pickPortal" data-id="family" data-mode="signup">I'm a parent or player</button></div>
       <p class="small muted hh-alt">College coach? <a href="#college">Join free</a> · Pro scout? <a href="#pro">Ask for access</a> · Already a member? <a href="#signin">Sign in</a></p>
     </div>
-    <div class="hh-art card">${hasAnim("b-cone-weave") ? animSvg("b-cone-weave", "Cone weave dribble") : ""}<p class="small muted hh-art-cap">Every drill comes with an animation like this one. Tap to pause.</p></div>
+    <div class="hh-art card">${introHtml()}</div>
   </section>
   <section class="home-facts" aria-label="${APP_NAME} at a glance">${facts.map(([n, t]) => `<div><b>${n}</b><span>${t}</span></div>`).join("")}</section>
 
