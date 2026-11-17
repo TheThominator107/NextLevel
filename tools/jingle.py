@@ -1,6 +1,6 @@
-"""NextPass intro jingle: an original upbeat tune, synthesised from scratch (no samples).
-Writes audio/intro-jingle.mp3 (and a .wav in /tmp), timed to the intro video (intro.js): a rising sting with the logo,
-a light groove under the tour, a soft chime at each new part, and a final cadence on the end card.
+"""NextPass intro jingle: an original, calm tune synthesised from scratch (no samples).
+Writes audio/intro-jingle.mp3 (and a .wav in /tmp), timed to the intro video (intro.js): a soft arpeggio with the logo,
+a slow warm bed under the tour, a quiet chime at each new part, and a final chord on the end card.
 Run: python3 tools/jingle.py  (needs numpy, scipy and ffmpeg)"""
 import numpy as np, wave, os, subprocess
 from scipy.signal import lfilter
@@ -8,8 +8,8 @@ from scipy.signal import lfilter
 SR = 44100
 DUR = 42.6                                   # INTRO_DURATION in intro.js
 SCENES = [0, 4.6, 11.4, 18.2, 24.6, 31.0, 37.8]
-BPM = 116; BEAT = 60 / BPM; BAR = BEAT * 4
-GROOVE_FROM = 2 * BEAT * 2                   # drums enter after the sting
+BPM = 80; BEAT = 60 / BPM; BAR = BEAT * 4
+GROOVE_FROM = 3.0                            # the bed comes in after the opening
 END = SCENES[-1]
 N = int(SR * DUR)
 mix = np.zeros((N, 2))
@@ -43,8 +43,11 @@ def tone(n, length, kind="pluck"):
     if kind == "pluck":       # bright, short synth pluck
         x = 2 * ((t * f) % 1) - 1
         x = lowpass(x, 2600) * env(m, .003, .18, .0, .05, length)
-    elif kind == "bell":      # soft FM bell for the melody and chimes
-        mod = np.sin(2 * np.pi * f * 3.5 * t) * 1.6 * np.exp(-t * 6)
+    elif kind == "keys":      # soft electric-piano tone: rounded attack, gentle decay
+        x = np.sin(2 * np.pi * f * t) + .22 * np.sin(4 * np.pi * f * t) * np.exp(-t * 3) + .05 * np.sin(6 * np.pi * f * t) * np.exp(-t * 6)
+        x = lowpass(x, 3000) * np.exp(-t * 1.6) * env(m, .012, .1, 1, .25, length)
+    elif kind == "bell":      # soft FM bell for the chimes
+        mod = np.sin(2 * np.pi * f * 2 * t) * .7 * np.exp(-t * 5)
         x = np.sin(2 * np.pi * f * t + mod) * np.exp(-t * 3.2) * env(m, .002, .05, 1, .08, length)
     elif kind == "bass":
         x = np.sin(2 * np.pi * f * t) + .35 * np.sin(4 * np.pi * f * t) + .12 * (2 * ((t * f) % 1) - 1)
@@ -70,64 +73,56 @@ def hat(gain=1, open_=False):
     n = rng.standard_normal(m); n = n - lowpass(n, 6000)
     return n * np.exp(-t * (18 if open_ else 70)) * .22 * gain
 
-# chords: C – G – Am – F (one bar each), as MIDI notes
-CHORDS = [(60, 64, 67), (55, 59, 62), (57, 60, 64), (53, 57, 60)]
-ROOTS = [36, 43, 45, 41]
-# an original 4-bar melody (beat offset, MIDI note, length in beats)
-MELODY = [(0, 72, .5), (.5, 74, .5), (1, 76, 1), (2, 79, .5), (2.5, 76, 1.5),
-          (4, 74, .5), (4.5, 76, .5), (5, 79, 1), (6, 81, .75), (6.75, 79, 1.25),
-          (8, 76, .5), (8.5, 77, .5), (9, 76, .5), (9.5, 74, .5), (10, 72, 1), (11, 76, 1),
-          (12, 74, .5), (12.5, 72, .5), (13, 74, 1), (14, 79, 2)]
+# a slow, warm progression: Cmaj7 – Am7 – Fmaj7 – Gsus4/G (one bar each), as MIDI notes
+CHORDS = [(48, 55, 64, 71), (45, 52, 60, 67), (41, 48, 57, 64), (43, 50, 60, 62)]
+ROOTS = [36, 33, 29, 31]
+# an original, unhurried melody over 4 bars (beat offset, MIDI note, length in beats)
+MELODY = [(0, 76, 1.5), (1.5, 74, .5), (2, 72, 2),
+          (4, 72, 1), (5, 74, 1), (6, 76, 2),
+          (8, 77, 1.5), (9.5, 76, .5), (10, 72, 2),
+          (12, 74, 1.5), (13.5, 72, .5), (14, 74, 2)]
 
-# 1) the sting: rising arpeggio as the logo pops in
-for i, n in enumerate([60, 64, 67, 72, 76]):
-    put(tone(n, 1.4, "bell"), .18 + i * .13, pan=-.3 + i * .15, gain=.34)
-put(tone(48, 2.2, "pad") + tone(55, 2.2, "pad") + tone(64, 2.2, "pad"), 0.0, gain=.12)
+# 1) opening: a slow, soft arpeggio as the logo appears
+for i, n in enumerate([60, 64, 67, 71, 72]):
+    put(tone(n, 2.6, "keys"), .25 + i * .32, pan=-.2 + i * .1, gain=.2)
+put(sum(tone(n, 3.4, "pad") for n in (48, 55, 64, 71)), 0.0, gain=.07)
 
-# 2) the groove under the tour
+# 2) a gentle bed under the tour: pad, broken chords, a soft bass and a light pulse
 t0 = GROOVE_FROM
 bar = 0
-while t0 + bar * BAR < END - .05:
+while t0 + bar * BAR < END - .1:
     start = t0 + bar * BAR
     ch, root = CHORDS[bar % 4], ROOTS[bar % 4]
-    for b in range(4):
+    left = min(BAR, END - start)
+    put(sum(tone(n, left + .4, "pad") for n in ch), start, gain=.055)
+    put(tone(root + 12, min(BAR * .95, left), "bass"), start, gain=.2)
+    put(kick(.5), start, gain=.22)                            # one soft heartbeat per bar
+    for b, n in enumerate([ch[1] + 12, ch[2] + 12, ch[3] + 12, ch[2] + 12]):
         tb = start + b * BEAT
-        if tb >= END - .05: break
-        put(kick(.8 if b % 2 == 0 else .45), tb, gain=.5)
-        if b % 2 == 1: put(clap(), tb, pan=.05, gain=.42)
-        put(hat(), tb + BEAT / 2, pan=.35, gain=.3)
-        for e in range(2):                               # bass on eighths
-            te = tb + e * BEAT / 2
-            if te < END - .05: put(tone(root + (12 if e and b == 3 else 0), BEAT / 2 * .9, "bass"), te, gain=.32)
-        for k, n in enumerate(ch):                       # offbeat chord plucks
-            put(tone(n + 12, .3, "pluck"), tb + BEAT / 2 + k * .006, pan=-.25 + k * .25, gain=.075)
-    if bar % 8 in (0, 1, 2, 3) and bar < 14:             # melody, then a breather
+        if tb < END - .2: put(tone(n, BEAT * 1.6, "keys"), tb, pan=-.3 + b * .2, gain=.075)
+    if 1 <= bar <= 4 or 7 <= bar <= 10:                       # melody twice, with space around it
+        k = (bar - 1) % 6 if bar <= 4 else (bar - 7)
         for ob, n, ln in MELODY:
-            tm = start + ob * BEAT - (bar % 4) * BAR
-            if start <= tm < start + BAR and tm < END - .3:
-                put(tone(n, ln * BEAT * 1.1 + .2, "bell"), tm, pan=.1, gain=.15)
+            tm = start + ob * BEAT - k * BAR
+            if start <= tm < start + BAR and tm < END - .4:
+                put(tone(n, ln * BEAT + .6, "keys"), tm, pan=.1, gain=.13)
     bar += 1
 
-# 3) a soft chime as each new part of the tour starts
-for i, s in enumerate(SCENES[1:-1]):
-    for k, n in enumerate([84, 88]):
-        put(tone(n + (2 if i % 2 else 0), .9, "bell"), s + k * .07, pan=.4 - k * .8, gain=.1)
+# 3) a quiet single chime as each new part of the tour starts
+for i, s0 in enumerate(SCENES[1:-1]):
+    put(tone(84 if i % 2 == 0 else 83, 1.6, "bell"), s0, pan=.3 if i % 2 else -.3, gain=.035)
 
-# 4) the end card: a little drum fill, then the cadence and the sting again
-for k in range(4):
-    put(clap(.6 + k * .15), END - .5 + k * .12, gain=.3)
-put(kick(1), END, gain=.6)
-for n in (48, 55, 60, 64, 67):
-    put(tone(n, 4.2, "pad"), END, gain=.11)
-put(tone(36, 1.6, "bass"), END, gain=.38)
-for i, n in enumerate([67, 72, 76, 79, 84]):
-    put(tone(n, 2.6, "bell"), END + .1 + i * .11, pan=-.3 + i * .15, gain=.26)
+# 4) the end card: a warm final chord and a slow rising arpeggio, then a long fade
+put(kick(.6), END, gain=.25)
+put(sum(tone(n, 4.8, "pad") for n in (48, 55, 64, 67, 72)), END, gain=.075)
+put(tone(36, 3.5, "bass"), END, gain=.24)
+for i, n in enumerate([60, 64, 67, 72]):
+    put(tone(n, 3.6, "keys"), END + .15 + i * .3, pan=-.2 + i * .13, gain=.17)
 
 # master: gentle compression, fade out, normalise to -1 dBFS
-fade = np.clip((DUR - np.arange(N) / SR) / 1.6, 0, 1)
+fade = np.clip((DUR - np.arange(N) / SR) / 2.5, 0, 1)
 mix *= fade[:, None]
-mix = np.tanh(mix * 1.3) / np.tanh(1.3)
-mix *= 10 ** (-1.5 / 20) / np.max(np.abs(mix))
+mix *= 10 ** (-4 / 20) / np.max(np.abs(mix))
 out = os.path.join(os.path.dirname(__file__), "..", "audio")
 os.makedirs(out, exist_ok=True)
 wav = "/tmp/intro-jingle.wav"
