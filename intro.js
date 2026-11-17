@@ -113,7 +113,7 @@ const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const ease = x => { x = clamp(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
 const reduced = () => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch(_){ return false; } };
 const state = {t:0, playing:true, last:null, raf:null, root:null, visible:true, userPaused:false, sound:false, audio:null};
-const JINGLE = "audio/intro-jingle.mp3";
+const JINGLE = "audio/intro-jingle.mp3?v=3";  /* bump when the jingle changes, so browsers fetch the new one */
 
 /* the music follows the video's clock; it only plays after someone turns the sound on */
 function syncAudio(){
