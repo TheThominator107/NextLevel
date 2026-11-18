@@ -1728,7 +1728,7 @@ function plansView(){
       <span class="pill good" style="align-self:flex-start">For players & parents</span>
       <h2>Home Training</h2>
       <div><span class="price">${PRICES.family}</span> <span class="muted">${PRICES.familyPer}</span></div>
-      <p class="small">At-home drills for players whose club or team doesn't include Home Training.</p>
+      <p class="small muted">For players whose club doesn't include it.</p>
       <ul><li>Drills your coach assigns, with step-by-step instructions</li><li>Full home drill library</li><li>Progress charts and full review history</li><li>Weekly drill tracking your coach can see</li></ul>
       <p class="small muted">Free with every club: the coach's latest review and skill ratings.</p>
       ${!staff && !included ? (fp ? `<div class="row"><span class="pill good">Trial active</span><button class="btn ghost sm" data-act="cancelPlan">Cancel trial</button></div>` : `<div><button class="btn primary" data-act="startPlan">Start 14-day free trial</button></div>`) : ""}
@@ -2520,7 +2520,7 @@ function planInfo(){
   return {plan, n, perTeam, cost: plan === "unlimited" ? PRICE_NUM.unlimited : perTeam, save: Math.round((perTeam - PRICE_NUM.unlimited) * 100) / 100};
 }
 const planName = k => k === "unlimited" ? "Club Unlimited" : "Club (per team)";
-const CLUB_FEATURES = `<li>Field player and goalkeeper reviews with update notes</li><li>Progress timeline for every player</li><li>Drill library, recommendations and your own club drills</li><li>Team chat with announcements</li><li>Option to include Home Training for every player</li>`;
+const CLUB_FEATURES = `<li>Player and keeper reviews</li><li>Progress timelines</li><li>Drill library and session planner</li><li>Team chat</li><li>Optional Home Training for all</li>`;
 const PUBLIC_PAGES = [
   ["how-it-works","How it works"], ["drills","Drills"], ["clubs","Clubs & Teams"], ["recruiting","Recruiting"],
   ["for-parents","For Parents"], ["pricing","Pricing"], ["contact","Contact Us"]
@@ -2571,23 +2571,23 @@ function pageHow(){
   const step = (n, title, text) => `<div class="step"><span class="step-n">${n}</span><div class="stack" style="gap:4px"><b>${title}</b><p class="muted">${text}</p></div></div>`;
   return `<section class="page-hero stack"><span class="eyebrow">How it works</span>
     <h1>From the coach's notes to practice at home</h1>
-    <p class="lead">${APP_NAME} connects what coaches see at training with what players work on between sessions.</p></section>
+    <p class="lead">What the coach sees at training becomes what the player works on at home.</p></section>
   <div class="grid2">
     <div class="card stack"><h2>For coaches and clubs</h2>
-      ${step(1,"Create your club","Sign up as a coach and start your club. You get a club code to share with your other coaches.")}
-      ${step(2,"Add your teams","Families find your club by name and ask to join a team. You approve each request.")}
-      ${step(3,"Review and assign","Rate 13 field-player skills (or 7 for goalkeepers) from 1 to 5, add an update note, and assign home drills.")}
+      ${step(1,"Create your club","Sign up and share your club code with your coaches.")}
+      ${step(2,"Add your teams","Families ask to join. You approve.")}
+      ${step(3,"Review and assign","Rate each player, add a note, assign drills.")}
     </div>
     <div class="card stack"><h2>For parents and players</h2>
-      ${step(1,"Create your player's profile","Sign up as a parent or player. No code needed. The profile belongs to your family.")}
-      ${step(2,"Join your team","Find your club by name, pick your team and send a request. The coach approves it.")}
-      ${step(3,"See feedback and train at home","Every review and what changed, plus drills recommended from it to tick off each week.")}
+      ${step(1,"Create a profile","Sign up as a parent or player. No code needed.")}
+      ${step(2,"Join your team","Find your club, pick your team, send a request.")}
+      ${step(3,"Train at home","See each review and tick off the drills picked for you.")}
     </div>
   </div>
   <div class="grid3">
-    ${feature("Reviews that show progress","Every update is saved. Families see exactly which skills went up, and why.")}
-    ${feature("Drills picked for each player","Recommendations come from the lowest ratings and the coach's own 'work on' notes.")}
-    ${feature("Team chat","One place for schedule changes, announcements and quick questions, per team.")}
+    ${feature("Reviews that show progress","Every review is saved, so families see what improved.")}
+    ${feature("Drills picked for each player","Based on the lowest ratings and the coach's notes.")}
+    ${feature("Team chat","Schedule changes and announcements in one place.")}
   </div>
   ${cta()}`;
 }
@@ -2596,7 +2596,7 @@ function paywallBanner(){
   const n = BUILTIN_DRILLS.length, free = BUILTIN_DRILLS.filter(d => d.free).length;
   return `<div class="card paywall stack">
     <div class="row between"><h2>🔒 Full instructions come with Home Training</h2><span class="pill good">${free} free sample drills</span></div>
-    <p>Browse all ${n} drills below and try the free samples. Step-by-step instructions for every drill, plus drills picked from your coach's review, are part of <b>Home Training</b>: <b>${PRICES.family}</b> ${PRICES.familyPer}, or included when your club covers it.</p>
+    <p>Try the free samples. Full steps for every drill come with <b>Home Training</b>, or free when your club includes it.</p>
     <div class="row">${S.uid ? `<button class="btn primary" data-act="go" data-view="plans">See Home Training</button>` : `<button class="btn primary" data-act="pickPortal" data-id="family">Sign up as a family</button><a class="btn" href="#pricing">See pricing</a>`}</div>
   </div>`;
 }
@@ -2604,40 +2604,42 @@ function pageDrills(){
   const list = BUILTIN_DRILLS;
   return `<section class="page-hero stack"><span class="eyebrow">Drills</span>
     <h1>${BUILTIN_DRILLS.length} solo drills for ages 10 to 18</h1>
-    <p class="lead">Everything is done on your own with a ball, a few cones and a wall. Each drill has a clear setup, sets and reps, coaching points, and an easier and a harder version, sorted into Beginner, Intermediate and Advanced. Signed-in players get the drills that match their coach's latest review.</p></section>
+    <p class="lead">All you need is a ball, a few cones and a wall. Every drill has clear steps, from Beginner to Advanced.</p></section>
   ${paywallBanner()}
   ${drillLibraryHtml(list)}
-  <div class="card stack callout"><h2>Get drills picked for you</h2><p>When your coach reviews you on ${APP_NAME}, we recommend the drills that work on exactly what they flagged.</p>${cta("Start as a coach","Sign up as a parent or player")}</div>`;
+  <div class="card stack callout"><h2>Get drills picked for you</h2><p>When your coach reviews you, we suggest drills for exactly what they flagged.</p>${cta("Start as a coach","Sign up as a parent or player")}</div>`;
 }
 
 /* ---------- the public site: home, audiences, safety and legal ---------- */
+const AUD_ICONS = {select:`<path d="M8 21h8M12 16v5M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 4M17 6h2.5a2.5 2.5 0 0 1-2.6 4"/>`,rec:`<circle cx="12" cy="12" r="9"/><path d="M12 7.5l3.8 2.8-1.4 4.4H9.6l-1.4-4.4z"/><path d="M12 3v4.5M20.6 9.3l-4.8 1M17.3 19.4l-2.9-4.7M6.7 19.4l2.9-4.7M3.4 9.3l4.8 1"/>`,trainers:`<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>`,coaches:`<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/>`,parents:`<circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9.5" r="2.3"/><path d="M15.5 14.4A4.5 4.5 0 0 1 21 19"/>`,players:`<circle cx="12" cy="7.5" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/>`,college:`<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3.5 2.3 8.5 2.3 12 0v-5M22 9v6"/>`,scouts:`<circle cx="10.5" cy="10.5" r="6.5"/><path d="M20.5 20.5l-5.4-5.4"/>`};
+const audIcon = id => `<span class="aud-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${AUD_ICONS[id] || ""}</svg></span>`;
 const AUDIENCES = [
-  {id:"select", icon:"🏆", title:"Select & travel clubs", text:"One review standard across every coach and age group, progress families can see, and recruiting support for older players.", link:["#clubs","For clubs"]},
-  {id:"rec", icon:"⚽", title:"Recreational leagues", text:"Quick, friendly reviews volunteer coaches can do in minutes, and at-home drills that keep kids playing between games.", link:["#clubs","For rec programs"]},
-  {id:"trainers", icon:"🎯", title:"Private trainers & academies", text:"Give every training group a written review and homework, so families see the value of each session.", link:["#clubs","For trainers"]},
-  {id:"coaches", icon:"📋", title:"Coaches", text:"Rate 13 field skills or 7 goalkeeper skills, plan team practices from the reviews, assign home drills and message families, from your phone.", link:["#coach","Start as a coach"]},
-  {id:"parents", icon:"👪", title:"Parents", text:"See the coach's feedback, what changed since last time, and exactly what to practice at home.", link:["#for-parents","For parents"]},
-  {id:"players", icon:"🧒", title:"Players", text:"Animated drills picked from your coach's review, a weekly tracker, and a profile that grows with you.", link:["#drills","See the drills"]},
-  {id:"college", icon:"🎓", title:"College coaches", text:"Search players aged 16+ by position, class, GPA and division interest. Shortlist and message families. Free.", link:["#college","Join free"]},
-  {id:"scouts", icon:"🔭", title:"Pro scouts & academies", text:"Search players 16+ by position, age, playing status and target level. Every scout is approved by hand.", link:["#pro","Ask for access"]}];
+  {id:"select", title:"Select & travel clubs", text:"One review standard for every coach and age group.", link:["#clubs","For clubs"]},
+  {id:"rec", title:"Recreational leagues", text:"Reviews a volunteer coach can do in minutes.", link:["#clubs","For rec programs"]},
+  {id:"trainers", title:"Trainers & academies", text:"Written feedback and homework for every group.", link:["#clubs","For trainers"]},
+  {id:"coaches", title:"Coaches", text:"Review players, plan practices and assign drills.", link:["#coach","Start as a coach"]},
+  {id:"parents", title:"Parents", text:"See the feedback and what to practice at home.", link:["#for-parents","For parents"]},
+  {id:"players", title:"Players", text:"Animated drills picked from your review.", link:["#drills","See the drills"]},
+  {id:"college", title:"College coaches", text:`Search players ${RECRUIT_AGE}+ and message families.`, link:["#college","Join free"]},
+  {id:"scouts", title:"Pro scouts", text:`Search players ${RECRUIT_AGE}+. Every scout is approved.`, link:["#pro","Ask for access"]}];
 const HOME_FAQ = [
-  ["Who owns a player's profile?", `The family. Coaches can review and comment while the player is on their team, but if the player changes clubs, the family keeps everything and the old club loses access.`],
-  ["Is it safe for young players?", `Reviews are only ever seen by the player's family and their own coaches and club. Players under ${RECRUIT_AGE} never get a public link, college coaches must use a school email, and pro scouts are approved one by one. <a href="#safety">How we keep players safe</a>`],
-  ["What does it cost?", `Clubs pay ${PRICES.club} a month per team or ${PRICES.unlimited} for unlimited teams. Families whose club doesn't include Home Training can add it for ${PRICES.family} a month. College coaches and approved scouts are free. <a href="#pricing">See pricing</a>`],
-  ["Do the drills need a team or a coach?", `No. All ${BUILTIN_DRILLS.length} drills are done alone with a ball, a few cones and a wall, at Beginner, Intermediate and Advanced level, for ages 10 to 18.`],
-  ["Can a rec league or a private trainer use it?", `Yes. A rec league sets up each team the same way a select club does, and a trainer sets up each training group as a team. <a href="#clubs">See how</a>`],
+  ["Who owns a player's profile?", `The family. If the player changes clubs, the family keeps everything and the old club loses access.`],
+  ["Is it safe for young players?", `Yes. Reviews are private to the family and their coaches, players under ${RECRUIT_AGE} never get a public link, and every scout is approved by hand. <a href="#safety">How we keep players safe</a>`],
+  ["What does it cost?", `Clubs pay per team or one price for unlimited teams. College coaches and scouts are free. <a href="#pricing">See pricing</a>`],
+  ["Do the drills need a team or a coach?", `No. Every solo drill needs only a ball, a few cones and a wall.`],
+  ["Can a rec league or a private trainer use it?", `Yes. Each team or training group is set up the same way. <a href="#clubs">See how</a>`],
   ["Do we need to install anything?", `No. ${APP_NAME} works in any browser on a phone, tablet or computer. Add it to your home screen for one-tap access.`]];
 
 function homeView(){
   const step = (n, t, x) => `<div class="hstep"><span class="step-n">${n}</span><div class="stack" style="gap:4px"><h3>${t}</h3><p class="muted">${x}</p></div></div>`;
-  const facts = [[FIELD_SKILLS.length + " + " + GK_SKILLS.length, "skills in every field player and goalkeeper review"], [String(BUILTIN_DRILLS.length), "animated solo drills, Beginner to Advanced"], ["3", "recruiting sections: College, Pro and Youth clubs"], ["$0", "for college coaches and approved scouts"]];
+  const facts = [[FIELD_SKILLS.length + " + " + GK_SKILLS.length, "field and keeper skills per review"], [String(BUILTIN_DRILLS.length), "animated solo drills"], [String(TEAM_DRILLS.length), "team drills for practice"], ["3", "ways to get recruited"]];
   return `<section class="home-hero">
     <div class="stack hh-copy">
       <span class="eyebrow">Youth soccer, from first touch to first offer</span>
       <h1>Develop every player.<br>Get every player seen.</h1>
-      <p class="lead">${APP_NAME} brings coach reviews, at-home training and recruiting together in one place, for clubs of every level, the families in them, and the college coaches and scouts looking for their next player.</p>
+      <p class="lead">Coach reviews, home training and recruiting for youth soccer, all in one place.</p>
       <div class="row hh-cta"><button type="button" class="btn primary lg" data-act="pickPortal" data-id="coach" data-mode="signup">Start your club</button><button type="button" class="btn lg" data-act="pickPortal" data-id="family" data-mode="signup">I'm a parent or player</button></div>
-      <p class="small muted hh-alt">College coach? <a href="#college">Join free</a> · Pro scout? <a href="#pro">Ask for access</a> · Already a member? <a href="#signin">Sign in</a></p>
+      <p class="small muted hh-alt">College coach? <a href="#college">Join free</a> · Scout? <a href="#pro">Ask for access</a> · <a href="#signin">Sign in</a></p>
     </div>
     <div class="hh-art card">${introHtml()}</div>
   </section>
@@ -2645,15 +2647,15 @@ function homeView(){
 
   <section class="stack home-sec" aria-labelledby="h-who">
     <div class="sec-head"><span class="eyebrow">Who it's for</span><h2 id="h-who">Built for everyone in youth soccer</h2></div>
-    <div class="aud-grid">${AUDIENCES.map(a => `<a class="aud card" href="${a.link[0]}"><span class="aud-ic" aria-hidden="true">${a.icon}</span><h3>${a.title}</h3><p class="muted small">${a.text}</p><span class="aud-go">${a.link[1]} →</span></a>`).join("")}</div>
+    <div class="aud-grid">${AUDIENCES.map(a => `<a class="aud card" href="${a.link[0]}">${audIcon(a.id)}<h3>${a.title}</h3><p class="muted small">${a.text}</p><span class="aud-go">${a.link[1]} →</span></a>`).join("")}</div>
   </section>
 
   <section class="stack home-sec" aria-labelledby="h-how">
     <div class="sec-head"><span class="eyebrow">How it works</span><h2 id="h-how">Review. Train. Get seen.</h2></div>
     <div class="grid3 hsteps">
-      ${step(1, "The coach reviews", "Ratings from 1 to 5 on every skill, strengths, what to work on and a written note. Families see exactly what changed since the last review.")}
-      ${step(2, "The player trains at home", `${APP_NAME} picks drills that target what the coach flagged. Each one is animated, takes 6 to 15 minutes and needs only a ball, cones and a wall.`)}
-      ${step(3, "The right people notice", `From age ${RECRUIT_AGE}, families can share a Recruitment Profile with college coaches and approved scouts. Youth clubs can find players of any age, with the parent's permission.`)}
+      ${step(1, "The coach reviews", "Ratings, strengths and a short note after every review.")}
+      ${step(2, "The player trains at home", "Short, animated drills picked from what the coach flagged.")}
+      ${step(3, "The right people notice", `Colleges and approved scouts can find players from age ${RECRUIT_AGE}, when a parent says yes.`)}
     </div>
   </section>
 
@@ -2661,14 +2663,12 @@ function homeView(){
 
   <section class="card safety-band" aria-labelledby="h-safe">
     <div class="stack" style="gap:8px"><span class="eyebrow">Safety first</span><h2 id="h-safe">Built for children, run by their parents</h2>
-      <p class="muted">Most players on ${APP_NAME} are kids. Every rule is set with that in mind.</p></div>
+      <p class="muted">Most players are kids, so every rule starts there.</p></div>
     <ul class="ticks safe-list">
       <li>Profiles belong to the family, not the club.</li>
-      <li>Reviews and messages are only seen by the player's family, their coaches and the club admin.</li>
-      <li>No public link for players under ${RECRUIT_AGE}; youth club coaches see first name and last initial only.</li>
-      <li>College coaches need a school email. Pro scouts are approved one by one.</li>
-      <li>Every recruiting listing is off until a parent turns it on, and can be turned off any time.</li>
-      <li>No ads, and we never sell anyone's data.</li>
+      <li>Reviews stay private to the family and their coaches.</li>
+      <li>Recruiting is off until a parent turns it on.</li>
+      <li>No ads. We never sell anyone's data.</li>
     </ul>
     <div><a class="btn" href="#safety">How we keep players safe</a></div>
   </section>
@@ -2679,7 +2679,7 @@ function homeView(){
 
   <section class="final-cta card stack">
     <h2>Ready when you are</h2>
-    <p class="lead" style="margin:0 auto">Set up your club in about five minutes, or create your player's profile and find your team.</p>
+    <p class="lead" style="margin:0 auto">Set up your club in five minutes, or join your team.</p>
     ${cta("Start your club", "I'm a parent or player")}
     <p class="small muted" style="text-align:center">Want a walkthrough first? <a href="#contact">Talk to us</a></p>
   </section>`;
@@ -2687,22 +2687,22 @@ function homeView(){
 
 /* ---------- clubs: one page, four kinds of program ---------- */
 const PROGRAMS = [
-  {id:"select", title:"Select, travel & academy clubs", pill:"Most popular", lead:"A single development standard across every age group and coach.",
-   points:["The same 13 field-player and 7 goalkeeper skills for every coach, so reviews mean the same thing at U10 and U18", "Progress timelines that show families, and your board, what improved this season", "Club drills alongside the built-in library, assigned per player", `Recruitment Profiles and coach references for players ${RECRUIT_AGE}+, plus youth club search for your tryouts`],
-   plan:`Club Unlimited (${PRICES.unlimited}/month) usually works out cheapest from 10 teams.`},
-  {id:"rec", title:"Recreational leagues", pill:"Volunteer friendly", lead:"Simple enough for a volunteer coach, useful enough that families notice.",
-   points:["A first review takes about five minutes on a phone; later ones are quicker", "Include Home Training so every child gets drills at home at no extra cost to families", "Team chat for schedule changes instead of long email chains", "Families find your program by name and ask to join; the coach approves"],
-   plan:`Large rec programs usually choose Club Unlimited (${PRICES.unlimited}/month) so every team is covered. Small leagues pay ${PRICES.club} per team.`},
-  {id:"trainers", title:"Private trainers & training academies", pill:"Camps & small groups", lead:"Show families what each session is building toward.",
-   points:["Set up each training group, camp or clinic as a team", "Leave a written review after a block of sessions, with what to work on next", "Assign homework drills and see who did them this week", "Players keep their profile when they move on, with your references on it"],
-   plan:`Most trainers start on the per-team plan (${PRICES.club}/month per group).`},
-  {id:"school", title:"High school & middle school teams", pill:"Season-long", lead:"Keep development going between the high school and club seasons.",
-   points:["Review each player at the start, middle and end of the season", "Write references that go straight onto the player's Recruitment Profile", "Summer and off-season drills assigned to each player", "Players keep their history when they move up a level"],
-   plan:`One team on the per-team plan (${PRICES.club}/month), or Club Unlimited for a whole program.`}];
+  {id:"select", title:"Select, travel & academy clubs", pill:"Most popular", lead:"One development standard across every age group.",
+   points:["The same skills and 1–5 scale for every coach", "Progress timelines for families and your board", `Recruitment Profiles and references for players ${RECRUIT_AGE}+`],
+   plan:`Club Unlimited is usually cheapest from 10 teams.`},
+  {id:"rec", title:"Recreational leagues", pill:"Volunteer friendly", lead:"Simple enough for a volunteer coach.",
+   points:["A review takes about five minutes on a phone", "Home drills for every child", "Team chat instead of long email chains"],
+   plan:`Small leagues pay per team; large programs choose Club Unlimited.`},
+  {id:"trainers", title:"Private trainers & academies", pill:"Camps & small groups", lead:"Show families what each session builds toward.",
+   points:["Set up each group, camp or clinic as a team", "Review after a block of sessions", "Assign homework and see who did it"],
+   plan:`Most trainers start on the per-team plan.`},
+  {id:"school", title:"High school & middle school teams", pill:"Season-long", lead:"Keep players developing between seasons.",
+   points:["Review at the start, middle and end of the season", "References go straight onto the Recruitment Profile", "Off-season drills for every player"],
+   plan:`One team on the per-team plan, or Club Unlimited for a program.`}];
 function pageClubs(){
   return `<section class="page-hero stack"><span class="eyebrow">Clubs & Teams</span>
     <h1>Every player's development, in one place</h1>
-    <p class="lead">Whether you run a select club, a rec league, a training academy or a school team, ${APP_NAME} gives every coach the same review tools, keeps families informed and shows how each team is progressing.</p></section>
+    <p class="lead">The same review tools for every coach, and progress every family can see.</p></section>
   <nav class="prog-tabs" aria-label="Kinds of program">${PROGRAMS.map(p => `<a href="#clubs" data-act="progJump" data-id="${p.id}">${p.title}</a>`).join("")}</nav>
   <div class="prog-list">${PROGRAMS.map(p => `<section class="card prog" id="prog-${p.id}" aria-labelledby="ph-${p.id}">
       <div class="stack" style="gap:6px"><span class="pill ${p.id === "select" ? "warn" : "plain"}" style="align-self:flex-start">${p.pill}</span><h2 id="ph-${p.id}">${p.title}</h2><p class="lead" style="font-size:1.05rem">${p.lead}</p></div>
@@ -2710,23 +2710,23 @@ function pageClubs(){
       <p class="small prog-plan"><b>Plan:</b> ${p.plan}</p>
     </section>`).join("")}</div>
   <div class="grid3">
-    ${feature("Consistent player reviews","13 field-player skills and 7 goalkeeper skills on the same 1 to 5 scale, so every coach in the club reviews the same way.")}
-    ${feature("Progress you can show","Each review needs an update note. The timeline keeps every review and shows what improved.")}
-    ${feature("Home training that sticks",`Assign drills or let ${APP_NAME} suggest them from the review. See who did their drills this week.`)}
-    ${feature("Team chat & private messages","A chat for every team, plus private messages and meeting requests between a player's family and their coaches.")}
-    ${feature("Simple onboarding","Coaches join with your club code. Families find your club by name and ask to join a team. You approve. No spreadsheets.")}
-    ${feature("Private by design","Families only see their own child. Reviews never appear on public profiles or in recruiting search.")}
+    ${feature("Consistent reviews","Every coach uses the same skills and scale.")}
+    ${feature("Progress you can show","A timeline of every review and what improved.")}
+    ${feature("Home training that sticks","Drills from the review, and who did them this week.")}
+    ${feature("Team chat & messages","A chat per team, plus private family messages.")}
+    ${feature("Simple onboarding","Coaches use your club code. Families ask to join.")}
+    ${feature("Private by design","Families only ever see their own child.")}
   </div>
   <div class="card stack"><h2>For club directors</h2>
     <div class="grid2" style="gap:16px">
-      <div class="stack" style="gap:6px"><h3>See the whole club</h3><p class="muted">Every team, every coach and every player in one list. Spot who hasn't been reviewed and which teams are doing their home drills.</p></div>
-      <div class="stack" style="gap:6px"><h3>Stay in control</h3><p class="muted">You approve every family and decide which coaches see which teams. Private conversations are open only to a player's own coaches and the club admin.</p></div>
-      <div class="stack" style="gap:6px"><h3>Show families the value</h3><p class="muted">Written feedback and a visible development plan are what families talk about when they choose a club for next season.</p></div>
-      <div class="stack" style="gap:6px"><h3>Recruit for tryouts</h3><p class="muted">Search the youth clubs section for players whose parents have said they're looking for a new club, tryouts or guest playing.</p></div>
+      <div class="stack" style="gap:6px"><h3>See the whole club</h3><p class="muted">Every team, coach and player in one list.</p></div>
+      <div class="stack" style="gap:6px"><h3>Stay in control</h3><p class="muted">You approve families and choose who sees each team.</p></div>
+      <div class="stack" style="gap:6px"><h3>Show families the value</h3><p class="muted">Written feedback families remember at re-sign time.</p></div>
+      <div class="stack" style="gap:6px"><h3>Recruit for tryouts</h3><p class="muted">Find players whose parents say they're looking.</p></div>
     </div>
   </div>
   <div class="card stack callout"><h2>Set up your club in 5 minutes</h2>
-    <ol class="numbered"><li>Sign up as a coach and choose <b>Start a club</b>.</li><li>Share your club code with your other coaches.</li><li>Add your teams. Families find your club by name and ask to join; you approve each request from the Players page.</li></ol>
+    <ol class="numbered"><li>Sign up and choose <b>Start a club</b>.</li><li>Share your club code with your coaches.</li><li>Add teams. Families ask to join; you approve.</li></ol>
     <div class="row cta-row"><button type="button" class="btn primary" data-act="pickPortal" data-id="coach">Start your club</button><a class="btn" href="#contact">Book a walkthrough</a></div></div>`;
 }
 ACTS.progJump = (ds, el, ev) => { if(ev) ev.preventDefault(); const t = document.getElementById("prog-" + ds.id); if(t){ t.scrollIntoView({behavior:"smooth", block:"start"}); t.classList.add("flash"); setTimeout(() => t.classList.remove("flash"), 1200); } };
@@ -2737,59 +2737,56 @@ function pageSafety(){
   const row = (what, who) => `<tr><th scope="row">${what}</th><td>${who}</td></tr>`;
   return `<section class="page-hero stack"><span class="eyebrow">Safety</span>
     <h1>How we keep players safe</h1>
-    <p class="lead">Most players on ${APP_NAME} are children. These are the rules we built in from the start, and the people who can see each part of a player's information.</p></section>
+    <p class="lead">Most players are children. Here is who can see what, and the rules we built in.</p></section>
   <div class="card stack"><h2>Who can see what</h2>
     <div class="tbl-wrap"><table class="who-sees"><thead><tr><th scope="col">Information</th><th scope="col">Who can see it</th></tr></thead><tbody>
-      ${row("Coach reviews, ratings and notes", "The player's family and the coaches of their team (and the club admin). Never public, never in recruiting search.")}
-      ${row("Private messages and meeting requests", "The player's family, their team's coaches and the club admin.")}
+      ${row("Coach reviews and notes", "The family, their coaches and the club admin. Never public.")}
+      ${row("Private messages", "The family, their coaches and the club admin.")}
       ${row("Team chat", "Families and coaches on that team.")}
-      ${row("Player profile (photo, positions, bio)", "The family and the player's current club. Public only if the family makes it public, and only from age " + RECRUIT_AGE + ".")}
-      ${row("Recruitment Profile: College", `Verified college coaches with a school email, only if the parent turns college search on. Ages ${RECRUIT_AGE}+.`)}
-      ${row("Recruitment Profile: Pro", `Pro scouts that ${APP_NAME} has approved by hand, only if the parent turns pro search on. Ages ${RECRUIT_AGE}+.`)}
-      ${row("Recruitment Profile: Youth clubs", `Coaches of other clubs on ${APP_NAME}, only if the parent turns youth club search on. Under ${RECRUIT_AGE}: first name, last initial and birth year only, and no public link.`)}
+      ${row("Player profile", "The family and their club. Public only if the family chooses, from " + RECRUIT_AGE + ".")}
+      ${row("Recruiting: College", `Verified college coaches, if the parent turns it on. Ages ${RECRUIT_AGE}+.`)}
+      ${row("Recruiting: Pro", `Approved scouts, if the parent turns it on. Ages ${RECRUIT_AGE}+.`)}
+      ${row("Recruiting: Youth clubs", `Other clubs' coaches, if the parent turns it on. Under ${RECRUIT_AGE}: first name and last initial only.`)}
     </tbody></table></div>
   </div>
   <div class="grid2">
     <div class="card stack"><h2>Parents are in charge</h2><ul class="ticks">
-      <li>Accounts for players under 13 must be created and run by a parent or guardian.</li>
-      <li>The profile belongs to the family. Change clubs and you keep everything; the old club loses access.</li>
-      <li>Every recruiting listing starts off, and each section has its own switch.</li>
-      <li>Nobody is added to a team without asking: families request to join, and the coach approves.</li></ul></div>
+      <li>Under-13 accounts are run by a parent.</li>
+      <li>The profile belongs to the family.</li>
+      <li>Recruiting starts off, with a switch per section.</li>
+      <li>Families ask to join teams; coaches approve.</li></ul></div>
     <div class="card stack"><h2>Who can contact a player</h2><ul class="ticks">
-      <li>College coaches and scouts send one message to the family, who reply by email if they choose. There is no direct chat with a player.</li>
-      <li>A coach or scout can message a family once a week at most.</li>
-      <li>Coaches only message families of players on their own teams.</li>
-      <li>Approved scouts who change organization go back to waiting for approval.</li></ul></div>
+      <li>Colleges and scouts message the family, never the player.</li>
+      <li>At most one message a week per coach or scout.</li>
+      <li>Coaches only message their own teams' families.</li>
+      <li>Scouts who change organization are checked again.</li></ul></div>
   </div>
   <div class="card stack"><h2>Tips for families</h2><ul class="ticks">
-    <li>Use a parent's email as the contact email on a Recruitment Profile.</li>
-    <li>Check who a college coach or scout is before replying: look them up on their school or club's staff page.</li>
-    <li>Turn off any recruiting section you're not using.</li>
-    <li>Talk to your player about who they share contact details with online.</li></ul></div>
+    <li>Use a parent's email on the Recruitment Profile.</li>
+    <li>Check a coach or scout on their school or club's staff page.</li>
+    <li>Turn off recruiting sections you're not using.</li></ul></div>
   <div class="card stack callout"><h2>Report a concern</h2>
-    <p>If anyone on ${APP_NAME} makes you or your child uncomfortable, or you think an account isn't who it says it is, tell us straight away. Choose <b>Safety concern</b> as the topic and we'll look into it. If a child is in danger, call 911 first.</p>
+    <p>If anyone makes you or your child uncomfortable, tell us straight away. If a child is in danger, call 911 first.</p>
     <div><a class="btn primary" href="#contact" data-act="contactTopic" data-id="Safety concern">Report a concern</a></div></div>`;
 }
 function pageAccessibility(){
   return `<section class="page-hero stack"><span class="eyebrow">Accessibility</span>
     <h1>${APP_NAME} for everyone</h1>
-    <p class="lead">Players, parents and coaches should all be able to use ${APP_NAME}, whatever device they use and however they use it. We aim to meet the Web Content Accessibility Guidelines (WCAG) 2.2 at level AA.</p></section>
+    <p class="lead">${APP_NAME} should work for everyone, on any device. We aim to meet WCAG 2.2 level AA.</p></section>
   <div class="grid2">
     <div class="card stack"><h2>What we've built in</h2><ul class="ticks">
-      <li>Everything works with a keyboard alone. Press Tab to move, Enter to choose, and Escape to close a window. A "Skip to content" link is the first thing on every page.</li>
-      <li>Pages are built for screen readers, with headings, labelled buttons and form fields, and announcements when something is saved or goes wrong.</li>
-      <li>Text and buttons meet AA colour contrast, in both light and dark mode.</li>
-      <li>Pages work when zoomed to 400% or on screens as narrow as 320 pixels, without scrolling sideways.</li>
-      <li>Buttons are large enough to tap easily on a phone.</li>
-      <li>If your device is set to reduce motion, drill animations start paused and page effects are switched off.</li>
-      <li>We ask before deleting anything.</li></ul></div>
+      <li>Works with a keyboard alone, with a "Skip to content" link.</li>
+      <li>Built for screen readers, with labelled buttons and fields.</li>
+      <li>AA colour contrast in light and dark mode.</li>
+      <li>Works zoomed to 400% and on narrow phones.</li>
+      <li>Animations start paused if you prefer reduced motion.</li></ul></div>
     <div class="card stack"><h2>Drill animations</h2>
-      <p>Every drill animation can be paused and played with a tap, a click, or the Enter or Space key. Each one is described by its title for screen readers, and every drill also has full written steps, setup, sets and reps, and coaching points, so you never need the animation to do the drill.</p>
+      <p>Every animation can be paused, and every drill also has full written steps.</p>
       <h2>Known limits</h2>
-      <p>Videos that families upload or link to (YouTube, Hudl, Veo) may not have captions; that's up to whoever made the video. If you find anything else that's hard to use, please tell us.</p></div>
+      <p>Videos families link to (YouTube, Hudl, Veo) may not have captions.</p></div>
   </div>
   <div class="card stack callout"><h2>Tell us what's not working</h2>
-    <p>If something on ${APP_NAME} is hard to use with your device, browser or assistive technology, tell us what you were trying to do and we'll fix it or help you another way.</p>
+    <p>Tell us what you were trying to do and we'll fix it or help another way.</p>
     <div><a class="btn primary" href="#contact" data-act="contactTopic" data-id="Accessibility">Report an accessibility problem</a></div>
     <p class="small muted">Last reviewed ${LEGAL_UPDATED}.</p></div>`;
 }
@@ -2852,26 +2849,26 @@ function pageRecruiting(){
   const J = RECRUIT_EXAMPLE;
   return `<section class="page-hero stack"><span class="eyebrow">Recruiting</span>
     <h1>Get seen by the right coaches</h1>
-    <p class="lead">One Recruitment Profile, three separate sections. Families choose, section by section, who can find their player.</p></section>
+    <p class="lead">One profile, three sections. Families choose who can find their player.</p></section>
   <div class="grid3 sec-cards">
     <div class="card stack"><span class="pill plain" style="align-self:flex-start">Ages ${RECRUIT_AGE} and over</span><h2>College</h2>
-      <p>For players aiming at college soccer. Academics, divisions of interest and commitment status, searchable by verified college coaches with a school .edu email.</p>
+      <p>Academics and division interest, seen by verified college coaches.</p>
       <div><button type="button" class="btn sm" data-act="pickPortal" data-id="college">College coach? Join free</button></div></div>
     <div class="card stack"><span class="pill plain" style="align-self:flex-start">Ages ${RECRUIT_AGE} and over</span><h2>Pro</h2>
-      <p>For players aiming at professional clubs and academies. Playing status, target levels and trial availability, searchable only by scouts that ${APP_NAME} has approved one by one.</p>
+      <p>Playing level and trial availability, seen only by approved scouts.</p>
       <div><button type="button" class="btn sm" data-act="pickPortal" data-id="pro">Pro scout? Ask for access</button></div></div>
     <div class="card stack"><span class="pill good" style="align-self:flex-start">All ages</span><h2>Youth clubs</h2>
-      <p>For players looking for a new club, tryouts or guest playing. Searchable only by coaches of clubs on ${APP_NAME}. Under-16s are shown by first name and last initial and never get a public link.</p>
+      <p>For new clubs, tryouts or guest playing. Under-16s show first name only.</p>
       <div><button type="button" class="btn sm" data-act="pickPortal" data-id="coach">Club coach? Sign in</button></div></div>
   </div>
   <div class="grid2">
     <div class="stack" style="gap:16px">
-      ${feature("Academics up front","Class of, high school, GPA, SAT / ACT, intended major and NCAA Eligibility Center ID.")}
-      ${feature("The soccer details coaches ask for","Positions, club league, height, stronger foot, divisions you're interested in and commitment status.")}
-      ${feature("Highlights, stats and video","Career highlights, season stats and highlight videos from YouTube, Hudl or Veo.")}
-      ${feature("References from your coaches","Club coaches write references in their own words, right from the player's page.")}
-      ${feature("You stay in control","It starts private and unlisted. Each section has its own switch, and you can turn any of them off at any time. Coach reviews, ratings and messages are never on it.")}
-      ${feature("Free for coaches and scouts","College coaches and approved pro scouts search for free. Club coaches use the player search inside their club account. All three keep a private shortlist and message families directly.")}
+      ${feature("Academics up front","Class, GPA, test scores and NCAA ID.")}
+      ${feature("The soccer details","Positions, league, foot and division interest.")}
+      ${feature("Highlights and video","Stats plus YouTube, Hudl or Veo links.")}
+      ${feature("Coach references","Written by club coaches, in their own words.")}
+      ${feature("You stay in control","Off by default. One switch per section.")}
+      ${feature("Free for coaches and scouts","Search, shortlist and message families.")}
     </div>
     <div class="card stack">
       <div class="row between"><h3>What a college coach sees</h3><span class="pill warn">Example</span></div>
@@ -2893,48 +2890,48 @@ function pageRecruiting(){
 function pageParents(){
   return `<section class="page-hero stack"><span class="eyebrow">For Parents</span>
     <h1>Know what your child is working on</h1>
-    <p class="lead">See your coach's feedback as it happens, help with the right drills at home, and keep up with the team without digging through group texts.</p></section>
+    <p class="lead">See the coach's feedback and help with the right drills at home.</p></section>
   <div class="grid3">
-    ${feature("Real feedback","Ratings from 1 to 5, strengths, what to work on and a note from the coach after every review.")}
-    ${feature("Progress over the season","Every review is saved, so you can see what's improving and what's next.")}
-    ${feature("15 minutes at home","Drills picked from the coach's review, with step-by-step instructions. Tick them off each week.")}
-    ${feature("Team chat","Schedule changes and announcements from the coach, in one place.")}
-    ${feature("Recruiting in three sections",`One Recruitment Profile with highlight videos and coach references. Youth clubs at any age, College and Pro from age ${RECRUIT_AGE}. You decide who sees it.`)}
-    ${feature("Private and safe","Only your child's coaches and your family can see reviews. Other families can't.")}
+    ${feature("Real feedback","Ratings, strengths and a note after every review.")}
+    ${feature("Progress over the season","See what's improving and what's next.")}
+    ${feature("15 minutes at home","Drills from the review, ticked off each week.")}
+    ${feature("Team chat","Schedule changes from the coach, in one place.")}
+    ${feature("Recruiting when ready",`Youth clubs at any age, colleges and scouts from ${RECRUIT_AGE}.`)}
+    ${feature("Private and safe","Only your family and the coaches see reviews.")}
   </div>
   <div class="card stack callout"><h2>How to join</h2>
-    <ol class="numbered"><li>Sign up as a parent or player. No code needed.</li><li>Create your player's profile: positions, strengths, highlights.</li><li>Find your club by name, pick your team and send a request. Once the coach approves, you'll see their reviews, home drills and team chat.</li></ol>
+    <ol class="numbered"><li>Sign up as a parent or player.</li><li>Create your player's profile.</li><li>Find your club and ask to join the team.</li></ol>
     <div class="row cta-row"><button type="button" class="btn primary" data-act="pickPortal" data-id="family">Sign up as a parent or player</button></div></div>`;
 }
 
 function pagePricing(){
   return `<section class="page-hero stack"><span class="eyebrow">Pricing</span>
     <h1>Simple plans for clubs and families</h1>
-    <p class="lead">Clubs pay ${PRICES.club} a month for each team they register, or ${PRICES.unlimited} a month for unlimited teams, and choose whether Home Training is included for their players. Players without it can add the at-home drills for ${PRICES.family} a month.</p></section>
+    <p class="lead">Pay per team, or one price for the whole club. Families can add Home Training.</p></section>
   <div class="grid3 plans3">
     <div class="card plan">
       <span class="pill plain" style="align-self:flex-start">For clubs & coaches</span>
       <h2>Club</h2>
       <div><span class="price">${PRICES.club}</span> <span class="muted">${PRICES.clubPer} you register</span></div>
-      <p class="small muted">For example, a club with 5 teams pays $99.95 a month.</p>
-      <ul><li>Unlimited players and coaches on each team</li>${CLUB_FEATURES}</ul>
+      <p class="small muted">5 teams: $99.95 a month.</p>
+      <ul><li>Unlimited players and coaches</li>${CLUB_FEATURES}</ul>
       <button type="button" class="btn" data-act="pickPortal" data-id="coach" style="align-self:flex-start;margin-top:auto">Start your club</button>
     </div>
     <div class="card plan featured">
       <span class="pill warn" style="align-self:flex-start">Best for 10+ teams</span>
       <h2>Club Unlimited</h2>
       <div><span class="price">${PRICES.unlimited}</span> <span class="muted">${PRICES.unlimitedPer}</span></div>
-      <p class="small muted">One price for the whole club. Pays for itself from 10 teams; a club with 20 teams saves $200.80 a month.</p>
-      <ul><li><b>Unlimited teams</b>, players and coaches</li>${CLUB_FEATURES}</ul>
+      <p class="small muted">Cheaper than per-team from 10 teams.</p>
+      <ul><li><b>Unlimited teams</b> and players</li>${CLUB_FEATURES}</ul>
       <button type="button" class="btn primary" data-act="pickPortal" data-id="coach" style="align-self:flex-start;margin-top:auto">Start your club</button>
     </div>
     <div class="card plan">
       <span class="pill good" style="align-self:flex-start">For parents & players</span>
       <h2>Home Training</h2>
       <div><span class="price">${PRICES.family}</span> <span class="muted">${PRICES.familyPer}</span></div>
-      <p class="small">At-home drills for players whose club or team doesn't include Home Training.</p>
-      <ul><li>Drills recommended from the coach's review</li><li>Full home drill library</li><li>Progress charts and full review timeline</li><li>Weekly drill tracking your coach can see</li></ul>
-      <p class="small muted">Free with every club: the coach's latest review, skill ratings, player profile and team chat.</p>
+      <p class="small muted">For players whose club doesn't include it.</p>
+      <ul><li>Drills picked from the review</li><li>Full drill library</li><li>Progress charts and timeline</li><li>Weekly drill tracking</li></ul>
+      <p class="small muted">Always free: latest review, ratings, profile and team chat.</p>
       <button type="button" class="btn" data-act="pickPortal" data-id="family" style="align-self:flex-start;margin-top:auto">Sign up as a family</button>
     </div>
   </div>
@@ -2942,19 +2939,17 @@ function pagePricing(){
     <div class="row between"><div class="stack" style="gap:4px"><span class="pill plain" style="align-self:flex-start">For college coaches</span>
       <h2>College recruiting</h2><div><span class="price">Free</span> <span class="muted">with a college coach account</span></div></div>
       <button type="button" class="btn" data-act="pickPortal" data-id="college" style="align-self:center">Create a free account</button></div>
-    <ul><li>Search players aged ${RECRUIT_AGE}+ by position, class, GPA, league and division interest</li><li>Private shortlist with status and notes</li><li>Message families directly; they reply to your school email</li><li>Needs a school .edu email address</li></ul>
+    <ul><li>Search players ${RECRUIT_AGE}+ by position, class and GPA</li><li>Private shortlist and notes</li><li>Message families directly</li><li>Needs a school .edu email</li></ul>
   </div>
-  <div class="card stack"><h2>Questions</h2>
-    <div class="faq"><b>Do college coaches pay?</b><p class="muted">No. Searching for players, the shortlist and messaging families are free once you create a college coach account with your school .edu email.</p></div>
-    <div class="faq"><b>Do pro scouts pay?</b><p class="muted">No. Pro scout accounts are free, but ${APP_NAME} approves each one by hand before the scout can see any players.</p></div>
-    <div class="faq"><b>How is the Club plan charged?</b><p class="muted">${PRICES.club} a month for each team you register, with unlimited players and coaches on every team.</p></div>
-    <div class="faq"><b>When is Club Unlimited worth it?</b><p class="muted">From 10 teams. Ten teams on the per-team plan cost $199.90 a month; Club Unlimited is ${PRICES.unlimited} however many teams you add. You can switch plans any time from your Club page.</p></div>
-    <div class="faq"><b>Is Home Training free if my club includes it?</b><p class="muted">Yes. If your club includes Home Training, every player on the club's teams gets it at no extra cost.</p></div>
-    <div class="faq"><b>We have two children. Do we pay twice?</b><p class="muted">Home Training is ${PRICES.family} a month for each player who doesn't get it through their club.</p></div>
-    <div class="faq"><b>Do players need their own account?</b><p class="muted">No. One parent account can hold every child's profile.</p></div>
-    <div class="faq"><b>What happens if we change clubs?</b><p class="muted">The profile belongs to your family, not the club. Leave the old team and ask to join the new one. You keep every past review and reference; the old club's coaches lose access.</p></div>
-    <div class="faq"><b>Something else?</b><p class="muted"><a href="#contact">Contact us</a> and we'll get back to you.</p></div>
-  </div>`;
+  <section class="card stack" aria-labelledby="h-pfaq"><h2 id="h-pfaq">Questions</h2>
+    ${[["Do college coaches or scouts pay?", "No. Both are free. Scouts are approved by hand first."],
+       ["How is the Club plan charged?", `${PRICES.club} a month per team, with unlimited players and coaches.`],
+       ["When is Club Unlimited worth it?", `From 10 teams. Ten teams per-team cost $199.90; Unlimited is ${PRICES.unlimited}.`],
+       ["Is Home Training free if my club includes it?", "Yes, for every player on the club's teams."],
+       ["We have two children. Do we pay twice?", `${PRICES.family} a month for each player whose club doesn't include it.`],
+       ["What happens if we change clubs?", "You keep the profile and every review. The old club loses access."],
+       ["Something else?", `<a href="#contact">Contact us</a> and we'll get back to you.`]].map(([q, a]) => `<details class="faq-d"><summary>${q}</summary><p class="muted">${a}</p></details>`).join("")}
+  </section>`;
 }
 
 function pageContact(){
@@ -2962,7 +2957,7 @@ function pageContact(){
     <p class="lead">We'll reply to ${esc(S.contactSent)} as soon as we can.</p><div><a class="btn" href="#how-it-works">See how ${APP_NAME} works</a></div></section>`;
   return `<section class="page-hero stack"><span class="eyebrow">Contact Us</span>
     <h1>Talk to us</h1>
-    <p class="lead">Want a walkthrough for your club or league, have a question about pricing or recruiting, or need help with your account? Send us a message and we'll reply by email.</p></section>
+    <p class="lead">Questions, a club walkthrough or help with your account. We reply by email.</p></section>
   <form class="card stack contact-form" data-form="contact" style="max-width:720px">
     <div class="grid2" style="gap:14px">
       <label class="f" for="ct-name">Your name<input type="text" id="ct-name" name="name" required maxlength="80" autocomplete="name"></label>
@@ -3881,7 +3876,7 @@ function exampleProfile(){
   return `<section class="example stack" aria-labelledby="ex-h">
     <div class="row between">
       <div class="stack" style="gap:4px"><h2 id="ex-h">See what a player profile looks like</h2>
-        <p class="muted small">Here's what a family sees after a few months of coach reviews.</p></div>
+        <p class="muted small">What a family sees after a few months of reviews.</p></div>
       <span class="pill warn">Example player, not a real person</span>
     </div>
     <div class="card pcard">
@@ -3899,11 +3894,19 @@ function exampleProfile(){
           <div class="row between"><h3>Coach's latest review</h3><span class="small muted">${fmtDate(last.date)} · ${esc(last.coachName)}</span></div>
           <div class="overall"><span class="big num">${fix1(o)}</span><span class="muted">/ 5 overall</span>${deltaHtml(o-po)}</div>
           <p class="tl-sum">“${esc(last.summary)}”</p>
-          <div class="chips">${changesBetween(prev, last).map(changeChip).join("")}</div>
           <div class="stack" style="gap:6px"><b class="small">Strengths</b><div class="chips">${last.strengths.map(t=>`<span class="chip str">${esc(t)}</span>`).join("")}</div></div>
           <div class="stack" style="gap:6px"><b class="small">Work on</b><div class="chips">${last.improve.map(t=>`<span class="chip imp">${esc(t)}</span>`).join("")}</div></div>
           <div class="note" style="white-space:pre-wrap">${esc(last.note)}</div>
         </div>
+      </div>
+      <div class="stack" style="gap:20px">
+        <div class="card stack"><h3>Skill ratings</h3>${ratingsHtml(last, prev)}</div>
+      </div>
+    </div>
+    <details class="ex-more">
+      <summary>See home drills, recruiting and the full timeline</summary>
+      <div class="grid2">
+        <div class="stack" style="gap:20px">
         <div class="card stack">
           <h3>Home drills this week</h3>
           ${E.drills.map(d=>`<div class="drill"><div class="row between"><b>${esc(d.title)}</b><span class="small muted">${esc(d.meta)}</span></div>
@@ -3912,20 +3915,16 @@ function exampleProfile(){
         </div>
         <div class="card stack">
           <div class="row between"><h3>College recruiting</h3><span class="pill plain">From age ${RECRUIT_AGE}</span></div>
-          <p class="small muted">At ${RECRUIT_AGE}, players can add a Recruitment Profile for college coaches: academics, highlights, stats, video and references like this one from their club coach.</p>
+          <p class="small muted">From ${RECRUIT_AGE}, a Recruitment Profile adds academics, highlights and references like this one.</p>
           <div class="ref reference"><blockquote>${esc(E.reference.text)}</blockquote><span class="small"><b>${esc(E.reference.author)}</b>, ${esc(E.reference.title)}</span></div>
           <div><a class="btn sm" href="#recruiting">How college recruiting works</a></div>
         </div>
+        </div>
+        <div class="stack" style="gap:20px">
+          <div class="card stack"><h3>Progress & review timeline</h3>${progressSummary(rs)}${timelineHtml(rs)}</div>
+        </div>
       </div>
-      <div class="stack" style="gap:20px">
-        <div class="card stack"><h3>Skill ratings</h3>${ratingsHtml(last, prev)}</div>
-        <div class="card stack"><h3>Progress & review timeline</h3>${progressSummary(rs)}${timelineHtml(rs)}</div>
-      </div>
-    </div>
-    <div class="row" style="justify-content:center;gap:12px">
-      <button type="button" class="btn primary" data-act="pickPortal" data-id="coach">Start as a coach</button>
-      <button type="button" class="btn" data-act="pickPortal" data-id="family">I'm a parent or player</button>
-    </div>
+    </details>
   </section>`;
 }
 function savePortal(p){ S.portal = p || null; try { if(p) localStorage.setItem("np.portal", p); else localStorage.removeItem("np.portal"); } catch(_){} }
