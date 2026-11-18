@@ -10,7 +10,7 @@ const SCENES = [
   {id:"intro",   chap:"",           dur:4.6, cap:"One place for coaches, players and parents.",
     text:"NextPass brings coaches, players and parents together in one place, from first touch to first offer."},
   {id:"review",  chap:"Coaches",    dur:6.8, cap:"Coaches review each player and say what to work on.",
-    text:"Coaches review each player on 13 field skills or 7 goalkeeper skills, mark a strength and what to work on, and add a note."},
+    text:"Coaches review each player on 19 field skills or 7 goalkeeper skills, mark a strength and what to work on, and add a note."},
   {id:"home",    chap:"Players",    dur:6.8, cap:"Players train at home with drills picked for them.",
     text:"Players get home drills picked from their latest review. Each drill has an animation and simple steps, and they tick them off as they go."},
   {id:"parents", chap:"Parents",    dur:6.4, cap:"Parents follow progress and message the coach.",

@@ -10,16 +10,52 @@ const FIELD_SKILLS = [
   {k:"passing",label:"Passing",group:"Technical"},
   {k:"shooting",label:"Shooting",group:"Technical"},
   {k:"dribbling",label:"Dribbling",group:"Technical"},
+  {k:"weak_foot",label:"Weak Foot",group:"Technical"},
+  {k:"skill_moves",label:"Skill Moves",group:"Technical"},
   {k:"physicality",label:"Physicality",group:"Speed & physical"},
+  {k:"sprint_speed",label:"Sprint Speed",group:"Speed & physical"},
   {k:"handling_speed",label:"Handling Speed",group:"Speed & physical"},
   {k:"separation_speed",label:"Separation Speed",group:"Speed & physical"},
+  {k:"stamina",label:"Stamina",group:"Speed & physical"},
   {k:"positional_awareness",label:"Positional Awareness",group:"Tactical"},
+  {k:"vision",label:"Vision",group:"Tactical"},
   {k:"decision_making",label:"Decision Making",group:"Tactical"},
   {k:"defending",label:"Defending",group:"Tactical"},
   {k:"tactical_understanding",label:"Tactical Understanding",group:"Tactical"},
   {k:"communication",label:"Communication",group:"Mindset"},
+  {k:"attitude",label:"Attitude",group:"Mindset"},
   {k:"coachability",label:"Coachability",group:"Mindset"}
 ];
+/* mindset skills that no drill trains, so they never drive drill picks */
+const MINDSET_ONLY = ["coachability", "attitude"];
+/* What a review's ratings are measured against. The coach picks one for every review. */
+const BASELINES = [
+  {k:"age", label:"Age group", help:"Compared with players of the same age"},
+  {k:"league", label:"League", help:"Compared with players in the league they play in"},
+  {k:"team", label:"Team", help:"Compared with their own teammates"},
+  {k:"higher", label:"Higher level", help:"Ready to play at a higher level (U16 and up)", minU:16}
+];
+const baselineOf = r => BASELINES.find(b => b.k === (r && r.baseline)) || null;
+/* the player's age group (U-number): the team's age group, or the birth year for the current season (Aug to Jul) */
+function uGroupOf(p){
+  if(!p) return null;
+  if(p.uGroup) return p.uGroup;
+  const t = S.teams.find(x => x.id === p.teamId);
+  const m = String((t && t.ageGroup) || (t && t.name) || "").match(/U-?\s?(\d{1,2})\b/i);
+  if(m) return Number(m[1]);
+  const by = p.birthDate ? Number(String(p.birthDate).slice(0, 4)) : Number(p.birthYear) || null;
+  if(!by) return null;
+  const n = new Date(), seasonEnd = n.getMonth() >= 7 ? n.getFullYear() + 1 : n.getFullYear();
+  return seasonEnd - by;
+}
+function baselineText(r, p){
+  const b = baselineOf(r); if(!b) return "";
+  if(b.k === "age"){ const u = uGroupOf(p); return u ? `their age group (U${u})` : "their age group"; }
+  if(b.k === "team"){ const t = p && S.teams.find(x => x.id === p.teamId); return t ? `their team (${t.name})` : "their team"; }
+  if(b.k === "league") return "their league";
+  return "the next level up";
+}
+const baselinePill = (r, p) => baselineOf(r) ? `<span class="pill plain bl-pill" title="${esc(baselineOf(r).help)}">Rated against ${esc(baselineText(r, p))}</span>` : "";
 const GK_SKILLS = [
   {k:"gk_shot_stopping",label:"Shot Stopping",group:"Shot stopping"},
   {k:"gk_diving",label:"Diving",group:"Shot stopping"},
@@ -56,20 +92,37 @@ function progressSummary(rs){
     ${reviewForm(first) !== reviewForm(last) ? `<p class="small muted">The first and latest reviews use different forms (field player and goalkeeper), so only the overall score is compared.</p>` : ""}
   </div>`;
 }
+/* discuss and admin-delete buttons for one review */
+function reviewActions(r, opts={}){
+  const admin = S.me && S.me.role === "admin" && opts.staff;
+  const discuss = opts.discuss && S.me && canMessage(S.players.find(x => x.id === r.playerId));
+  if(!discuss && !admin) return "";
+  return `<div class="row" style="gap:6px">${discuss ? `<button class="btn sm" data-act="discussReview" data-player="${esc(r.playerId)}" data-review="${esc(r.id)}">💬 Discuss this review</button>` : ""}${admin ? `<button class="btn ghost sm" data-act="delReview" data-id="${esc(r.id)}" aria-label="Delete review from ${esc(fmtDate(r.date))}">Delete (admin)</button>` : ""}</div>`;
+}
+/* every review newest first; opts.skipLast leaves out the latest (it is shown above), opts.player adds the baseline */
 function timelineHtml(rs, opts={}){
   if(!rs.length) return '<p class="muted">No reviews yet.</p>';
-  const admin = S.me && S.me.role === "admin" && opts.staff;
-  return `<div class="tl">${rs.map((r,i) => ({r, prev: rs[i-1]})).reverse().map(({r, prev}) => {
+  const items = rs.map((r,i) => ({r, prev: rs[i-1], i}));
+  const shown = (opts.skipLast ? items.slice(0, -1) : items).reverse();
+  if(!shown.length) return "";
+  return `<div class="tl">${shown.map(({r, prev, i}) => {
     const o = overall(r), po = overall(prev), ch = changesBetween(prev, r);
+    const str = r.strengths || [], imp = r.improve || [];
     return `<div class="tl-item">
-      <div class="row between"><div><b>${fmtDate(r.date)}</b> <span class="small muted">${esc(r.coachName||"Coach")}${prev?"":" · first review"}${reviewForm(r)==="gk"?" · goalkeeper":""}</span></div>
+      <div class="row between"><div><b>${fmtDate(r.date)}</b> <span class="small muted">${esc(r.coachName||"Coach")}${i === 0 ? " · first review" : ""}${reviewForm(r)==="gk"?" · goalkeeper":""}</span></div>
         <div class="row"><span class="score num">${o!=null?fix1(o):"–"}</span>${o!=null&&po!=null?deltaHtml(o-po):""}</div></div>
       ${r.summary ? `<p class="tl-sum">“${esc(r.summary)}”</p>` : ""}
       ${ch.length ? `<div class="chips">${ch.map(changeChip).join("")}</div>` : (prev && reviewForm(prev)===reviewForm(r) ? `<span class="small muted">No rating changes</span>` : "")}
-      ${r.note ? `<details><summary class="small">Coach's full note</summary><p class="small" style="margin-top:4px;white-space:pre-wrap">${esc(r.note)}</p></details>` : ""}
-      ${opts.discuss && S.me && canMessage(S.players.find(x => x.id === r.playerId)) ? `<div><button class="btn sm" data-act="discussReview" data-player="${esc(r.playerId)}" data-review="${esc(r.id)}">💬 Discuss this review</button></div>` : ""}
-      ${admin ? `<div><button class="btn ghost sm" data-act="delReview" data-id="${esc(r.id)}" aria-label="Delete review from ${esc(fmtDate(r.date))}">Delete (admin)</button></div>` : ""}
+      ${str.length || imp.length ? `<div class="chips">${str.map(t=>`<span class="chip str">${esc(t)}</span>`).join("")}${imp.map(t=>`<span class="chip imp">Work on: ${esc(t)}</span>`).join("")}</div>` : ""}
+      <details class="tl-more"><summary class="small">Ratings${r.note ? " and coach's note" : ""}</summary><div class="stack" style="gap:10px;margin-top:8px">${ratingsHtml(r, prev, opts.player)}${r.note ? `<div class="note small">${esc(r.note)}</div>` : ""}</div></details>
+      ${reviewActions(r, opts)}
     </div>`; }).join("")}</div>`;
+}
+/* "Show review history" under the latest review */
+function reviewHistoryHtml(rs, opts={}){
+  if(rs.length < 2) return "";
+  const n = rs.length - 1;
+  return `<details class="rv-hist"><summary><span class="rh-show">Show review history</span><span class="rh-hide">Hide review history</span> <span class="small muted">${n} earlier review${n===1?"":"s"}</span></summary>${timelineHtml(rs, {...opts, skipLast:true})}</details>`;
 }
 const TAGS = ["First touch","Weak foot","Passing range","Scanning","1v1 attacking","1v1 defending","Finishing","Crossing","Heading","Shielding","Positioning","Decision making","Speed","Work rate","Communication","Confidence on the ball","Leadership","Composure"];
 const POSITIONS = ["Goalkeeper","Defender","Midfielder","Forward","Not set"];
@@ -226,14 +279,26 @@ const drillById = id => allDrills().find(d => d.id === id) || (LEGACY_DRILLS[id]
 const SKILL_LABEL = Object.fromEntries(FIELD_SKILLS.concat(GK_SKILLS).map(s => [s.k, s.label]));
 /* coach "Work on" tags -> review attributes */
 const TAG_SKILLS = {
-  "First touch":["first_touch","gk_ball_handling"], "Weak foot":["passing","shooting","dribbling"], "Passing range":["passing","gk_distribution"],
-  "Scanning":["positional_awareness","decision_making"], "1v1 attacking":["dribbling","separation_speed"], "1v1 defending":["defending"],
+  "First touch":["first_touch","gk_ball_handling"], "Weak foot":["weak_foot","passing","shooting"], "Passing range":["passing","vision","gk_distribution"],
+  "Scanning":["vision","positional_awareness","decision_making"], "1v1 attacking":["dribbling","separation_speed"], "1v1 defending":["defending"],
   "Finishing":["shooting"], "Crossing":["passing"], "Heading":["physicality"], "Shielding":["physicality","dribbling"],
   "Positioning":["positional_awareness","gk_positioning"], "Decision making":["decision_making","gk_decision_making"],
-  "Speed":["separation_speed","handling_speed"], "Work rate":["physicality","coachability"],
-  "Communication":["communication","gk_communication"], "Confidence on the ball":["dribbling","first_touch"],
+  "Speed":["sprint_speed","separation_speed","handling_speed"], "Work rate":["stamina","attitude"],
+  "Communication":["communication","gk_communication"], "Confidence on the ball":["skill_moves","dribbling","first_touch"],
   "Leadership":["communication","gk_communication"], "Composure":["decision_making","first_touch"]
 };
+/* The six newer review skills (weak foot, skill moves, sprint speed, stamina, vision) are matched to drills from what each drill already trains. */
+function addDerivedSkills(d){
+  const sk = new Set(d.skills || []), tags = d.tags || [], txt = ((d.title || "") + " " + (d.summary || d.goal || "")).toLowerCase();
+  if(sk.has("weak_foot") || tags.includes("Weak foot") || /weak(er)? foot|both feet|either foot/.test(txt)) sk.add("weak_foot");
+  if(sk.has("dribbling") && (["Dribbling","Ball mastery"].includes(d.category) || /1v1|turn|feint|move|beat/.test(txt))) sk.add("skill_moves");
+  if(sk.has("separation_speed") || d.category === "Speed & agility" || /sprint/.test(txt)) sk.add("sprint_speed");
+  if(d.category === "Fitness" || tags.includes("Work rate") || ["conditioning","pressing","wave"].includes(d.method) || (sk.has("physicality") && sk.has("separation_speed"))) sk.add("stamina");
+  if(tags.includes("Scanning") || tags.includes("Passing range") || /scan|switch|between the lines|third man/.test(txt) || (sk.has("passing") && sk.has("positional_awareness"))) sk.add("vision");
+  if(d.gk) ["weak_foot","skill_moves","sprint_speed","stamina","vision"].forEach(k => sk.delete(k));
+  d.skills = Array.from(sk);
+}
+BUILTIN_DRILLS.forEach(addDerivedSkills); TEAM_DRILLS.forEach(addDerivedSkills);
 /* Pick home drills from the latest review: low ratings, ratings that dropped, and the coach's "Work on" tags count most. */
 function recommendFor(pid, n = 3){
   const rs = reviewsFor(pid), last = rs[rs.length-1];
@@ -803,15 +868,15 @@ function deltaHtml(d){
   return d > 0 ? `<span class="delta up" aria-label="up ${fix1(d)}">▲ ${fix1(d)}</span>` : `<span class="delta down" aria-label="down ${fix1(-d)}">▼ ${fix1(-d)}</span>`;
 }
 
-function ratingsHtml(last, prev){
+function ratingsHtml(last, prev, p){
   if(!last) return `<p class="muted">No review yet.</p>`;
   const form = reviewForm(last);
-  let html = `<span class="pill ${form==="gk"?"warn":"plain"}" style="align-self:flex-start">${formLabel(form)}</span>`, g = "";
+  let html = `<div class="row" style="gap:6px"><span class="pill ${form==="gk"?"warn":"plain"}">${formLabel(form)}</span>${baselinePill(last, p)}</div>`, g = "";
   for(const s of skillsFor(form)){
     if(s.group !== g){ g = s.group; html += `<div class="rgroup">${g}</div>`; }
     const v = Number(last.ratings[s.k]) || 0, pvRaw = prev && prev.ratings ? Number(prev.ratings[s.k]) : NaN;
     const pv = pvRaw >= 1 && pvRaw <= 5 ? pvRaw : null;
-    html += `<div class="rate"><span>${s.label}</span><div class="bar" role="img" aria-label="${v} out of 5, ${esc(SCALE[v]||"not rated")}"><i style="width:${v*20}%"></i></div><span class="num" title="${esc(SCALE[v]||"")}"><span class="score">${v||"–"}</span>${pv!=null && v && v!==pv ? " "+deltaHtml(v-pv) : ""}</span></div>`;
+    html += `<div class="rate${v ? "" : " unrated"}"><span>${s.label}</span><div class="bar" role="img" aria-label="${v ? v + " out of 5, " + esc(SCALE[v]) : "not rated in this review"}"><i style="width:${v*20}%"></i></div><span class="num" title="${esc(SCALE[v]||"")}"><span class="score">${v||"–"}</span>${pv!=null && v && v!==pv ? " "+deltaHtml(v-pv) : ""}</span></div>`;
   }
   html += `<p class="small muted" style="margin-top:6px">1 Needs a lot of work · 2 Developing · 3 Solid for their level · 4 Strong · 5 Excellent</p>`;
   return `<div class="stack" style="gap:8px">${html}</div>`;
@@ -825,7 +890,7 @@ function chartHtml(rs){
   const k2 = validKey ? key : "overall";
   const pts = rs.map(r => ({d:r.date, v: k2==="overall" ? overall(r) : Number(r.ratings[k2])})).filter(p => p.v >= 1 && p.v <= 5);
   if(pts.length < 2) return `<p class="muted small">Not enough reviews with this rating yet to draw a chart.</p>`;
-  const W=560,H=210,L=34,R=16,T=16,B=30, iw=W-L-R, ih=H-T-B;
+  const W=560,H=224,L=34,R=24,T=30,B=30, iw=W-L-R, ih=H-T-B;
   const x = i => L + (pts.length===1 ? iw/2 : i*iw/(pts.length-1));
   const y = v => T + ih - (v/5)*ih;
   const grid = [0,1,2,3,4,5].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}</text>`).join("");
@@ -839,7 +904,7 @@ function chartHtml(rs){
     <label class="f small" for="chart-skill" style="max-width:260px">Show<select id="chart-skill" data-change="chartSkill">${opts.map(([k,l])=>`<option value="${k}" ${k===k2?"selected":""}>${l}</option>`).join("")}</select></label>
     <div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Progress over ${pts.length} reviews, latest ${fix1(last.v)} out of 5">
       ${grid}<path d="${area}" fill="var(--pitch)" opacity=".12"/><path d="${line}" fill="none" stroke="var(--pitch)" stroke-width="2.5" stroke-linejoin="round"/>${dots}${labels}
-      <text x="${Math.min(x(pts.length-1), W-R-4)}" y="${y(last.v)-11}" text-anchor="end" font-size="13" font-weight="700" fill="var(--ink)">${fix1(last.v)}</text>
+      <text x="${x(pts.length-1)}" y="${y(last.v)-12}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">${fix1(last.v)}</text>
     </svg></div></div>`;
 }
 
@@ -912,11 +977,13 @@ function playerDetail(p, mode){
       ${changesBetween(prev, last).length ? `<div class="chips">${changesBetween(prev, last).map(changeChip).join("")}</div>` : ""}
       <div class="stack" style="gap:6px"><h3>Strengths</h3><div class="chips">${strengths.length?strengths.map(t=>`<span class="chip str">${esc(t)}</span>`).join(""):'<span class="muted small">None noted</span>'}</div></div>
       <div class="stack" style="gap:6px"><h3>Work on</h3><div class="chips">${improve.length?improve.map(t=>`<span class="chip imp">${esc(t)}</span>`).join(""):'<span class="muted small">None noted</span>'}</div></div>
-      ${last.note?`<div class="note">${esc(last.note)}</div>`:""}`
+      ${last.note?`<div class="note">${esc(last.note)}</div>`:""}
+      ${reviewActions(last, {staff:!fam, discuss:!preview})}
+      ${reviewHistoryHtml(rs, {staff:!fam, discuss:!preview, player:p})}`
       : `<p class="muted">${fam?"Your coach hasn't posted a review yet.":"No reviews yet. Start with a first review to set a baseline."}</p>`}
   </div>`;
 
-  const ratingsCard = `<div class="card stack"><h2>Skill ratings</h2>${ratingsHtml(last, prev)}</div>`;
+  const ratingsCard = `<div class="card stack"><h2>Skill ratings</h2>${ratingsHtml(last, prev, p)}</div>`;
 
   let drillsCard;
   if(home){
@@ -929,8 +996,9 @@ function playerDetail(p, mode){
     drillsCard = `<div class="locked"><h2>Home Training</h2><p>Get the drills your coach picks for you, the full drill library and progress charts over time.</p><button class="btn primary" data-act="go" data-view="plans">See Home Training plan</button></div>`;
   }
 
-  const progressCard = home ? `<div class="card stack"><h2>Progress over time</h2>${chartHtml(rs)}</div>` : "";
-  const historyCard = (home || !fam) ? `<div class="card stack"><h2>Progress & review timeline</h2>${progressSummary(rs)}${timelineHtml(rs, {staff:!fam, discuss:!preview})}</div>` : `<div class="locked"><h2>Review timeline</h2><p>Every past review is saved. See each update, what changed and progress since the first review with Home Training.</p><button class="btn primary" data-act="go" data-view="plans">See Home Training plan</button></div>`;
+  const progressCard = home ? `<div class="card stack"><h2>Progress over time</h2>${progressSummary(rs)}${chartHtml(rs)}</div>`
+    : rs.length > 1 ? `<div class="locked"><h2>Progress over time</h2><p>See a chart of every skill over time and what improved most since the first review with Home Training.</p><button class="btn primary" data-act="go" data-view="plans">See Home Training plan</button></div>` : "";
+  const historyCard = "";
 
   return `<div class="grid2">
     <div class="stack" style="gap:20px">${reviewCard}${drillsCard}${recommendCard(p, {staff:!fam, family:fam, preview, locked: fam && !home, title: fam ? "Recommended for you" : "Suggested home drills"})}</div>
@@ -1173,9 +1241,9 @@ function profileHtml(p, opts){
         ${last.summary ? `<p class="tl-sum">“${esc(last.summary)}”</p>` : ""}
         ${(last.strengths||[]).length?`<div class="chips">${last.strengths.map(t=>`<span class="chip str">${esc(t)}</span>`).join("")}</div>`:""}
         ${(last.improve||[]).length?`<div class="chips">${last.improve.map(t=>`<span class="chip imp">Work on: ${esc(t)}</span>`).join("")}</div>`:""}
-        ${ratingsHtml(last, prev)}
+        ${ratingsHtml(last, prev, p)}
         ${last.note?`<div class="note">${esc(last.note)}</div>`:""}
-        ${rs.length>1?`<p class="small muted">${rs.length} reviews so far. See progress over time on the Development tab.</p>`:""}`
+        ${reviewHistoryHtml(rs, {player:p})}`
       : `<p class="muted">${staff ? "No review yet." : "Your coach hasn't posted a review yet."}</p>`}
       ${staff ? `<div><button class="btn primary sm" data-act="modal" data-m="review" data-player="${esc(p.id)}">${rs.length ? "Update review" : "First review"}</button></div>` : ""}
     </div>`;
@@ -1729,7 +1797,7 @@ function plansView(){
       <h2>Home Training</h2>
       <div><span class="price">${PRICES.family}</span> <span class="muted">${PRICES.familyPer}</span></div>
       <p class="small muted">For players whose club doesn't include it.</p>
-      <ul><li>Drills your coach assigns, with step-by-step instructions</li><li>Full home drill library</li><li>Progress charts and full review history</li><li>Weekly drill tracking your coach can see</li></ul>
+      <ul><li>Drills your coach assigns, with step-by-step instructions</li><li>Full home drill library</li><li>Progress charts for every skill</li><li>Weekly drill tracking your coach can see</li></ul>
       <p class="small muted">Free with every club: the coach's latest review and skill ratings.</p>
       ${!staff && !included ? (fp ? `<div class="row"><span class="pill good">Trial active</span><button class="btn ghost sm" data-act="cancelPlan">Cancel trial</button></div>` : `<div><button class="btn primary" data-act="startPlan">Start 14-day free trial</button></div>`) : ""}
     </div>
@@ -1862,18 +1930,24 @@ const MODALS = {
       }
       return out; };
     return `<h2>${last ? "Update review" : "First review"}: ${esc(p.name)}</h2>
-    <p class="small muted">${last?`Sliders start at the last review's ratings (${fmtDate(last.date)}). Move only what has changed. The previous review stays saved in the timeline.`:"This first review sets the baseline that future progress is measured from."} 1 Needs a lot of work · 2 Developing · 3 Solid for their level · 4 Strong · 5 Excellent</p>
+    <p class="small muted">${last?`Sliders start at the last review's ratings (${fmtDate(last.date)}). Move only what has changed. The previous review stays in the review history.`:"This first review sets the baseline that future progress is measured from."} 1 Needs a lot of work · 2 Developing · 3 Solid for their level · 4 Strong · 5 Excellent</p>
     <form data-form="review" data-id="${esc(p.id)}" data-last="${last ? esc(JSON.stringify({form:lastForm, ratings:last.ratings})) : ""}">
       <label class="f" for="r-date" style="max-width:200px">Date<input type="date" id="r-date" name="date" value="${today()}" required></label>
       <fieldset class="rtype" style="border:0;padding:0;margin:0;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><legend class="small" style="font-weight:600;margin-bottom:6px;color:var(--blue-deep)">Review type</legend>
         <label class="chipbox" for="rf-field"><input type="radio" id="rf-field" name="form" value="field" data-reviewform="1" ${form==="field"?"checked":""}><span>Field player</span></label>
         <label class="chipbox" for="rf-gk"><input type="radio" id="rf-gk" name="form" value="gk" data-reviewform="1" ${form==="gk"?"checked":""}><span>Goalkeeper</span></label>
       </fieldset>
+      ${(() => { const u = uGroupOf(p), lastB = last && baselineOf(last) ? last.baseline : "";
+        const opts = BASELINES.filter(b => !b.minU || (u != null && u >= b.minU) || lastB === b.k);
+        return `<fieldset class="bl-pick"><legend>Rate against <span class="small muted">(required)</span></legend>
+        <p class="small muted" style="margin:0 0 6px">What should a 3 (“solid for their level”) mean in this review?${u != null && u < 16 ? " Higher level is available from U16." : ""}</p>
+        <div class="chips">${opts.map(b => `<label class="chipbox" for="bl-${b.k}" title="${esc(b.help)}"><input type="radio" id="bl-${b.k}" name="baseline" value="${b.k}" required ${lastB === b.k ? "checked" : ""}><span>${esc(b.label)}</span></label>`).join("")}</div>
+        <p class="small muted bl-help" id="bl-help" data-last="${esc(lastB)}">${lastB ? esc(baselineOf(last).help) + ". Same as the last review." : "Pick one so families know what the ratings are compared with."}</p></fieldset>`; })()}
       <div class="stack rset" data-set="field" style="gap:8px" ${form==="field"?"":"hidden"}>${sliderSet("field")}</div>
       <div class="stack rset" data-set="gk" style="gap:8px" ${form==="gk"?"":"hidden"}>${sliderSet("gk")}</div>
       <div class="update-box stack" style="gap:8px">
         ${last ? `<div class="small"><b>Changes since last review:</b> <span id="r-changes" class="muted">None yet. Move a slider to record a change.</span></div>` : ""}
-        <label class="f" for="r-summary">${last ? "What changed since the last review?" : "One-line summary"} <span class="small muted">(required, shown in the progress timeline)</span>
+        <label class="f" for="r-summary">${last ? "What changed since the last review?" : "One-line summary"} <span class="small muted">(required, shown in the review history)</span>
           <input type="text" id="r-summary" name="summary" required maxlength="280" placeholder="${last ? "e.g. First touch much sharper since the winter clinic; still working on weak foot." : "e.g. Strong passer, needs to get more involved defensively."}"></label>
       </div>
       <div class="stack" style="gap:6px"><b>Strengths</b>${chips("str", [])}<input type="text" name="strOther" id="r-str-other" placeholder="Other strengths, separated by commas" aria-label="Other strengths"></div>
@@ -2264,17 +2338,25 @@ const FORMS = {
     const split = v => String(v||"").split(",").map(x=>x.trim()).filter(Boolean).slice(0,8);
     const strengths = Array.from(new Set(fd.getAll("str").concat(split(fd.get("strOther")))));
     const improve = Array.from(new Set(fd.getAll("imp").concat(split(fd.get("impOther")))));
+    const baseline = BASELINES.some(b => b.k === fd.get("baseline")) ? fd.get("baseline") : "";
+    if(!baseline){ toast("Pick what the ratings are compared with: age group, league, team or higher level.", true); return; }
     closeModal();
-    const row = {clubId:S.me.clubId, playerId:form.dataset.id, coachId:S.uid, coachName:S.me.name||"", date:fd.get("date")||today(), ratings, strengths, improve, note:fd.get("note").trim(), summary:String(fd.get("summary")||"").trim().slice(0,280), createdAt:Date.now()};
+    const row = {clubId:S.me.clubId, playerId:form.dataset.id, coachId:S.uid, coachName:S.me.name||"", date:fd.get("date")||today(), ratings, strengths, improve, note:fd.get("note").trim(), summary:String(fd.get("summary")||"").trim().slice(0,280), baseline, createdAt:Date.now()};
     await save(async () => {
       try { await S.db.collection("reviews").doc().set(row); }
       catch(e){
+        if(/baseline/i.test(e.message||"")){
+          const {baseline:_b, ...rest} = row;
+          await S.db.collection("reviews").doc().set(rest);
+          toast("Saved without the “rate against” choice. Ask your admin to run database update 019.", true);
+          return;
+        }
         if(!/summary/i.test(e.message||"")) throw e;
         const {summary, ...rest} = row;
         await S.db.collection("reviews").doc().set({...rest, note: (summary ? "Update: " + summary + (rest.note ? "\n\n" + rest.note : "") : rest.note)});
         toast("Saved. Ask your admin to run database update 002 so update notes get their own field.", true);
       }
-    }, "Review saved. The previous one stays in the timeline.");
+    }, "Review saved. The previous one stays in the review history.");
   },
   assign: async fd => {
     const d = drillById(fd.get("drillId"));
@@ -2390,7 +2472,7 @@ const FORMS = {
 /* actions that delete something: ask first, in plain words */
 const CONFIRM = {
   delTeam: ["Delete this team?", "Players stay in your club but won't be on a team, and the team chat is deleted.", "Delete team"],
-  delReview: ["Delete this review?", "It disappears from the player's timeline for the family and every coach. This can't be undone.", "Delete review"],
+  delReview: ["Delete this review?", "It disappears from the player's review history for the family and every coach. This can't be undone.", "Delete review"],
   removeFromClub: ["Remove this player from your club?", "The family keeps the profile; your coaches lose access to it. They can ask to join again.", "Remove player"],
   delDrill: ["Delete this club drill?", "It's removed from your library and from any player it was assigned to.", "Delete drill"],
   unassign: ["Remove this drill from the player's week?", "Their progress on it this week is cleared.", "Remove drill"],
@@ -2493,6 +2575,10 @@ function updateChangeHint(form){
   box.innerHTML = ch.length ? ch.map(changeChip).join(" ") : "None yet. Move a slider to record a change.";
 }
 document.addEventListener("change", ev => {
+  if(ev.target.name === "baseline" && ev.target.form && ev.target.form.dataset.form === "review"){
+    const help = ev.target.form.querySelector("#bl-help"), b = BASELINES.find(x => x.k === ev.target.value);
+    if(help && b){ const lastB = help.dataset.last; help.textContent = b.help + "." + (lastB && lastB !== b.k ? ` The last review was rated against ${(BASELINES.find(x => x.k === lastB) || {}).label.toLowerCase()}, so changes may partly reflect the new comparison.` : lastB ? " Same as the last review." : ""); }
+  }
   if(ev.target.dataset && ev.target.dataset.reviewform){
     const f = ev.target.value, form = ev.target.form;
     form.querySelectorAll(".rset").forEach(el => {
@@ -2930,7 +3016,7 @@ function pagePricing(){
       <h2>Home Training</h2>
       <div><span class="price">${PRICES.family}</span> <span class="muted">${PRICES.familyPer}</span></div>
       <p class="small muted">For players whose club doesn't include it.</p>
-      <ul><li>Drills picked from the review</li><li>Full drill library</li><li>Progress charts and timeline</li><li>Weekly drill tracking</li></ul>
+      <ul><li>Drills picked from the review</li><li>Full drill library</li><li>Progress charts for every skill</li><li>Weekly drill tracking</li></ul>
       <p class="small muted">Always free: latest review, ratings, profile and team chat.</p>
       <button type="button" class="btn" data-act="pickPortal" data-id="family" style="align-self:flex-start;margin-top:auto">Sign up as a family</button>
     </div>
@@ -3402,7 +3488,7 @@ document.addEventListener("input", ev => {
 });
 
 /* ---------- team training sessions ---------- */
-const TD_SKILLS = FIELD_SKILLS.filter(s => s.k !== "coachability");
+const TD_SKILLS = FIELD_SKILLS.filter(s => !MINDSET_ONLY.includes(s.k));
 const SESS_LENGTHS = [45, 60, 75, 90, 105, 120];
 const ageOfTeam = t => { const m = String((t && t.ageGroup) || (t && t.name) || "").match(/U-?\s?(\d{1,2})\b/i) || String((t && t.ageGroup) || "").match(/(\d{1,2})/); return m ? Number(m[1]) : null; };
 const tdAgeOk = (dr, age) => age == null || (dr.minAge || 0) <= age;
@@ -3440,7 +3526,7 @@ function teamFocus(teamId){
     }
     for(const t of (last.improve || [])) for(const k of (TAG_SKILLS[t] || [])) (tagged[k] = tagged[k] || new Set()).add(p.id);
   }
-  const skills = Object.keys(vals).filter(k => k !== "coachability").map(k => {
+  const skills = Object.keys(vals).filter(k => !MINDSET_ONLY.includes(k)).map(k => {
     const v = vals[k], avg = v.reduce((a, b) => a + b, 0) / v.length, gk = k.startsWith("gk_");
     const pool = Math.max(1, gk ? keepers : reviewed - keepers);
     const tags = tagged[k] ? tagged[k].size : 0, lows = low[k] || [];
@@ -3850,14 +3936,14 @@ const EXAMPLE = {
   strengths:["Passing range","Scanning","Work rate","Composure"],
   bio:"Central midfielder who likes to get on the ball, switch play and set the tempo.",
   reviews:[
-    {date:"2026-08-22", coachName:"Coach Rivera", summary:"Composed passer with a great attitude. Needs to win more duels and track back.",
-     ratings:{first_touch:3,passing:4,shooting:2,dribbling:3,physicality:2,handling_speed:3,separation_speed:2,positional_awareness:3,decision_making:3,defending:2,tactical_understanding:3,communication:3,coachability:5},
+    {date:"2026-08-22", coachName:"Coach Rivera", baseline:"age", summary:"Composed passer with a great attitude. Needs to win more duels and track back.",
+     ratings:{first_touch:3,passing:4,shooting:2,dribbling:3,physicality:2,handling_speed:3,separation_speed:2,positional_awareness:3,decision_making:3,defending:2,tactical_understanding:3,communication:3,coachability:5,weak_foot:2,skill_moves:2,sprint_speed:2,stamina:3,vision:3,attitude:5},
      strengths:["Passing range","Work rate"], improve:["1v1 defending","Strength in duels"], note:""},
-    {date:"2026-10-03", coachName:"Coach Rivera", summary:"Checking his shoulder before receiving has made his first touch much cleaner. Defending is improving.",
-     ratings:{first_touch:4,passing:4,shooting:2,dribbling:3,physicality:3,handling_speed:3,separation_speed:3,positional_awareness:4,decision_making:3,defending:3,tactical_understanding:3,communication:3,coachability:5},
+    {date:"2026-10-03", coachName:"Coach Rivera", baseline:"age", summary:"Checking his shoulder before receiving has made his first touch much cleaner. Defending is improving.",
+     ratings:{first_touch:4,passing:4,shooting:2,dribbling:3,physicality:3,handling_speed:3,separation_speed:3,positional_awareness:4,decision_making:3,defending:3,tactical_understanding:3,communication:3,coachability:5,weak_foot:2,skill_moves:3,sprint_speed:3,stamina:3,vision:4,attitude:5},
      strengths:["Scanning","Passing range"], improve:["Finishing","Weak foot"], note:""},
-    {date:"2026-11-07", coachName:"Coach Rivera", summary:"Now dictating the tempo in midfield. Next step: arrive in the box and shoot with confidence.",
-     ratings:{first_touch:4,passing:5,shooting:3,dribbling:3,physicality:3,handling_speed:3,separation_speed:3,positional_awareness:4,decision_making:4,defending:3,tactical_understanding:4,communication:4,coachability:5},
+    {date:"2026-11-07", coachName:"Coach Rivera", baseline:"age", summary:"Now dictating the tempo in midfield. Next step: arrive in the box and shoot with confidence.",
+     ratings:{first_touch:4,passing:5,shooting:3,dribbling:3,physicality:3,handling_speed:3,separation_speed:3,positional_awareness:4,decision_making:4,defending:3,tactical_understanding:4,communication:4,coachability:5,weak_foot:3,skill_moves:3,sprint_speed:3,stamina:4,vision:5,attitude:5},
      strengths:["Passing range","Scanning","Communication"], improve:["Finishing","Weak foot","Staying goal-side"],
      note:"Gray, your range of passing has been the best in the group this month, and you're talking much more to organise the midfield. To take the next step:\n1. When the shooting window opens, take it instead of looking for one more pass.\n2. Keep working your left foot so defenders can't force you back inside.\n3. When we lose the ball, get goal-side first, then press.\nGreat attitude every session. Keep it up."}
   ],
@@ -3870,6 +3956,7 @@ const EXAMPLE = {
     highlights:[{title:"League runners-up", year:"2026", details:"Started every game in midfield."},{title:"Team captain", year:"2026", details:""}],
     stats:[{season:"Fall 2026", team:"U14 Boys Premier", games:14, goals:4, assists:9}]}
 };
+const EX_P = {uGroup:14};
 function exampleProfile(){
   const E = EXAMPLE, rs = E.reviews, last = rs[rs.length-1], prev = rs[rs.length-2];
   const o = overall(last), po = overall(prev);
@@ -3897,14 +3984,15 @@ function exampleProfile(){
           <div class="stack" style="gap:6px"><b class="small">Strengths</b><div class="chips">${last.strengths.map(t=>`<span class="chip str">${esc(t)}</span>`).join("")}</div></div>
           <div class="stack" style="gap:6px"><b class="small">Work on</b><div class="chips">${last.improve.map(t=>`<span class="chip imp">${esc(t)}</span>`).join("")}</div></div>
           <div class="note" style="white-space:pre-wrap">${esc(last.note)}</div>
+          ${reviewHistoryHtml(rs, {player:EX_P})}
         </div>
       </div>
       <div class="stack" style="gap:20px">
-        <div class="card stack"><h3>Skill ratings</h3>${ratingsHtml(last, prev)}</div>
+        <div class="card stack"><h3>Skill ratings</h3>${ratingsHtml(last, prev, EX_P)}</div>
       </div>
     </div>
     <details class="ex-more">
-      <summary>See home drills, recruiting and the full timeline</summary>
+      <summary>See home drills, recruiting and progress</summary>
       <div class="grid2">
         <div class="stack" style="gap:20px">
         <div class="card stack">
@@ -3921,7 +4009,7 @@ function exampleProfile(){
         </div>
         </div>
         <div class="stack" style="gap:20px">
-          <div class="card stack"><h3>Progress & review timeline</h3>${progressSummary(rs)}${timelineHtml(rs)}</div>
+          <div class="card stack"><h3>Progress over time</h3>${progressSummary(rs)}</div>
         </div>
       </div>
     </details>
