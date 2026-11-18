@@ -647,7 +647,7 @@ function topbar(){
     const items = navItems();
     const allUnread = totalUnread() + totalPmUnread();
     tabs = `<button type="button" class="menu-btn app-menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="app-nav">${S.menuOpen ? "Close" : "Menu"}${!S.menuOpen && allUnread ? `<span class="badge">${allUnread>99?"99+":allUnread}</span>` : ""}</button>
-    <nav id="app-nav" class="tabs app-tabs${S.menuOpen ? " open" : ""}" aria-label="Main">${items.map(it => it.g ? navGroup(it) : navBtn(it)).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>`;
+    <nav id="app-nav" class="tabs app-tabs${S.menuOpen ? " open" : ""}${S.navQuiet ? " dd-quiet" : ""}" aria-label="Main">${items.map(it => it.g ? navGroup(it) : navBtn(it)).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>`;
   }
   return `<header class="top"><div class="top-in">
     <a href="#" class="brand" data-act="home" aria-label="${APP_NAME} home">${logoHtml()}</a>
@@ -2216,7 +2216,7 @@ const MODALS = {
 
 /* ---------- actions ---------- */
 const ACTS = {
-  go: ds => { S.view = ds.view; S.preview = false; S.menuOpen = false; S.navOpen = null;
+  go: (ds, el) => { S.view = ds.view; S.preview = false; S.menuOpen = false; S.navOpen = null; S.navQuiet = !!(el && el.closest && el.closest(".nav-dd"));
     if(ds.team){ S.teamFilter = ds.team; S.view = "roster"; }
     if(ds.sec) S.rsec = ds.sec; if(S.publicPage){ S.publicPage = null; try { history.replaceState(null, "", location.pathname + location.search); } catch(_){} } window.scrollTo(0,0); render(); },
   open: ds => { S.playerId = ds.id; S.view = "player"; S.preview = false; S.chartSkill = "overall"; S.ptab = "dev"; S.recSec = null; window.scrollTo(0,0); render(); },
@@ -2542,6 +2542,10 @@ ACTS.navDd = ds => { S.navOpen = S.navOpen === ds.g ? null : ds.g; render(); con
 document.addEventListener("click", ev => {
   if(S.navOpen && !ev.target.closest(".nav-dd")){ S.navOpen = null; render(); }
 }, true);
+/* after picking from a hover menu, keep it shut until the mouse leaves it */
+document.addEventListener("mouseover", ev => {
+  if(S.navQuiet && !ev.target.closest(".nav-dd")){ S.navQuiet = false; const n = document.getElementById("app-nav"); if(n) n.classList.remove("dd-quiet"); }
+});
 document.addEventListener("keydown", ev => {
   if(ev.key === "Escape" && S.navOpen){ const g = S.navOpen; S.navOpen = null; render(); const b = document.querySelector(`.nav-dd-btn[data-g="${g}"]`); if(b) b.focus(); }
 });

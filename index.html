@@ -529,6 +529,15 @@ nav.tabs .signout-link{padding:8px 8px}
 .nav-dd-menu[hidden]{display:none}
 nav.tabs .nav-dd-menu button{text-align:left;width:100%;display:flex;align-items:center;justify-content:space-between;opacity:.9}
 nav.tabs .nav-dd-menu button:hover{background:rgba(255,255,255,.1)}
+/* desktop with a mouse: open on hover too (click and keyboard still work) */
+@media (hover:hover) and (pointer:fine) and (min-width:981px){
+  nav.app-tabs:not(.dd-quiet) .nav-dd:hover > .nav-dd-menu{display:flex}
+  .nav-dd:hover > .nav-dd-btn{opacity:1;background:rgba(255,255,255,.08)}
+  nav.app-tabs:not(.dd-quiet) .nav-dd:hover .dd-chev{transform:rotate(-135deg) translateY(-1px)}
+  nav.app-tabs:not(.dd-quiet) .nav-dd:hover::after{content:"";position:absolute;left:0;right:0;top:100%;height:10px}
+  nav.app-tabs:has(.nav-dd:hover) .nav-dd.open:not(:hover) > .nav-dd-menu{display:none}
+  nav.app-tabs:has(.nav-dd:hover) .nav-dd.open:not(:hover) .dd-chev{transform:rotate(45deg) translateY(-2px)}
+}
 @media (max-width:980px){
   nav.app-tabs .nav-dd{flex-direction:column;align-items:stretch}
   nav.app-tabs .nav-dd-btn{justify-content:flex-start;width:100%}
