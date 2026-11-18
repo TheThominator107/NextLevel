@@ -20,7 +20,7 @@ New database: run `supabase/setup.sql`, then every file in `supabase/migrations/
 insert into public.platform_admins (user_id) select id from auth.users where lower(email) = lower('you@example.com') on conflict do nothing;
 ```
 
-**Training sessions** (update 018): coaches plan team practices on the Sessions tab from the team drill library in `teamdrills.js`. Saved sessions are visible only to coaches and admins in the same club.
+**Training sessions** (update 018): coaches plan team practices under Training → Team Drills from the team drill library in `teamdrills.js`. Saved sessions are visible only to coaches and admins in the same club.
 
 **Review baseline** (update 019): every review records what the ratings are measured against (age group, league, team, or for U16 and up, ability to play at a higher level). Field reviews now cover 19 skills, including weak foot, skill moves, sprint speed, stamina, vision and attitude.
 
