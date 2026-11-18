@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-i18nv="1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -329,7 +329,7 @@ form.auth-coach{border-top:5px solid var(--accent)}
 .rv-hist .tl-item:first-child::before{background:var(--surface)}
 .tl-more > summary{font-weight:600}
 .rate.unrated > span:first-child{color:var(--muted)}
-.bl-pill{font-weight:600}
+.bl-pill{font-weight:600;white-space:normal;max-width:100%;text-align:left}
 .bl-pick{border:0;padding:12px;margin:0;min-width:0;background:var(--chip);border-radius:10px}
 .bl-pick legend{font-weight:600;color:var(--blue-deep);padding:0;margin-bottom:4px;float:left;width:100%}
 .bl-pick legend + *{clear:both}
@@ -1016,6 +1016,25 @@ main > p.small, main > p.muted{background:var(--surface);border:1px solid var(--
   .home-sec{margin-top:20px}
 }
 </style>
+<script>/* Spanish: hide the page for a moment while the translations load (i18n.js) */
+try { if(localStorage.getItem("np-lang") === "es"){ document.documentElement.classList.add("i18n-wait"); document.documentElement.lang = "es"; } } catch(_){}</script>
+<style>html.i18n-wait body{visibility:hidden}
+.lang-btn{font:inherit;cursor:pointer;background:none;border:0}
+.site-nav .lang-btn.navlink{color:inherit;text-align:left}
+nav.tabs .nav-lang{color:inherit;opacity:.6;font-weight:500;font-size:.9rem;padding:8px 12px}
+nav.tabs .nav-lang:hover{opacity:1}
+/* Spanish words are longer: tighter menus on desktop so they stay on one line */
+@media (min-width:981px){
+  html[lang=es] .site-nav{flex-wrap:nowrap}
+  html[lang=es] .site-nav .navlink{padding:8px 7px;font-size:.92rem}
+  html[lang=es] nav.tabs button,html[lang=es] nav.tabs a.signout-link{padding:8px 8px}
+}
+@media (min-width:981px) and (max-width:1240px){
+  html[lang=es] .site-nav .navlink{padding:8px 5px;font-size:.86rem}
+  html[lang=es] nav.tabs button,html[lang=es] nav.tabs a.signout-link{padding:8px 5px;font-size:.86rem}
+  html[lang=es] .clubname{display:none}
+  html[lang=es] .dd-chev{margin-left:5px}
+}</style>
 </head>
 <body>
 <div id="app"></div>

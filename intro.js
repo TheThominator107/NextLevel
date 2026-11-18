@@ -1,6 +1,7 @@
 /* NextPass introductory video for the home page: a short animated tour for coaches, players and parents.
    Everything is drawn from the time t, so it can be paused, scrubbed by chapter and exported frame by frame. */
 import { animSvg, animScan, animSeek, animDur } from "./anim.js";
+const tr = t => (window.npT ? window.npT(t) : t); /* Spanish when that language is on (i18n.js) */
 
 const W = 640, H = 360;
 const DRILL = "b-wall-pass";
@@ -33,7 +34,7 @@ function sceneHtml(s){
   switch(s.id){
   case "intro": return `<div class="iv-center">
       <img src="brand/mark.svg" alt="" class="iv-mark" data-in=".2" data-fx="pop">
-      <div class="iv-word" data-in=".55">Next<span>Pass</span></div>
+      <div class="iv-word" data-in=".55" translate="no">Next<span>Pass</span></div>
       <p class="iv-tag" data-in="1.1">Youth soccer development, from first touch to first offer.</p>
       <div class="iv-chips"><span data-in="1.8" data-fx="pop">Coaches</span><span data-in="2.05" data-fx="pop">Players</span><span data-in="2.3" data-fx="pop">Parents</span></div>
     </div>`;
@@ -152,12 +153,12 @@ function renderAt(root, t){
     sc.querySelectorAll("[data-draw]").forEach(el => { const [a, d] = el.dataset.draw.split(",").map(Number); el.style.strokeDashoffset = (1 - ease((lt - a) / d)).toFixed(4); });
     sc.querySelectorAll("[data-fill]").forEach(el => { const [a, d] = el.dataset.fill.split(",").map(Number); el.style.width = (ease((lt - a) / d) * parseFloat(el.dataset.w)).toFixed(2) + "%"; });
     sc.querySelectorAll("[data-count]").forEach(el => { const [a, d] = el.dataset.count.split(",").map(Number); el.textContent = Math.round(ease((lt - a) / d) * parseFloat(el.dataset.to)); });
-    sc.querySelectorAll("[data-type]").forEach(el => { const a = parseFloat(el.dataset.type), txt = el.dataset.text; el.textContent = txt.slice(0, Math.max(0, Math.floor((lt - a) * 34))); });
+    sc.querySelectorAll("[data-type]").forEach(el => { const a = parseFloat(el.dataset.type), txt = tr(el.dataset.text); el.textContent = txt.slice(0, Math.max(0, Math.floor((lt - a) * 34))); });
     sc.querySelectorAll("[data-blink]").forEach(el => { el.style.opacity = lt < parseFloat(el.dataset.blink) ? 0 : (Math.floor(lt * 2.4) % 2 ? .15 : 1); });
     const d = sc.querySelector(".drill-anim"); if(d){ const dur = animDur(DRILL) || 6; animSeek(d, Math.max(0, lt - .6) % dur); }
   });
   root.querySelector(".iv-step").textContent = `${SCENES.indexOf(s) + 1}/${SCENES.length}`;
-  const ct = root.querySelector(".iv-captext"); if(ct.textContent !== s.cap) ct.textContent = s.cap;
+  const ct = root.querySelector(".iv-captext"), capT = tr(s.cap); if(ct.textContent !== capT) ct.textContent = capT;
   root.querySelector(".iv-prog i").style.width = (t / INTRO_DURATION * 100).toFixed(2) + "%";
   return SCENES.indexOf(s);
 }
@@ -165,7 +166,7 @@ function renderAt(root, t){
 function syncControls(wrap, idx){
   const label = state.playing ? "Pause the introduction" : "Play the introduction";
   wrap.querySelectorAll('[data-iv="toggle"]').forEach(b => b.setAttribute("aria-label", label));
-  const pl = wrap.querySelector(".iv-pl"); if(pl) pl.textContent = state.playing ? "Pause" : "Play";
+  const pl = wrap.querySelector(".iv-pl"); if(pl) pl.textContent = tr(state.playing ? "Pause" : "Play");
   wrap.querySelector(".iv").classList.toggle("paused", !state.playing);
   const sb = wrap.querySelector(".iv-snd"); if(sb){ sb.setAttribute("aria-pressed", String(state.sound)); sb.classList.toggle("on", state.sound); }
   wrap.querySelectorAll(".iv-chap").forEach(b => { if(+b.dataset.i === idx) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });

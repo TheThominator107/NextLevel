@@ -1,0 +1,224 @@
+# Strings with semicolons and solo drill instructions, part 1
+3706|(se muestran los 60 actualizados más recientemente; acota tus filtros)
+3708|Agrega equipos. Las familias piden unirse; tú apruebas.
+3709|Crea tu cuenta o inicia sesión. El equipo ya está elegido; un entrenador aprueba la solicitud.
+3710|Las familias piden unirse a los equipos; los entrenadores aprueban.
+3711|Desde 10 equipos. Diez equipos por equipo cuestan $199.90; Ilimitado cuesta {0}.
+3712|Según las últimas evaluaciones de {0} de {1} {1|jugador|jugadores}. Primero los promedios más bajos del equipo; el número es el promedio del equipo sobre 5. Elige hasta 4 para enfocarte.
+3713|Deja un equipo o un club; el club pierde el acceso a la información de tu jugador.
+3714|Los jugadores de {0} años o más pueden publicar un Perfil de Reclutamiento para ojeadores profesionales y academias aprobados. La familia decide si aparece; tú puedes ayudar con referencias.
+3715|Los jugadores de {0} años o más pueden publicar un Perfil de Reclutamiento en la búsqueda de entrenadores universitarios. La familia decide si aparece; tú puedes ayudar con referencias.
+3716|Quitar saca a {0} de tu plantilla. La familia conserva el perfil y las evaluaciones anteriores; tu club pierde el acceso.
+3717|Las ligas pequeñas pagan por equipo; los programas grandes eligen Club Ilimitado.
+3718|Sobre la punta de los pies; los talones nunca tocan el suelo.
+3719|La familia aún no ha creado uno. Igual puedes escribir referencias; aparecerán cuando sea público.
+3720|La familia conserva el perfil; tus entrenadores pierden el acceso. Pueden volver a pedir unirse.
+3721|Los perfiles, las evaluaciones y los mensajes de tus jugadores pertenecen a tu cuenta. Si un jugador deja un club, tú te quedas con todo; los entrenadores de ese club pierden el acceso.
+3723|p. ej. Acordamos 3 sesiones de tiro por semana en casa; nueva evaluación en 6 semanas; probar una posición nueva en los próximos dos partidos.
+3724|p. ej. Primer toque mucho más fino desde la clínica de invierno; sigue trabajando el pie débil.
+3725|p. ej. Lo vi en el torneo de primavera; invitar a las pruebas de U13
+3726|p. ej. Marcó el gol de la victoria en la final; elegido MVP del torneo.
+3727|p. ej. Visto en los regionales; invitar a la prueba de marzo
+3728|p. ej. Visto en el showcase de ECNL; fuerte por arriba
+3729|{0} encontraron un Perfil de Reclutamiento y quieren saber de ti. Responde desde tu propio correo; {1} nunca comparte tus datos de contacto a menos que los hayas agregado al perfil.
+3730|Un área de 25 × 20. Cada pececito tiene un balón en una línea de fondo; dos tiburones esperan en el medio.
+3731|Un área de 40 × 35. Seis jugadores salen jugando desde un extremo; cinco presionan y defienden. Dos miniporterías detrás de los que presionan.
+3732|Un carril con una portería en un extremo. El atacante empieza a 25 yardas con el balón; el defensor empieza 3 yardas detrás.
+3733|Una portería con portero. Cuatro atacantes empiezan en el borde del último tercio; tres defensores más el portero defienden.
+3734|Una cancha larga con porterías y porteros. Una zona de mediocampo en el centro. Cinco atacantes esperan fuera de la zona; cuatro defensores y un 2 contra 2 en el medio.
+3735|Un equipo ataca en una dirección; en cuanto termina el ataque, defiende contra el siguiente equipo que viene en sentido contrario.
+3736|Alterna los lados en cada ronda; rota al servidor.
+3737|Atacantes: usen el ancho; el jugador del medio atrae a un defensor.
+3738|Aumenta la velocidad poco a poco; a tope solo al final.
+3739|C pasa a la carrera de B; B conduce hasta el inicio.
+3740|Los centrales se abren; los laterales arriba y abiertos.
+3741|Cuenta cuántas veces te sacaron; intenta que sean menos en cada ronda.
+3742|Cuenta los pases; 10 seguidos suman un punto.
+3743|Cuenta tus puertas; intenta superar tu marca en la siguiente ronda.
+3744|Los defensores despejan; los atacantes intentan marcar tras el centro o el segundo balón.
+3745|Dale tiempo al portero para colocarse; calidad antes que velocidad.
+3746|Mantén las oleadas durante 3 minutos; cuenta los goles.
+3747|Portero: sé un jugador más; orienta el cuerpo para cambiar el juego.
+3748|Inclínate un poco hacia atrás para elevarla; sobre el balón para mantenerla baja.
+3749|Deja que los jugadores resuelvan problemas; haz preguntas en la pausa.
+3750|Deja que los jugadores prueben cosas; los errores son aprendizaje.
+3751|El jugador más cercano presiona el balón; los demás se colocan del lado de la portería.
+3752|Los comodines tienen dos toques; los jugadores de los equipos, tres.
+3753|Pásale a tu compañero por cualquier puerta; un punto por pase.
+3754|Pie de apoyo junto al balón; golpea por debajo del centro para un pase elevado.
+3755|Jueguen 4 contra 4 en el medio; los comodines de banda juegan con quien tenga el balón.
+3756|Presión, cobertura y equilibrio; defensa en 1 contra 1 y en grupos pequeños.
+3757|Quita el giro; B simplemente le pasa a C.
+3758|Rota las posiciones después de cada repetición; cambia de banda después de 6.
+3759|Mantente erguido; no dejes que la rodilla se vaya hacia adentro.
+3760|Golpea con el empeine, punta abajo, para potencia; con el interior para precisión.
+3761|Los delanteros corren solos hacia la portería; los porteros practican cerrar el ángulo, hacerse grandes y calcular el bloqueo.
+3762|Cambien después de 2 minutos; cada equipo juega 4 o 5 partidos.
+3763|Los equipos mantienen el balón; 6 pases son un punto.
+3764|El entrenador juega un balón a la zona del medio; el 2 contra 2 lo disputa.
+3765|El defensor más cercano presiona el balón; el otro cubre por detrás en diagonal.
+3766|Dos delanteros atacan el primer y el segundo palo; quien da el pase llega al punto penal.
+3767|Los servidores de banda centran a un 4 contra 4 en el área. Los defensores marcan, van al balón y despejan; el portero decide si sale o se queda.
+3768|1 minuto por superficie (interior, exterior, planta) con cada pie.
+3769|10 minutos. Intenta superar una marca en cada sesión.
+3770|10 minutos. Anota tu mejor marca de toques seguidos.
+3771|10 de cada atrapada, 3 rondas.
+3772|10 de cada saque.
+3773|10 con cada superficie y cada pierna. Cuenta cuántas quedan a un paso.
+3774|10 paredes por cada lado.
+3775|10 repeticiones, 30 segundos de descanso cada 3.
+3776|10 repeticiones, alternando lados.
+3777|10 cambios de juego hacia cada lado.
+3778|10 giros hacia cada lado, con los dos pies.
+3779|10 con cada pie. Un punto por cada uno que cae en la caja.
+3780|15 vaselinas y luego 15 con el otro pie.
+3781|20 controles: 5 de pecho, 5 de muslo, 5 con el pie derecho, 5 con el izquierdo.
+3782|20 lanzamientos rodados. Un punto por cada uno que pasa por la puerta.
+3783|3 rondas de 10 pases.
+3784|3 rondas de 10 tiros. Un punto por cada uno que entra entre los conos.
+3785|3 rondas de 10, alternando pies.
+3786|3 rondas de 10, alternando lados.
+3787|3 rondas de 10: 5 voleas y 5 medias voleas en cada ronda.
+3788|3 rondas de 15.
+3789|3 rondas de 20 pases. Lleva tu marca sobre 20.
+3790|3 rondas de 4 saltos. Luego lo mismo sobre una pierna, 2 rondas con cada pierna.
+3791|3 rondas de 5 alcances en cada dirección, con cada pierna.
+3792|3 rondas de 6 estiradas por lado.
+3793|3 rondas de 8 remates.
+3794|3 rondas de 8 atajadas, alternando lados.
+3795|3 rondas de 8 giros, alternando izquierda y derecha.
+3796|3 rondas de 8, girando a la izquierda y a la derecha.
+3797|3 rondas de 8.
+3798|3 rondas por los tres puntos, luego mezcla el orden.
+3799|3 rondas.
+3800|30 segundos con el pie derecho, 30 segundos con el izquierdo, 4 rondas.
+3801|4 rondas de 10 con cada pie, descanso corto entre rondas.
+3802|4 rondas de 30 segundos, 30 segundos de descanso.
+3803|4 rondas de 8 desplazamientos.
+3804|4 × 30 segundos, 30 segundos de descanso. Intenta superar tu cuenta de toques en cada ronda.
+3805|4 × 40 segundos, 20 segundos de descanso.
+3806|5 a cada caja. Un punto por cada uno que cae en la caja.
+3807|6 recorridos, 30 segundos de descanso cada 2.
+3808|6 repeticiones, 45 segundos de descanso.
+3809|6 repeticiones, recuperación completa (unos 60 segundos).
+3810|6 rondas, 60 segundos de descanso.
+3811|6 carreras, 45 segundos de descanso.
+3812|6 carreras, alterna la dirección de cada regate.
+3813|6 a 8 vueltas, 30 segundos de descanso cada 2 vueltas.
+3814|6 a 8 repeticiones.
+3815|8 vueltas, cambiando de dirección en cada una. 30 segundos de descanso cada 2.
+3816|8 repeticiones, 45 segundos de descanso.
+3817|8 carreras, 45 segundos de descanso. Cronometra las últimas 4.
+3818|8 carreras, un patrón distinto cada vez.
+3819|Una puerta de conos de 2 yardas a 15 yardas de distancia.
+3820|Un objetivo de 3 yardas en la pared con dos conos. Un cono a 12 yardas, en ángulo, para empezar.
+3821|Un balón y 3 yardas de espacio plano.
+3822|Un balón y algo de espacio plano.
+3823|Un balón y algo de espacio plano. Una pared cerca te ayuda a recoger el balón.
+3824|Un cono a 3 yardas de la pared como «defensor». Empieza 10 yardas atrás.
+3825|Un cono en el medio de un carril de 20 yardas marcado con conos en cada extremo.
+3826|Un cono donde empiezas «en ataque». Un cono 30 yardas atrás y a un lado como tu punto «del lado de la portería».
+3827|Acelera después del pase.
+3828|Acelera tres pasos después de cada regate.
+3829|Acelera tres pasos después de cada giro.
+3830|Agrega un arrastre hacia atrás cada tres rodadas y luego rueda hacia el otro lado.
+3831|Agrega un regate (bicicleta o arrastre hacia atrás) en cada cono.
+3832|Agrega un sprint hacia adelante en un cono al azar para «ganar el balón».
+3833|Agrega toques de cabeza, o haz dominadas mientras caminas hacia adelante.
+3834|Alterna los pies en cada pase.
+3835|Alterna los pies: derecho, izquierdo, derecho, sin bote. Agrega un toque de muslo.
+3836|Alterna los lados.
+3837|Alterna los conos de inicio.
+3838|Tobillo firme, punta un poco hacia arriba.
+3839|Llega con un pequeño ángulo.
+3840|Llega al balón con un pequeño ángulo.
+3841|A un brazo de distancia del atacante.
+3842|Llega con velocidad: los regates solo funcionan si el defensor tiene que reaccionar.
+3843|Llega de perfil, bajo y listo.
+3844|Cuando vuelve, mira por encima del hombro para ver el cono.
+3845|Cuando vuelve, empújala de nuevo hacia adelante con el empeine o el interior del mismo pie.
+3846|En cada cono, cambia el pie adelantado.
+3847|En cada cono, gira bruscamente con el exterior del pie.
+3848|Al final, gira y vuelve solo con el pie izquierdo.
+3849|En el medio, detente en tu posición: pies al ancho de los hombros, peso adelante, manos listas.
+3850|En el segundo cono, una tijera.
+3851|En el tercero, rueda el balón con la planta y sal cortando.
+3852|Vuelve al medio y repite.
+3853|Balón en el pie lejano, lejos del cono.
+3854|Rodea los conos con efecto hasta el objetivo. Alterna lados y pies.
+3855|Agáchate y rueda el balón por el suelo a través de la puerta.
+3856|Flexiona la rodilla de apoyo.
+3857|Empujón grande al espacio después del amago.
+3858|Toques largos a velocidad, cortos para frenar.
+3859|Toques más largos a velocidad.
+3860|El cuerpo sobre el balón.
+3861|Mano de abajo detrás del balón, mano de arriba encima.
+3862|Rebota sobre la punta de los pies.
+3863|Frena con pasos cortos y rápidos entre el segundo y el tercer cono.
+3864|Frena con pasos cortos en las últimas dos yardas y ponte de perfil.
+3865|Tráelo de vuelta hacia afuera con el exterior del mismo pie.
+3866|Acerca las cajas.
+3867|Aumenta la velocidad solo cuando el balón se mantiene cerca.
+3868|Atrápala y vuelve a colocarte.
+3869|Cambia de mano cada 5 lanzamientos.
+3870|El cambio de ritmo importa más que el regate.
+3871|Cambia el ángulo y la altura en cada lanzamiento.
+3872|Mira por encima del hombro antes de que llegue el balón.
+3873|Haz la vaselina con el balón rodando tras un toque, o acerca la caja a los conos.
+3874|Haz la vaselina con el balón quieto.
+3875|Pásala por encima de los conos.
+3876|Elige el lanzamiento adecuado para la distancia.
+3877|Cierra los ojos en la última ronda, o aleja los conos.
+3878|Golpea la mitad exterior del balón.
+3879|Controla y conduce entre los conos y de vuelta, solo con el pie débil.
+3880|Controla y gira 180 grados con tu primer toque.
+3881|Controla primero y luego lleva el balón más allá del cono.
+3882|Controla primero y luego gira.
+3883|Controla hacia el espacio lateral y pasa desde ahí.
+3884|Contrólala y sal en un toque hacia una dirección nueva.
+3885|Controla el balón y detenlo antes de girar.
+3886|Controla el rebote y repite.
+3887|Controla la devolución con el interior del pie y vuelve a pasar.
+3888|Controla la devolución y vuelve a pasar.
+3889|Amortígualo con la parte de arriba del muslo, luego déjalo caer y detenlo con la planta del pie.
+3890|Amortígualo con el pecho, el muslo o el empeine.
+3891|Corta otra vez hacia el cono de arriba.
+3892|Rodéalo con un corte brusco hacia el cono del costado.
+3893|Corta con el exterior del pie.
+3894|Tírate abajo, primero las manos, y atrápala o desvíala hacia afuera.
+3895|Haz 10 con un pie y luego 10 con el otro.
+3896|Haz todas las repeticiones con un pie y luego cambia.
+3897|Haz las dos con cada pie.
+3898|Haz atajadas en caída en su lugar.
+3899|Haz cada giro a toda velocidad y vuelve corriendo.
+3900|Hazlo mientras avanzas, o agrega una bicicleta entre cada V.
+3901|Hazlo con balón: conduce la lanzadera.
+3902|Hazlo con el balón: empuja y corre, párala en seco, repite.
+3903|Haz el regate un paso antes del cono.
+3904|Haz toda la ronda a un toque.
+3905|No toques los conos.
+3906|Conduce a toda velocidad hasta el cono lejano.
+3907|Conduce rápido hasta el cono del medio.
+3908|Conduce hacia el cono.
+3909|Conduce hacia el primer cono y haz una bicicleta para pasarlo.
+3910|Conduce rápido hacia el primer cono.
+3911|Vuelve conduciendo y repite.
+3912|Vuelve conduciendo al medio y repite hacia el otro lado.
+3913|Vuelve conduciendo al inicio y la próxima vez ve hacia el otro lado.
+3914|Conduce entre los conos solo con el pie derecho.
+3915|Conduce desde el cono.
+3916|Conduce por fuera del cuadrado, solo con el pie derecho.
+3917|Conduce despacio hacia el cono del medio.
+3918|Conduce entre los cuatro conos.
+3919|Conduce entre los tres conos.
+3920|Conduce hasta el cono lejano y vuelve con un gancho por dentro.
+3921|Conduce hasta el cono lejano.
+3922|Conduce hacia la línea de conos.
+3923|Conduce hacia el cono lejano con toques cortos.
+3924|Impúlsate con los brazos.
+3925|Saque de botepronto a la caja lejana: suelta el balón y golpéalo al caer.
+3926|Cae de lado sobre la cadera y el hombro.
+3927|Suelta el balón de las manos sobre el empeine y patéalo suave hacia arriba hasta la cintura más o menos.
+3928|Baja el hombro hacia un lado.
+3929|Cada toque debe dejar el balón listo para pasar.
+3930|Cada giro 5 veces con cada pie.

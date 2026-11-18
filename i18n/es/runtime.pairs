@@ -1,0 +1,65 @@
+# Phrases the app puts together at run time (English<TAB>Spanish). {0} is a value; {0|one|many} picks a word.
+{0}: diagram of the setup	{0}: diagrama de la preparación
+{0} players	{0} jugadores
+Adds {0} a month: {1} team{2} = {3} a month.	Suma {0} al mes: {1} {1|equipo|equipos} = {3} al mes.
+Adds {0} a month: {1} team{2} = {3} a month. Club Unlimited ({4}) would be cheaper.	Suma {0} al mes: {1} {1|equipo|equipos} = {3} al mes. Club Ilimitado ({4}) sería más barato.
+For your club: {0} team{1} × {2} =	Para tu club: {0} {0|equipo|equipos} × {2} =
+{0} a month for {1} team{2}	{0} al mes por {1} {1|equipo|equipos}
+{0} a month, unlimited teams	{0} al mes, equipos ilimitados
+{0} team{1}, {2} a month	{0} {0|equipo|equipos}, {2} al mes
+rated {0}/5	calificado {0}/5
+rated {0}/5, down from {1}	calificado {0}/5, bajó desde {1}
+coach's work-on: {0}	a trabajar según el entrenador: {0}
+down {0}	baja {0}
+up {0}	sube {0}
+overall	general
+Age {0}	{0} años
+Born {0}	Nacido en {0}
+Class of {0}	Promoción {0}
+GPA {0}	GPA {0}
+Request sent to {0}	Solicitud enviada a {0}
+Thanks, {0}. We're checking your details	Gracias, {0}. Estamos revisando tus datos
+Family invite link ({0})	Enlace de invitación para familias ({0})
+Drill added to {0}	Ejercicio agregado a {0}
+(done)	(hecho)
+Step one	Paso uno
+Step two	Paso dos
+Step three	Paso tres
+Attack / team in possession	Ataque / equipo con el balón
+Defend	Defensa
+Neutral	Comodín
+Keeper	Portero
+Shot	Tiro
+Run / dribble	Carrera / conducción
+Pass	Pase
+Bring 4 mini goals	Trae 4 miniporterías
+Not searchable.	No aparece en búsquedas.
+Rondo finishing	Remate tras rondo
+Two-touch to start	A dos toques para empezar
+You're now on {0}	Ahora tienes {0}
+Contacted {0}	Contactados {0}
+Evaluating {0}	Evaluando {0}
+{0} · Professional club	{0} · Club profesional
+Thanks coach	Gracias, entrenador
+Great start.	Buen comienzo.
+Started every game.	Fue titular en todos los partidos.
+No team	Sin equipo
+rated {0}/5, coach's work-on: {1}	calificado {0}/5, a trabajar según el entrenador: {1}
+{0} copied. Paste it in a text, email or team chat.	{0}: copiado. Pégalo en un mensaje de texto, un correo o el chat del equipo.
+{0} copied	{0}: copiado
+Copied {0}	Copiado: {0}
+Repeat.	Repite.
+{0} teams of {1}	{0} equipos de {1}
+{0} ({1} teams of {2})	{0} ({1} equipos de {2})
+{0} ({1} or {2} teams of {3})	{0} ({1} o {2} equipos de {3})
+{0} + {1} keepers	{0} + {1} porteros
+{0} + keeper	{0} + portero
+{0} min ({1})	{0} min ({1})
+{0} is on your roster	{0} está en tu plantilla
+Matched to your focus: {0}.	Según tu enfoque: {0}.
+Matched to your focus: {0}	Según tu enfoque: {0}
+The family and their club. Public only if the family chooses, from {0}.	La familia y su club. Público solo si la familia lo elige, desde los {0}.
+First review: {0}	Primera evaluación: {0}
+Update review: {0}	Actualizar evaluación: {0}
+{0} (rated {1}/5)	{0} (calificado {1}/5)
+{0} (rated 1 or 2)	{0} (calificado con 1 o 2)

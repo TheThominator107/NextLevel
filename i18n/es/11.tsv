@@ -1,0 +1,201 @@
+# Team drills (teamdrills.js), part 1
+2861|10 a 16
+2862|10 × 10 yd
+2863|Carriles de 10 × 20 yd
+2864|12 (3 equipos de 4)
+2865|12 (4 equipos de 3)
+2866|12 + 2 porteros
+2867|12 conos
+2868|12 a 14
+2869|14 + 2 porteros
+2870|14 × 14 yd
+2871|15 segundos, o 5 contra 3.
+2872|15 × 10 yd por grupo
+2873|15 × 15 yd
+2874|16 conos (8 puertas), un balón cada uno
+2875|16 conos, un balón por pareja
+2876|Carril de 1 contra 1 en defensa
+2877|1 contra 1 hacia una portería
+2878|2 porterías, conos, balones, petos
+2879|20 × 10 yd por grupo
+2880|20 × 15 yd por pareja
+2881|20 × 20 yd
+2882|20 × 25 yd
+2883|25 × 15 yd
+2884|25 × 20 yd
+2885|25 × 20 yd con una portería
+2886|25 × 20 yd con una zona de tiro
+2887|25 × 25 yd
+2888|25 × 25 yd con una portería
+2889|2 contra 2: presión y cobertura
+2890|Partidos de 3 minutos con más descanso.
+2891|Carril de 30 × 15 yd con una portería
+2892|30 × 20 yd
+2893|30 × 20 yd en tres zonas
+2894|30 × 20 yd con una portería
+2895|30 × 25 yd
+2896|30 × 25 yd con 2 porterías
+2897|30 × 30 yd
+2898|35 × 30 yd
+2899|35 × 30 yd con porterías en ambos extremos
+2900|Oleadas de 3 contra 2 en ataque
+2901|Intervalos intensos de 3 contra 3
+2902|3 contra 3 a la línea
+2903|Oleadas de 3 contra 3: ataca y luego defiende
+2904|3 contra 3. Se marca en cualquiera de las porterías, pero solo desde dentro de la zona de tiro.
+2905|4 conos, 1 balón, petos
+2906|4 conos, 2 balones
+2907|4 conos, un balón cada uno
+2908|4 conos, balones, petos
+2909|4 miniporterías o puertas de conos, balones, petos
+2910|4 miniporterías, balones alrededor de la cancha, petos
+2911|4 miniporterías, conos, balones, petos
+2912|40 × 30 yd
+2913|40 × 30 yd con zonas de 5 yd en los extremos
+2914|40 × 30 yd con carriles laterales
+2915|40 × 30 yd, dividido en tres
+2916|40 × 35 yd
+2917|45 × 35 yd dividido en dos mitades
+2918|Rondo 4 contra 2 en cada cuadro.
+2919|4 contra 4 + 2 jugadores por las bandas
+2920|5 conos, 2 balones
+2921|5 por cuadro
+2922|5 contra 5 con porteros
+2923|6 por cuadro
+2924|6 a 10
+2925|6 a 12
+2926|6 a 14
+2927|6 a 8 por cancha
+2928|6 a 9
+2929|60 × 45 yd
+2930|7 por cuadro
+2931|8 conos, balones
+2932|8 conos, balones, dos juegos de petos
+2933|8 por cancha
+2934|8 a 12
+2935|8 a 16
+2936|8 × 8 yd
+2937|9 por cuadro
+2938|9 a 12 (3 o 4 equipos de 3)
+2939|Partidos de 90 segundos con 90 segundos de descanso.
+2940|Un cuadrado de 10 yardas. Cinco por fuera, dos defensores en el medio.
+2941|Un cuadrado de 10 yardas. Un jugador en cada lado, dos defensores en el medio.
+2942|Un cuadrado de 14 yardas. Cinco jugadores por fuera, un atacante dentro y tres defensores dentro.
+2943|Un carril de 15 yardas de ancho junto a una línea de banda. Un extremo, un lateral detrás de él y un defensor en el carril. Dos delanteros y un defensor en el área.
+2944|Un carril de 20 × 15 yardas con una miniportería en cada extremo. Las parejas se forman en cada extremo.
+2945|Un área de 20 × 25. Dos defensores protegen dos puertas pequeñas en un extremo. Dos atacantes empiezan en el otro.
+2946|Un calentamiento de 20 minutos para prevenir lesiones, desarrollado por el centro de investigación médica de la FIFA (F-MARC): carrera, fuerza y equilibrio, y luego velocidad y cambios de dirección. Los estudios encontraron menos lesiones en los equipos que lo usaban con regularidad. Está pensado para mayores de 14, y sirve para jugadores más jóvenes en el nivel más fácil.
+2947|Un cuadrado de 20 yardas. Cada jugador tiene un balón dentro.
+2948|Una cancha de 25 × 20 con dos miniporterías en cada extremo y balones de repuesto alrededor. Cuatro equipos de tres.
+2949|Una cancha de 25 × 20 con dos miniporterías en cada extremo, a 12 yardas una de otra. Una zona de tiro a 6 yardas de cada línea de fondo.
+2950|Una cancha de 25 × 20. Las líneas de fondo son las porterías.
+2951|Un área de 25 × 20 yardas. Cada jugador tiene un balón y empieza en una línea de fondo.
+2952|Una cancha de 30 × 25 con dos porterías pequeñas en cada línea de fondo. Sin porteros.
+2953|Un área de 30 × 25 yardas. Dos equipos de cuatro dentro. Comodines: uno en cada línea de fondo y uno en el medio.
+2954|Un cuadrado de 30 yardas con tres equipos de cuatro. Dos equipos tienen la posesión (8) y uno defiende (4).
+2955|Un juego de 3 contra 3 a cuatro porterías pequeñas creado por el entrenador alemán Horst Wein, que ahora prueba la federación alemana (DFB). Premia cambiar el juego y decidir rápido.
+2956|Un área de 40 × 30 con una zona de 5 yardas en cada extremo.
+2957|Una cancha de 40 × 30 con portería y portero en cada extremo y un carril de 5 yardas en cada banda. Un comodín en cada carril.
+2958|Una cancha de 40 × 30 con porterías de tamaño completo o de 12 × 6 pies y porteros.
+2959|Un área de 40 × 30 yardas dividida en tres zonas del mismo largo. Cada equipo tiene jugadores en las tres zonas (por ejemplo 2-3-2), con un jugador objetivo en cada extremo.
+2960|Un área de 45 × 35 dividida a lo largo en dos mitades. Dos equipos de seis y dos comodines que juegan con el equipo que tiene el balón.
+2961|Una cancha de 60 × 45 con porterías y porteros. Líneas de conos a 18 yardas de cada portería hacen de líneas de fuera de juego.
+2962|A, en la base, le pasa a B en el medio, que se la devuelve.
+2963|Una línea de cuatro y dos mediocampistas basculan mientras el balón se mueve entre los atacantes, manteniendo cerrados los espacios.
+2964|Un jugador central abre el balón al extremo y corre hacia el área.
+2965|Un carril de 10 yardas de ancho y 20 de largo. Defensores en un extremo, atacantes con balón en el otro.
+2966|Un cono en cada esquina de un cuadrado de 15 yardas con 2 o 3 jugadores en cada uno. Dos balones empiezan en esquinas opuestas.
+2967|Un cono en cada esquina de un cuadrado de 20 yardas, 2 o 3 jugadores en cada uno. Los balones empiezan en esquinas opuestas.
+2968|Un defensor persigue desde detrás de la línea.
+2969|Un defensor persigue al delantero.
+2970|A conduce hasta la siguiente esquina y la pasa.
+2971|Un partido con líneas de fuera de juego y una regla: para que un gol cuente, todos los jugadores de campo deben haber pasado la mitad de la cancha, así el equipo se mantiene compacto.
+2972|Un gol vale doble después de un regate.
+2973|Un gol solo cuenta si todo el equipo (menos el portero) está en la mitad rival.
+2974|Un gol tras un pase desde la otra mitad vale doble.
+2975|Un gol tras el pase de un jugador de banda vale doble.
+2976|Una portería con portero. Una línea de cuatro y dos mediocentros defensivos. Cinco atacantes repartidos por delante se pasan el balón alrededor de ellos.
+2977|Una portería con portero. Un servidor a 25 yardas. Los delanteros forman fila en el borde del área, de espaldas a la portería.
+2978|Una portería con portero. Un servidor se coloca en el borde del área. Los jugadores forman fila a 25 yardas.
+2979|Una portería con portero. Un lanzador en el córner, atacantes fuera del área y defensores colocados en el área.
+2980|Una portería con portero. Un jugador de banda en cada lado a 30 yardas y dos filas de delanteros en el medio.
+2981|Una portería con portero. Una línea de cuatro y un mediocentro defensivo contra cuatro delanteros que presionan. Tres puertas en la línea de medio campo.
+2982|Una portería con portero. Cuatro atacantes contra cuatro defensores en el área. Un servidor en cada banda con balones.
+2983|Una portería con portero. Los delanteros forman fila a 30 yardas con balones.
+2984|Una portería con portero. Tres conos de tiro a 16 yardas: izquierda, centro y derecha.
+2985|Una portería con portero. Dos filas de atacantes a 25 yardas. Una fila de defensores junto a la portería.
+2986|Una portería con portero. Dos filas con balones a 22 yardas, a la izquierda y a la derecha, cada una con un cono 6 yardas por delante.
+2987|Un juego estilo balonmano en el que el balón va lanzamiento, cabezazo, atrapada. Practica la técnica de cabeceo y el movimiento sin golpes fuertes.
+2988|Un juego de mantener la posesión que Johan Cruyff convirtió en el centro del entrenamiento del FC Barcelona, trayendo los métodos de posesión del Ajax. Sigue siendo algo diario en ambas academias. Cruyff decía que todo lo que pasa en un partido, menos rematar, se puede practicar en un rondo.
+2989|Un portero en la portería con balones. Cuatro jugadores objetivo en cuadros de conos: dos laterales abiertos, un mediocampista y un delantero.
+2990|Una gran parte de los goles en todos los niveles llega a balón parado, por eso los equipos profesionales y las academias ensayan quién corre adónde y quién marca a quién.
+2991|Un defensor en vivo, y el delantero tiene 3 segundos.
+2992|A mira a C antes de que vuelva la devolución.
+2993|Un partido con el tamaño habitual de tu equipo y una regla que resalta el objetivo de la sesión: el segundo «Play» del Play-Practice-Play.
+2994|Cuando un balón sale, entra otro de inmediato.
+2995|Una pared con un servidor en el borde del área y luego un tiro. Repetición del remate tras un pase.
+2996|Un pase entre los dos defensores (un «pase que parte») suma un punto extra.
+2997|Un pase de la zona de atrás directo al objetivo no cuenta.
+2998|Un pase a la banda, un centro y carreras al área: primer palo, segundo palo y punto penal.
+2999|Un pase a través del jugador del medio suma un punto.
+3000|A le pasa a B.
+3001|A le pasa a B en la siguiente esquina y corre por fuera de B.
+3002|Un patrón de pases en forma de Y que practica el pase al tercer hombre y recibir a medio giro.
+3003|Un cuadrado de pases en el que quien pasa dobla por fuera a quien recibe, la misma carrera que hace un lateral alrededor de un extremo.
+3004|Un defensor pasivo se coloca detrás del jugador del medio.
+3005|A juega de primera a la carrera de C por detrás del cono.
+3006|A abre el balón a C arriba a la izquierda. B gira y sigue corriendo.
+3007|Un juego de posesión en el que perder el balón inicia una presión total de 5 segundos para recuperarlo de inmediato.
+3008|Un segundo defensor persigue desde la línea de medio campo después de 3 segundos.
+3009|Un servidor en un extremo. Un atacante con un defensor detrás en el medio. Una portería pequeña detrás del defensor.
+3010|Un partido reducido con porteros para cerrar la sesión: muchos tiros, atajadas y decisiones.
+3011|Un partido reducido o completo con una condición que resalta el objetivo de la sesión.
+3012|Un pase que parte entre los defensores suma un punto extra.
+3013|Un cuadrado de 8 yardas por lado. Cuatro jugadores por fuera, un defensor en el medio.
+3014|Un patrón de paredes que libera a un tercer jugador que corre más allá de una línea de pase tapada, algo básico del juego de posición.
+3015|Un extremo y un lateral que dobla superan a un defensor por la banda y centran para dos delanteros.
+3016|Agrega un defensor que persigue y empieza 3 yardas atrás.
+3017|Agrega una condición: un gol vale doble después de un cambio de juego.
+3018|Agrega un quinto jugador que presiona.
+3019|Agrega un defensor pasivo después de 6 repeticiones.
+3020|Agrega un defensor pasivo delante de B.
+3021|Agrega un defensor pasivo que tapa un objetivo.
+3022|Agrega un defensor pasivo al que hay que superar con el pase al tercer hombre.
+3023|Agrega un rebote: el siguiente que tira sigue la jugada.
+3024|Agrega un segundo defensor que sigue al lateral.
+3025|Agrega un giro en la línea de medio campo cuando lo indique el entrenador.
+3026|Agrega uno o dos defensores en el área.
+3027|Agrega señales de presión: un pase atrás significa que todo el equipo sube.
+3028|Agrega la condición de la sesión, por ejemplo: un gol tras un cambio de juego vale doble.
+3029|Agrega la parte de fuerza y equilibrio (planchas, equilibrio sobre una pierna, nórdicos de isquiotibiales) en días sin partido.
+3030|Después de 10 tiros, cambia de portero y mueve los conos.
+3031|Después de 2 minutos, en sentido contrario a las agujas del reloj.
+3032|Después de 4 minutos, un jugador puede subir a otra zona para crear superioridad.
+3033|Después de un gol, el otro equipo reinicia desde su propia línea.
+3034|Después de cada gol, el equipo que marcó hace entrar a un jugador descansado.
+3035|TIPS del Ajax
+3036|La academia del Ajax evalúa y desarrolla a los jugadores en cuatro cualidades: Técnica, Inteligencia (Insight), Personalidad y Velocidad (Speed, incluida la velocidad de pensamiento). Los ejercicios aquí llevan la etiqueta de las cualidades que entrenan.
+3037|Dales 15 segundos.
+3038|Deja que A dé un toque antes de pasarle a C.
+3039|Permite también marcar entrando conduciendo en la zona final.
+3040|Permite desde el inicio que un jugador se mueva libremente entre zonas.
+3041|Alterna girar a la izquierda y a la derecha.
+3042|Alterna las bandas.
+3043|Dale siempre al jugador con balón dos opciones, a la izquierda y a la derecha.
+3044|Un grupo del extremo se pasa el balón hasta que un jugador de enlace queda libre, y entonces se la juega.
+3045|Un jugador del extremo le pasa al jugador del medio.
+3046|Cualquier número
+3047|En cualquier lugar
+3048|Pregunta, no ordenes: deja que los jugadores expliquen lo que aprendieron.
+3049|Pregunta: «¿Cuándo usaste el tema de hoy en el partido?» y «¿Qué vas a probar la próxima vez?»
+3050|Ataca rápido antes de que la defensa se organice.
+3051|Ve al balón en su punto más alto y despeja alto y hacia afuera.
+3052|Ataca a velocidad el pie adelantado del defensor.
+3053|Ataca mientras el otro equipo sigue desorganizado.
+3054|Los atacantes pueden conducir y cambiar el juego en largo.
+3055|Los atacantes combinan para crear un tiro en 10 segundos.
+3056|Los atacantes solo pueden conducir, sin pases.
+3057|Los atacantes se pasan el balón por delante, despacio al principio.
+3058|Los atacantes solo pasan, sin carreras.
+3059|Los atacantes intentan conducir o pasar por cualquiera de las puertas.
+3060|Atacantes: empiecen la carrera tarde y ataquen el balón.

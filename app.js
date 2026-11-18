@@ -1,4 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
+import { LANG, LOC, langToggle, setLang } from "./i18n.js";
 import { animSvg, animScan, animToggle, hasAnim } from "./anim.js";
 import { introHtml, introMount } from "./intro.js";
 import { TEAM_DRILLS, teamDrillById, METHODS, PHASES, PHASE_NOTE, TIPS_LABEL, diagramSvg, DIAGRAM_KEY, playersText, LEVELS as TD_LEVELS, LEVEL_NOTE as TD_LEVEL_NOTE } from "./teamdrills.js";
@@ -235,7 +236,7 @@ function playerAge(p){
     if(n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) a--; return a; }
   return p.birthYear ? ageOf(p.birthYear) : null;
 }
-const fmtDob = d => d ? new Date(d + "T00:00:00").toLocaleDateString(undefined, {year:"numeric", month:"short", day:"numeric"}) : "";
+const fmtDob = d => d ? new Date(d + "T00:00:00").toLocaleDateString(LOC, {year:"numeric", month:"short", day:"numeric"}) : "";
 const profileFor = pid => S.profiles.find(x => x.playerId === pid) || null;
 const blobUrl = id => sb ? sb.storage.from("media").getPublicUrl(id).data.publicUrl : "";
 const canEditProfile = p => !!(S.me && !isStaff() && (S.me.playerIds||[]).includes(p.id));
@@ -268,8 +269,8 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const today = () => new Date().toLocaleDateString("en-CA");
 const weekStart = () => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.toLocaleDateString("en-CA"); };
 const daysSince = iso => Math.floor((Date.now() - new Date(iso + "T12:00:00").getTime()) / 864e5);
-const fmtDate = iso => iso ? new Date(iso + "T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}) : "";
-const shortDate = iso => new Date(iso + "T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"});
+const fmtDate = iso => iso ? new Date(iso + "T12:00:00").toLocaleDateString(LOC,{month:"short",day:"numeric",year:"numeric"}) : "";
+const shortDate = iso => new Date(iso + "T12:00:00").toLocaleDateString(LOC,{month:"short",day:"numeric"});
 const initials = n => String(n||"?").trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
 const ALPH = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const makeCode = n => Array.from({length:n},()=>ALPH[Math.floor(Math.random()*ALPH.length)]).join("");
@@ -615,7 +616,7 @@ function fixView(){
 
 /* ---------- views ---------- */
 /* NextPass wordmark (words only; the standalone mark lives in /brand) */
-const logoHtml = () => `<img class="logo-mark" src="brand/mark.svg" alt="" width="36" height="36"><span class="wordmark"><span class="wm-word">Next</span><span class="wm-word wm-pass">Pass</span></span>`;
+const logoHtml = () => `<img class="logo-mark" src="brand/mark.svg" alt="" width="36" height="36"><span class="wordmark" translate="no"><span class="wm-word">Next</span><span class="wm-word wm-pass">Pass</span></span>`;
 const brandSvg = "";
 
 /* the signed-in menu: plain links and dropdown groups ({g, l, items}) */
@@ -658,12 +659,12 @@ function topbar(){
     const items = navItems();
     const allUnread = totalUnread() + totalPmUnread() + totalMeetingRequests();
     tabs = `<button type="button" class="menu-btn app-menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="app-nav">${S.menuOpen ? "Close" : "Menu"}${!S.menuOpen && allUnread ? `<span class="badge">${allUnread>99?"99+":allUnread}</span>` : ""}</button>
-    <nav id="app-nav" class="tabs app-tabs${S.menuOpen ? " open" : ""}${S.navQuiet ? " dd-quiet" : ""}" aria-label="Main">${items.map(it => it.g ? navGroup(it) : navBtn(it)).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>`;
+    <nav id="app-nav" class="tabs app-tabs${S.menuOpen ? " open" : ""}${S.navQuiet ? " dd-quiet" : ""}" aria-label="Main">${items.map(it => it.g ? navGroup(it) : navBtn(it)).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a>${langToggle("nav-lang")}<button class="signout-link" data-act="signOut">Sign out</button></nav>`;
   }
   return `<header class="top"><div class="top-in">
     <a href="#" class="brand" data-act="home" aria-label="${APP_NAME} home">${logoHtml()}</a>
     ${S.club ? `<span class="clubname">${esc(S.club.name)}</span>` : ""}
-    ${!S.uid && !S.noConfig ? publicNav() : (tabs || (S.uid ? `<nav class="tabs"><a href="#contact" class="signout-link">Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>` : ""))}
+    ${!S.uid && !S.noConfig ? publicNav() : (tabs || (S.uid ? `<nav class="tabs"><a href="#contact" class="signout-link">Contact</a>${langToggle("nav-lang")}<button class="signout-link" data-act="signOut">Sign out</button></nav>` : ""))}
   </div></header>`;
 }
 function render(){
@@ -1377,7 +1378,7 @@ function recruitHtml(p, opts){
 
   if(!pub && sec !== "youth" && !adult){
     const d16 = p.birthDate ? new Date(new Date(p.birthDate + "T00:00:00").setFullYear(new Date(p.birthDate + "T00:00:00").getFullYear() + RECRUIT_AGE)) : null;
-    const when = d16 ? d16.toLocaleDateString(undefined, {year:"numeric", month:"long", day:"numeric"}) : "";
+    const when = d16 ? d16.toLocaleDateString(LOC, {year:"numeric", month:"long", day:"numeric"}) : "";
     const msg = age == null ? (ed ? "Add the date of birth under Account → Edit first." : "The family hasn't added a date of birth yet.")
       : ed ? `${esc(p.name)} can be listed here from ${esc(when || "their 16th birthday")}. Until then, keep building the player profile and collecting coach references.`
       : `${esc(p.name)} turns ${RECRUIT_AGE} on ${esc(when || "their 16th birthday")}. References you write now will be ready for it.`;
@@ -1759,13 +1760,13 @@ async function markRead(){
   readPending = false;
 }
 document.addEventListener("visibilitychange", () => { if(!document.hidden && S.view === "chat") markRead(); });
-function msgTime(ts){ return new Date(ts).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}); }
+function msgTime(ts){ return new Date(ts).toLocaleTimeString(LOC,{hour:"numeric",minute:"2-digit"}); }
 function dayLabel(ts){
   const d = new Date(ts).toLocaleDateString("en-CA");
   if(d === today()) return "Today";
   const y = new Date(); y.setDate(y.getDate()-1);
   if(d === y.toLocaleDateString("en-CA")) return "Yesterday";
-  return new Date(ts).toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
+  return new Date(ts).toLocaleDateString(LOC,{weekday:"short",month:"short",day:"numeric"});
 }
 function chatView(){
   const teams = myTeams();
@@ -2635,6 +2636,7 @@ const CONFIRM = {
 };
 let confirmed = null;
 /* dropdowns: one open at a time; click outside or Escape closes */
+ACTS.setLang = ds => setLang(ds.id);
 ACTS.navDd = ds => { S.navOpen = S.navOpen === ds.g ? null : ds.g; render(); const b = document.querySelector(`.nav-dd-btn[data-g="${ds.g}"]`); if(b) b.focus(); };
 document.addEventListener("click", ev => {
   if(S.navOpen && !ev.target.closest(".nav-dd")){ S.navOpen = null; render(); }
@@ -2783,7 +2785,7 @@ const PAGE_IDS = PUBLIC_PAGES.concat(FOOTER_PAGES).map(p => p[0]);
 function publicNav(){
   const links = PUBLIC_PAGES.map(([id,label]) => `<a href="#${id}" class="navlink" ${S.publicPage===id?'aria-current="page"':""}>${label}</a>`).join("");
   return `<button type="button" class="menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="site-nav">${S.menuOpen ? "Close" : "Menu"}</button>
-    <nav id="site-nav" class="site-nav${S.menuOpen ? " open" : ""}" aria-label="Site">${links}<a href="#signin" class="btn primary sm nav-signin">Sign in</a></nav>`;
+    <nav id="site-nav" class="site-nav${S.menuOpen ? " open" : ""}" aria-label="Site">${links}${langToggle("navlink")}<a href="#signin" class="btn primary sm nav-signin">Sign in</a></nav>`;
 }
 function siteFooter(){
   const col = (h, links) => `<div class="fcol"><h2 class="fh">${h}</h2>${links.map(([href, label]) => `<a href="${href}">${label}</a>`).join("")}</div>`;
@@ -3320,7 +3322,7 @@ function composerHtml(placeholder, form, extra = ""){
 function fmtWhen(ts){
   if(!ts) return "";
   const d = new Date(ts);
-  return d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}) + " at " + d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+  return d.toLocaleDateString(LOC,{weekday:"short",month:"short",day:"numeric"}) + (LANG === "es" ? " a las " : " at ") + d.toLocaleTimeString(LOC,{hour:"numeric",minute:"2-digit"});
 }
 function locationHtml(loc){
   if(!loc) return "";

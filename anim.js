@@ -4,6 +4,7 @@
    Only animations on screen run; tap to pause or play; reduced-motion users tap to play. */
 
 const W = 160, H = 90;
+const tr = t => (typeof window !== "undefined" && window.npT ? window.npT(t) : t); /* Spanish captions (i18n.js) */
 const BLUE = "#1f5fc9", ORANGE = "#d9572a", NAVY = "#14213a";
 
 /* ---------- script helpers ---------- */
@@ -1272,7 +1273,7 @@ function draw3(el, st, t){
   items.sort((x, y) => y.d - x.d);
   st.actEl.innerHTML = items.map(i => i.svg).join("");
   const says = s.says.filter(([t0]) => t >= t0 && t < t0 + 1.2);
-  st.sayEl.innerHTML = says.map(([, a, txt]) => { const v = at(s.tracks[a] || [], t) || [80, 45]; const hp = proj(c, v[0], v[1], c.H * 1.15); return bubble(hp.x, hp.y, txt); }).join("");
+  st.sayEl.innerHTML = says.map(([, a, txt]) => { const v = at(s.tracks[a] || [], t) || [80, 45]; const hp = proj(c, v[0], v[1], c.H * 1.15); return bubble(hp.x, hp.y, tr(txt)); }).join("");
 }
 
 /* caption bar: the current step, "2/4", and a short fade when it changes */
@@ -1281,7 +1282,7 @@ function showCaption(st, t){
   for(const row of s.capSeq){ if(row[0] <= t + 0.001) cur = row; else break; }
   const txt = cur ? cur[1] : "", n = cur ? cur[2] : 0;
   if(txt + "|" + n !== st.cap){
-    st.cap = txt + "|" + n; st.capEl.textContent = txt;
+    st.cap = txt + "|" + n; st.capEl.textContent = tr(txt);
     if(st.stepEl) st.stepEl.textContent = s.capTotal > 1 && txt ? `${n + 1}/${s.capTotal}` : "";
     if(st.started && st.capEl.animate) try { st.capEl.animate([{opacity: 0, transform: "translateY(3px)"}, {opacity: 1, transform: "none"}], {duration: 260, easing: "ease-out"}); } catch(_){}
   }
@@ -1329,7 +1330,7 @@ function draw(el, st, t){
   const says = s.says.filter(([st0]) => t >= st0 && t < st0 + 1.2);
   const key = says.map(x => x.join("|")).join(";");
   if(key !== st.sayKey){ st.sayKey = key;
-    st.sayEl.innerHTML = says.map(([, a, txt]) => { const v = at(s.tracks[a] || [], t) || [80, 45]; return bubble(v[0], v[1] - 2.5, txt); }).join(""); }
+    st.sayEl.innerHTML = says.map(([, a, txt]) => { const v = at(s.tracks[a] || [], t) || [80, 45]; return bubble(v[0], v[1] - 2.5, tr(txt)); }).join(""); }
 }
 function frame(el, st, t){ (st.s.cam.flat ? draw : draw3)(el, st, t); showCaption(st, t); }
 function loop(now){
