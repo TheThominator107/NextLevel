@@ -22,9 +22,11 @@ insert into public.platform_admins (user_id) select id from auth.users where low
 
 **Training sessions** (update 018): coaches plan team practices under Training → Team Drills from the team drill library in `teamdrills.js`. Saved sessions are visible only to coaches and admins in the same club.
 
+**Invite links** (update 020): coaches copy a coach invite link (`#coach-join-<club code>`) or a team's family invite link (`#team-<team id>`) from the box under the club code. The family link fills in the team; a coach still approves each request.
+
 **Review baseline** (update 019): every review records what the ratings are measured against (age group, league, team, or for U16 and up, ability to play at a higher level). Field reviews now cover 19 skills, including weak foot, skill moves, sprint speed, stamina, vision and attitude.
 
-**Not sure which database updates you've run?** Run `supabase/all_updates.sql` once in the SQL Editor. It contains every update (002 to 019), is safe whatever state your database is in, and can be run again any time. If Supabase warns about a "destructive operation", click "Run this query": it only removes old, unused parts.
+**Not sure which database updates you've run?** Run `supabase/all_updates.sql` once in the SQL Editor. It contains every update (002 to 020), is safe whatever state your database is in, and can be run again any time. If Supabase warns about a "destructive operation", click "Run this query": it only removes old, unused parts.
 Existing database: run any migration you haven't run yet. They're all safe to run more than once.
 
 ## Paywall

@@ -763,6 +763,18 @@ summary{min-height:28px;display:flex;align-items:center;gap:6px;cursor:pointer}
 .setup-list .what{flex:1;min-width:200px}
 .setup-list li.done .what b{text-decoration:line-through;text-decoration-thickness:1px}
 .setup-bar{height:8px;border-radius:99px;background:var(--chip);overflow:hidden}
+.setup-mini{padding:14px 18px}
+.setup-mini h2{margin:0}
+.badge.req-badge{width:auto;min-width:0;padding:0 8px;border-radius:999px;font-size:.72rem;white-space:nowrap}
+/* invite links */
+.invite-box{display:flex;flex-direction:column;gap:12px}
+.invite-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+.invite-row .f{margin:0}
+.invite-row input[readonly]{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.85rem;background:var(--chip);cursor:text}
+.invite-code{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.invite-banner{border-left:5px solid var(--accent)}
+.invite-row .inv-team{display:inline-block;width:auto;min-height:0;padding:2px 28px 2px 8px;margin:0 0 4px 8px;font-size:.85rem}
+@media (max-width:520px){ .invite-row{grid-template-columns:1fr} .invite-row .btn{justify-self:start} }
 .setup-bar i{display:block;height:100%;background:var(--accent);border-radius:99px}
 /* respect reduced motion everywhere */
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{transition-duration:.01ms !important;animation-duration:.01ms !important;animation-iteration-count:1 !important;scroll-behavior:auto !important}}

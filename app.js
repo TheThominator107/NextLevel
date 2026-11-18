@@ -206,6 +206,17 @@ const S = {
   messages:[], chatTeam:null, pmessages:[], meetings:[], teamCoaches:[], pmPlayer:null, pmTab:"chat", meetingId:null
 };
 const APP_URL = location.origin + location.pathname;
+/* invite links: coaches get #coach-join-<club code>, families get #team-<team id> */
+const coachInviteUrl = () => APP_URL + "#coach-join-" + S.club.code;
+const teamInviteUrl = t => APP_URL + "#team-" + t.id;
+function saveInvite(v){ S.invite = v || null; try { v ? localStorage.setItem("np-invite", JSON.stringify(v)) : localStorage.removeItem("np-invite"); } catch(_){} }
+function readInviteHash(h){
+  let m = /^coach-join-([A-Za-z0-9]{4,12})$/.exec(h || "");
+  if(m){ saveInvite({kind:"coach", code:m[1].toUpperCase()}); savePortal("coach"); return true; }
+  m = /^team-([0-9a-fA-F-]{36})$/.exec(h || "");
+  if(m){ saveInvite({kind:"team", teamId:m[1].toLowerCase()}); savePortal("family"); return true; }
+  return false;
+}
 const FIELD_POSITIONS = [["GK","Goalkeeper"],["RB","Right Back"],["LB","Left Back"],["CB","Center Back"],["RWB","Right Wingback"],["LWB","Left Wingback"],["CDM","Center Defensive Mid"],["CM","Center Mid"],["CAM","Attacking Mid"],["LM","Left Mid"],["RM","Right Mid"],["RW","Right Wing"],["LW","Left Wing"],["CF","Center Forward"],["ST","Striker"]];
 const OLD_POSITIONS = {WB:"Wingback"}; /* positions saved before the list changed */
 const positionLabel = k => (FIELD_POSITIONS.find(x => x[0] === k) || [k, OLD_POSITIONS[k] || k])[1];
@@ -611,7 +622,7 @@ const brandSvg = "";
 const curSec = () => SECTION_KEYS.includes(S.rsec) ? S.rsec : isStaff() ? "youth" : "college";
 function navItems(){
   if(isScout()) return [{v:"scout", l:"Find players"}, {v:"shortlist", l:"Shortlist"}, {v:"account", l:"Account"}];
-  const un = totalUnread(), pmu = totalPmUnread();
+  const un = totalUnread(), pmu = totalPmUnread() + totalMeetingRequests();
   const inbox = {g:"inbox", l:"Inbox", n:un + pmu, items:[{v:"chat", l:"Team Chat", n:un}, {v:"messages", l:"Messages", n:pmu}]};
   const recruit = {g:"recruit", l:"Recruiting", n:newInterest().length, items:[["pro","Pro"],["college","College"],["youth","Youth"]].map(([k,l]) => ({v:"recruit", sec:k, l, n:newInterest(k).length}))};
   if(isStaff()){
@@ -645,7 +656,7 @@ function topbar(){
   let tabs = "";
   if(S.me && (S.club || !isStaff())){
     const items = navItems();
-    const allUnread = totalUnread() + totalPmUnread();
+    const allUnread = totalUnread() + totalPmUnread() + totalMeetingRequests();
     tabs = `<button type="button" class="menu-btn app-menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="app-nav">${S.menuOpen ? "Close" : "Menu"}${!S.menuOpen && allUnread ? `<span class="badge">${allUnread>99?"99+":allUnread}</span>` : ""}</button>
     <nav id="app-nav" class="tabs app-tabs${S.menuOpen ? " open" : ""}${S.navQuiet ? " dd-quiet" : ""}" aria-label="Main">${items.map(it => it.g ? navGroup(it) : navBtn(it)).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a><button class="signout-link" data-act="signOut">Sign out</button></nav>`;
   }
@@ -656,6 +667,7 @@ function topbar(){
   </div></header>`;
 }
 function render(){
+  if(S.invite && S.me && !S.loading && !S.inviteBusy) setTimeout(applyInvite, 0);
   const app = document.getElementById("app");
   let body;
   if(S.loading) body = `<div class="card"><p>Loading your club…</p>${S.notice?`<p class="muted small" style="margin-top:8px">${esc(S.notice)}</p>`:""}</div>`;
@@ -786,6 +798,7 @@ function onboarding(){
       <p style="max-width:52ch">Starting fresh? Create your club and you become its admin. Joining an existing club? Ask your club admin for the 6-letter club code.</p>
     </div>
     <div class="stack">
+      ${S.invite && S.invite.kind === "coach" ? inviteBanner() + joinCoachForm() : ""}
       <form class="card stack" data-form="createClub">
         <h2>Start a club</h2>
         <p class="small muted">For club directors setting up ${APP_NAME} for the first time.</p>
@@ -793,17 +806,21 @@ function onboarding(){
         <label class="f" for="cc-club">Club or team name<input type="text" id="cc-club" name="club" required maxlength="80"></label>
         <div><button class="btn primary" type="submit">Create club</button></div>
       </form>
-      <form class="card stack" data-form="joinCoach">
-        <h2>Join your club</h2>
-        <label class="f" for="jc-name">Your name<input type="text" id="jc-name" name="name" required maxlength="60" autocomplete="name"></label>
-        <label class="f" for="jc-code">Club code<input type="text" id="jc-code" name="code" required maxlength="12" placeholder="6-letter code" autocapitalize="characters"></label>
-        <div><button class="btn primary" type="submit">Join club</button></div>
-      </form>
+      ${S.invite && S.invite.kind === "coach" ? "" : joinCoachForm()}
       <div>${switcher}</div>
     </div>
   </section>`;
 }
 
+function joinCoachForm(){
+  const code = S.invite && S.invite.kind === "coach" ? S.invite.code : "";
+  return `<form class="card stack" data-form="joinCoach">
+        <h2>Join your club</h2>
+        <label class="f" for="jc-name">Your name<input type="text" id="jc-name" name="name" required maxlength="60" autocomplete="name"></label>
+        <label class="f" for="jc-code">Club code<input type="text" id="jc-code" name="code" required maxlength="12" placeholder="6-letter code" autocapitalize="characters" value="${esc(code)}"></label>
+        <div><button class="btn primary" type="submit">Join club</button></div>
+      </form>`;
+}
 const coachIcon = `<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect x="5" y="9" width="30" height="22" rx="3" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M11 25 l5-6 4 3 7-8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="27" cy="14" r="2" fill="currentColor"/></svg>`;
 const familyIcon = `<svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><circle cx="14" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="27" cy="16" r="3.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M5 33c0-6 4-10 9-10s9 4 9 10M21 33c0-4 2.6-7 6-7s6 3 6 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`;
 function portalCards(act){
@@ -826,22 +843,46 @@ function portalCards(act){
 }
 
 /* roster */
+/* invite box: club code, then links ready to copy and paste */
+function inviteCard(team){
+  if(!isStaff() || !S.club) return "";
+  const teams = S.teams.slice().sort((a,b) => String(a.name).localeCompare(String(b.name)));
+  const ft = team || teams.find(t => t.id === S.invTeam) || teams[0];
+  const linkRow = (id, label, url, extra) => `<div class="invite-row"><label class="f" for="${id}">${label}${extra || ""}<input type="text" readonly id="${id}" value="${esc(url)}" data-select-all aria-describedby="${id}-h"></label><button type="button" class="btn sm primary" data-act="copyField" data-for="${id}" data-label="${esc(label)}">Copy link</button></div>`;
+  return `<section class="card invite-box" aria-labelledby="inv-h">
+    <div class="row between"><h2 id="inv-h" class="h3" style="margin:0">Invite people</h2>
+      <div class="invite-code small">Club code <b class="code">${esc(S.club.code)}</b><button type="button" class="btn ghost sm" data-act="copy" data-text="${esc(S.club.code)}">Copy code</button></div></div>
+    ${linkRow("inv-coach", "Coach invite link", coachInviteUrl())}
+    <p class="small muted" id="inv-coach-h" style="margin:-6px 0 0">Coaches who open it sign up with the club code already filled in.</p>
+    ${ft ? `${linkRow("inv-fam", team ? `Family invite link for ${esc(team.name)}` : "Family invite link", teamInviteUrl(ft), !team && teams.length > 1 ? `<select class="inv-team" aria-label="Team for the family invite link" data-change="invTeam">${teams.map(t => `<option value="${esc(t.id)}" ${t.id === ft.id ? "selected" : ""}>${esc(t.name)}</option>`).join("")}</select>` : !team ? ` (${esc(ft.name)})` : "")}
+    <p class="small muted" id="inv-fam-h" style="margin:-6px 0 0">Families who open it sign up with ${esc(ft.name)} already picked. You approve each request here.</p>`
+      : `<p class="small muted">Add a team to get a family invite link.</p>`}
+  </section>`;
+}
 /* a short checklist for new clubs; it goes away once everything is done or the coach hides it */
+function setupFamBtn(){
+  const t = S.teams.find(x => x.id === S.teamFilter) || S.teams.slice().sort((a,b) => String(a.name).localeCompare(String(b.name)))[0];
+  return t ? `<button class="btn sm" data-act="copy" data-text="${esc(teamInviteUrl(t))}" data-label="Family invite link for ${esc(t.name)}">Copy link for ${esc(t.name)}</button>` : `<span class="small muted">Add a team first</span>`;
+}
 function setupCard(){
   if(!isStaff() || !S.club) return "";
   const key = "np-setup-hidden-" + S.club.id; let hidden = false; try { hidden = localStorage.getItem(key) === "1"; } catch(_){}
   const coaches = S.members.filter(m => m.role === "admin" || m.role === "coach").length;
   const steps = [
     [S.teams.length > 0, "Add your teams", "One for each team, training group or camp.", `<button class="btn sm" data-act="modal" data-m="team">Add a team</button>`],
-    [coaches > 1, "Invite your other coaches", `They sign up as a coach and enter your club code: <b class="code">${esc(S.club.code)}</b>`, `<button class="btn sm" data-act="copy" data-text="${esc(S.club.code)}">Copy club code</button>`],
-    [S.players.length > 0, "Get families to join", `Families sign up, search for ${esc(S.club.name)} and ask to join a team. You approve them here.`, `<button class="btn sm" data-act="copy" data-text="${esc(APP_URL + "#parent")}">Copy sign-up link for families</button>`],
+    [coaches > 1, "Invite your other coaches", `Send them your coach invite link. It opens sign-up with your club code (<b class="code">${esc(S.club.code)}</b>) filled in.`, `<button class="btn sm" data-act="copy" data-text="${esc(coachInviteUrl())}" data-label="Coach invite link">Copy coach invite link</button>`],
+    [S.players.length > 0, "Get families to join", `Send each team's family invite link. Families sign up with the team already picked, and you approve them here.`, setupFamBtn()],
     [S.reviews.length > 0, "Write your first review", "Open a player, rate each skill from 1 to 5 and add a short note.", ""],
     [S.assignments.length > 0, "Assign a home drill", "Pick from the drill library, or use the drills suggested after a review.", `<button class="btn sm" data-act="go" data-view="drills">Open the drill library</button>`]];
   const done = steps.filter(x => x[0]).length;
-  if(hidden || done === steps.length) return "";
+  if(done === steps.length) return "";
+  const bar = `<div class="setup-bar" role="progressbar" aria-label="Club setup" aria-valuemin="0" aria-valuemax="${steps.length}" aria-valuenow="${done}"><i style="width:${done / steps.length * 100}%"></i></div>`;
+  if(hidden) return `<section class="card setup-card setup-mini" aria-labelledby="setup-h">
+    <div class="row between"><div class="stack" style="gap:6px;flex:1;min-width:180px"><h2 id="setup-h" class="h3">Get your club set up <span class="small muted">· ${done} of ${steps.length} done</span></h2>${bar}</div>
+      <button type="button" class="btn sm" data-act="showSetup" aria-expanded="false">Show steps</button></div></section>`;
   return `<section class="card stack setup-card" aria-labelledby="setup-h">
     <div class="row between"><div class="stack" style="gap:2px"><h2 id="setup-h">Get your club set up</h2><p class="small muted">${done} of ${steps.length} done</p></div>
-      <button type="button" class="btn ghost sm" data-act="hideSetup">Hide this</button></div>
+      <button type="button" class="btn ghost sm" data-act="hideSetup" aria-expanded="true">Hide steps</button></div>
     <div class="setup-bar" role="progressbar" aria-label="Club setup" aria-valuemin="0" aria-valuemax="${steps.length}" aria-valuenow="${done}"><i style="width:${done / steps.length * 100}%"></i></div>
     <ol class="setup-list">${steps.map(([ok, t, x, btn], i) => `<li class="${ok ? "done" : ""}"><span class="tick" aria-hidden="true">${ok ? "✓" : i + 1}</span>
       <span class="what"><b>${t}</b><span class="sr-only">${ok ? " (done)" : " (to do)"}</span><br><span class="small muted">${x}</span></span>${ok ? "" : btn}</li>`).join("")}</ol>
@@ -871,11 +912,12 @@ function rosterView(){
   }).join("");
   return `
   <div class="row between">
-    <div class="stack" style="gap:4px"><h1>${team ? esc(team.name) : "All teams"}</h1><p class="muted small">${team ? `${players.length} player${players.length===1?"":"s"}${team.ageGroup ? " · " + esc(team.ageGroup) : ""} · ` : ""}Club code for your coaches: <span class="code">${esc(S.club.code)}</span></p></div>
+    <div class="stack" style="gap:4px"><h1>${team ? esc(team.name) : "All teams"}</h1>${team ? `<p class="muted small">${players.length} player${players.length===1?"":"s"}${team.ageGroup ? " · " + esc(team.ageGroup) : ""}</p>` : ""}</div>
     <div class="row"><button class="btn" data-act="modal" data-m="team">Add team</button></div>
   </div>
   ${setupCard()}
   ${requestsCard()}
+  ${inviteCard(team)}
   <div class="grid3">
     <div class="card tile"><div class="big num">${S.players.length}</div><div class="lbl">Players in ${esc(S.club.name)}</div></div>
     <div class="card tile"><div class="big num" style="color:${due?"var(--warn)":"var(--good)"}">${due}</div><div class="lbl">Need a review (none in 30 days)</div></div>
@@ -1014,9 +1056,9 @@ function playerDetail(p, mode){
   let drillsCard;
   if(home){
     drillsCard = `<div class="card stack">
-      <div class="row between"><h2>Home drills</h2>${!fam?`<button class="btn sm" data-act="modal" data-m="assign" data-player="${esc(p.id)}">Assign drill</button>`:""}</div>
+      <div class="row between"><h2>${fam ? "Home drills" : "Assign drills"}</h2>${!fam?`<button class="btn sm primary" data-act="modal" data-m="assign" data-player="${esc(p.id)}">Assign a drill</button>`:""}</div>
       ${as.length ? `<div class="stack">${as.map(a=>{const d=drillById(a.drillId)||{title:a.drillTitle||"Drill",category:"",minutes:"",equipment:"",level:"",steps:[]};return drillCard(d,{assignment:a,family:fam,staff:!fam,preview});}).join("")}</div>`
-        : `<p class="muted">${fam?"No drills assigned yet. Browse the library under Home drills.":"No home drills assigned."}</p>`}
+        : `<p class="muted">${fam?"No drills assigned yet. Browse the library under Home Drills.":"No drills assigned yet. Pick one for home practice, or use the suggestions below."}</p>`}
     </div>`;
   } else {
     drillsCard = `<div class="locked"><h2>Home Training</h2><p>Get the drills your coach picks for you, the full drill library and progress charts over time.</p><button class="btn primary" data-act="go" data-view="plans">See Home Training plan</button></div>`;
@@ -1043,7 +1085,6 @@ function playerView(){
       <div class="stack" style="gap:2px"><h1>${esc(p.name)}</h1><p class="muted">${[posText(p), teamName(p.teamId), playerAge(p) != null ? "Age " + playerAge(p) : ""].filter(Boolean).map(esc).join(" · ")}</p>
       <p class="small"><span class="pill ${st.cls}">${st.txt}</span></p></div></div>
     <div class="row">
-      <button class="btn" data-act="preview">${S.preview?"Back to coach view":"See what the family sees"}</button>
       ${canMessage(p) ? `<button class="btn" data-act="messageFamily" data-id="${esc(p.id)}">Message family</button>` : ""}
       <button class="btn" data-act="modal" data-m="editPlayer" data-player="${esc(p.id)}">Edit</button>
       <button class="btn primary" data-act="modal" data-m="review" data-player="${esc(p.id)}">${reviewsFor(p.id).length ? "Update review" : "First review"}</button>
@@ -1096,8 +1137,9 @@ function clubPickHtml(px){
     <div data-mode-panel="search">
       <label class="f" for="${px}-q">Search clubs and teams<input type="search" id="${px}-q" data-input="clubSearch" data-scope="${px}" data-mode="form" maxlength="80" autocomplete="off" placeholder="Club or team name, e.g. Quality U12"></label>
       <div id="${px}-res" class="club-results" aria-live="polite"></div>
-      <input type="hidden" name="teamId" id="${px}-team">
-      <p class="picked" id="${px}-picked" hidden></p>
+      ${(() => { const iv = S.invite && S.invite.kind === "team" && S.invite.info ? S.invite.info : null;
+        return `<input type="hidden" name="teamId" id="${px}-team" value="${iv ? esc(iv.team_id) : ""}">
+      <p class="picked" id="${px}-picked" ${iv ? "" : "hidden"}>${iv ? `✓ <b>${esc(iv.team_name)}</b> at <b>${esc(iv.club_name)}</b> (from your invite link). The coach gets a request when you save.` : ""}</p>`; })()}
     </div>
     <div data-mode-panel="other" hidden>
       <div class="grid2" style="gap:14px">
@@ -1153,7 +1195,7 @@ async function createPlayerFromForm(fd, form, parentName){
   const history = mode === "other" ? [{club:other, team:String(fd.get("otherTeam") || "").trim(), from:"", to:"Present", notes:""}] : [];
   await saveProfile({id:pid}, {positions, bio:String(fd.get("bio") || "").trim().slice(0, 600), history, ...(photo ? {photo} : {})}, null);
   let sent = false;
-  if(mode === "search"){ try { await rpc("request_team", {pid, tid, p_note:""}); sent = true; } catch(e){ toast(errMsg(e), true); } }
+  if(mode === "search"){ try { await rpc("request_team", {pid, tid, p_note:""}); sent = true; if(S.invite && S.invite.kind === "team") saveInvite(null); } catch(e){ toast(errMsg(e), true); } }
   return {pid, sent};
 }
 
@@ -1176,6 +1218,7 @@ function findTeamModal(){
   if(f.pick) return `<h2>Ask to join ${esc(f.pick.teamName)}</h2>
     <p>${esc(p.name)} → <b>${esc(f.pick.teamName)}</b> at <b>${esc(f.pick.clubName)}</b></p>
     <form data-form="requestTeam" class="stack">
+      ${f.choose ? `<label class="f" for="rq-pid">Which player?<select id="rq-pid" name="pid">${f.choose.map(id => { const k = S.players.find(x => x.id === id); return k ? `<option value="${esc(id)}" ${id === f.pid ? "selected" : ""}>${esc(k.name)}</option>` : ""; }).join("")}</select></label>` : ""}
       <label class="f" for="rq-note">Note for the coach (optional)<textarea id="rq-note" name="note" maxlength="500" rows="3" placeholder="e.g. Leo trialed with you in August and plays center mid."></textarea></label>
       <p class="small muted">The coach sees ${esc(p.name)}'s name, age and positions, your name and this note. Reviews and messages stay private until they approve.</p>
       <div class="row"><button class="btn primary" type="submit">Send request</button><button class="btn" type="button" data-act="unpickTeam">Back</button></div>
@@ -1804,6 +1847,12 @@ async function loadPublic(slug){
 }
 function readHash(){
   const h = location.hash.slice(1);
+  if(readInviteHash(h)){
+    S.publicPage = null; S.menuOpen = false; S.publicSlug = null; S.pub = null; S.inviteDone = false;
+    if(!S.uid) S.authMode = "signup";
+    try { history.replaceState(null, "", location.pathname + location.search); } catch(_){}
+    loadInviteInfo(); render(); window.scrollTo(0,0); return;
+  }
   if(PAGE_IDS.includes(h)){ S.publicPage = h; S.menuOpen = false; S.publicSlug = null; S.pub = null; if(h !== "contact") S.contactSent = null; render(); window.scrollTo(0,0); return; }
   if(h === "signin" || h === ""){ S.wantSignin = h === "signin"; S.publicPage = null; S.menuOpen = false; if(S.publicSlug){ S.publicSlug = null; S.pub = null; } render(); window.scrollTo(0,0); return; }
   if(h === "coach" || h === "parent" || h === "college" || h === "pro"){ savePortal(h === "coach" ? "coach" : h === "college" ? "college" : h === "pro" ? "pro" : "family"); S.publicPage = null; if(S.publicSlug){ S.publicSlug = null; S.pub = null; } if(!S.uid){ S.authMode = "signin"; } render(); return; }
@@ -1879,7 +1928,7 @@ function clubView(){
   <div class="grid2">
     <div class="card stack">
       <div class="row between"><h2>${esc(S.club.name)}</h2>${admin?`<button class="btn sm" data-act="modal" data-m="clubSettings">Edit</button>`:""}</div>
-      <p>Coach join code: <span class="code">${esc(S.club.code)}</span> <button class="btn ghost sm" data-act="copy" data-text="${esc(S.club.code)}">Copy</button></p>
+      <p>Coach join code: <span class="code">${esc(S.club.code)}</span> <button class="btn ghost sm" data-act="copy" data-text="${esc(S.club.code)}">Copy code</button> <button class="btn ghost sm" data-act="copy" data-text="${esc(coachInviteUrl())}" data-label="Coach invite link">Copy invite link</button></p>
       <p>Home Training for families: <b>${S.club.familyAccess==="subscribe"?"families subscribe themselves":"included by the club"}</b></p>
       ${(() => { const pi = planInfo(); return `<p>Plan: <b>${planName(pi.plan)}</b> · ${pi.plan === "unlimited" ? money(PRICE_NUM.unlimited) + " a month, unlimited teams" : money(pi.perTeam) + " a month for " + pi.n + " team" + (pi.n===1?"":"s")}</p>${pi.plan === "team" && pi.save > 0 ? `<p class="small"><b>Tip:</b> Club Unlimited would save you ${money(pi.save)} a month. <button class="btn ghost sm" data-act="go" data-view="plans">Compare plans</button></p>` : ""}`; })()}
       <p class="muted small">${fams.length} famil${fams.length===1?"y":"ies"} connected.</p>
@@ -2227,7 +2276,13 @@ const ACTS = {
   modal: ds => { const f = MODALS[ds.m]; if(f) openModal(f(ds)); },
   close: () => closeModal(),
   closeBg: (ds, el, ev) => { if(ev.target === el) closeModal(); },
-  copy: async ds => { try { await navigator.clipboard.writeText(ds.text); toast("Copied " + ds.text); } catch(_){ toast("Copy didn't work here. The code is " + ds.text); } },
+  copy: async ds => { try { await navigator.clipboard.writeText(ds.text); toast(ds.label ? ds.label + " copied" : "Copied " + ds.text); } catch(_){ toast("Copy didn't work here. Select it and copy: " + ds.text); } },
+  copyField: async ds => {
+    const f = document.getElementById(ds.for); if(!f) return;
+    f.focus(); f.select();
+    try { await navigator.clipboard.writeText(f.value); toast((ds.label || "Link") + " copied. Paste it in a text, email or team chat."); }
+    catch(_){ try { document.execCommand("copy"); toast((ds.label || "Link") + " copied."); } catch(__){ toast("Press Ctrl+C (or Cmd+C) to copy the selected link."); } }
+  },
   done: async ds => {
     const a = S.assignments.find(x => x.id === ds.id); if(!a) return;
     const t = today(); const had = (a.done||[]).includes(t);
@@ -2325,6 +2380,48 @@ const ACTS = {
   signOut: async () => { await sb.auth.signOut(); },
 };
 
+/* team invites: look up the team and club name (works before sign-in) */
+async function loadInviteInfo(){
+  const iv = S.invite;
+  if(!iv || iv.kind !== "team" || iv.info || !sb) return;
+  try {
+    const d = await rpc("team_invite_info", {p_team: iv.teamId});
+    if(S.invite !== iv) return;
+    if(d){ iv.info = d; saveInvite(iv); }
+    else { saveInvite(null); toast("That invite link doesn't work anymore. Ask your coach for a new one.", true); }
+  } catch(_){ /* update 020 not run yet: the family can still search by name */ }
+  render();
+}
+/* once signed in and loaded, act on an invite link */
+function applyInvite(){
+  const iv = S.invite; if(!iv || !S.me || S.loading || S.inviteBusy) return;
+  if(iv.kind === "coach"){
+    if(isStaff() && S.club){
+      if(String(S.club.code).toUpperCase() !== iv.code) toast(`You're already in ${S.club.name}. To join another club, leave this one under Club first.`, true);
+      saveInvite(null); return;
+    }
+    if(!isStaff()){ toast("That link is for coaches joining a club. You're signed in with a different kind of account.", true); saveInvite(null); }
+    return; /* coach without a club: the setup screen has the code filled in */
+  }
+  if(iv.kind === "team"){
+    if(S.me.role !== "family"){ toast(`That's a family invite link${iv.info ? " for " + iv.info.team_name : ""}. Families open it to ask to join.`, true); saveInvite(null); return; }
+    if(!iv.info) return;
+    const kids = S.players.filter(p => (S.me.playerIds || []).includes(p.id));
+    if(!kids.length) return; /* no player yet: the setup form has the team picked */
+    const on = kids.filter(p => p.teamId === iv.info.team_id);
+    const free = kids.filter(p => p.teamId !== iv.info.team_id && !pendingFor(p.id));
+    saveInvite(null);
+    if(!free.length){ toast(on.length ? `${on[0].name} is already on ${iv.info.team_name}.` : "Your player already has a request waiting. Cancel it first to ask a different team.", !on.length); return; }
+    const pick = free.find(p => !p.clubId) || free.find(p => p.id === S.childId) || free[0];
+    S.find = {pid: pick.id, q:"", results:null, pick:{clubId:iv.info.club_id, clubName:iv.info.club_name, teamId:iv.info.team_id, teamName:iv.info.team_name}, choose: free.length > 1 ? free.map(p => p.id) : null};
+    S.inviteBusy = true; setTimeout(() => { S.inviteBusy = false; openModal(findTeamModal()); }, 0);
+  }
+}
+function inviteBanner(){
+  const iv = S.invite; if(!iv) return "";
+  if(iv.kind === "coach") return `<div class="card stack invite-banner"><h2 class="h3">You're invited to coach on ${APP_NAME}</h2><p class="small">Create your account or sign in. Your club code <b class="code">${esc(iv.code)}</b> is filled in for you on the next step.</p></div>`;
+  return `<div class="card stack invite-banner"><h2 class="h3">${iv.info ? `You're invited to join ${esc(iv.info.team_name)} at ${esc(iv.info.club_name)}` : "You're invited to join a team"}</h2><p class="small">Create your account or sign in. The team is picked for you; a coach approves the request.</p></div>`;
+}
 async function rpc(name, args){
   const {data, error} = await sb.rpc(name, args);
   if(error){ const e = new Error(error.message); e.userMessage = error.message; throw e; }
@@ -2339,7 +2436,7 @@ const FORMS = {
   joinCoach: async fd => {
     let name = "";
     const ok = await save(async () => { name = await rpc("join_club", {club_code:fd.get("code").trim(), my_name:fd.get("name").trim()}); });
-    if(ok){ toast("Welcome to " + name); await loadMe(); }
+    if(ok){ saveInvite(null); toast("Welcome to " + name); await loadMe(); }
   },
   familyStart: async (fd, form) => {
     const r = await createPlayerFromForm(fd, form, String(fd.get("name")).trim());
@@ -2551,7 +2648,8 @@ document.addEventListener("keydown", ev => {
 });
 
 ACTS.openRec = ds => { S.playerId = ds.id; S.view = "player"; S.preview = false; S.ptab = "recruit"; S.recSec = ds.sec; window.scrollTo(0,0); render(); };
-ACTS.hideSetup = () => { try { localStorage.setItem("np-setup-hidden-" + S.club.id, "1"); } catch(_){} render(); toast("Hidden. Everything is still under Club and Training."); };
+ACTS.hideSetup = () => { try { localStorage.setItem("np-setup-hidden-" + S.club.id, "1"); } catch(_){} render(); const b = document.querySelector('[data-act="showSetup"]'); if(b) b.focus(); };
+ACTS.showSetup = () => { try { localStorage.removeItem("np-setup-hidden-" + S.club.id); } catch(_){} render(); const b = document.querySelector('[data-act="hideSetup"]'); if(b) b.focus(); };
 ACTS.confirmGo = () => { const c = confirmed; confirmed = null; closeModal(); if(c) ACTS[c.act](c.ds, c.el, null); };
 document.addEventListener("click", ev => {
   const el = ev.target.closest("[data-act]"); if(!el) return;
@@ -2614,6 +2712,8 @@ document.addEventListener("error", ev => {
   }
 }, true);
 window.addEventListener("hashchange", readHash);
+/* invite links: one click selects the whole link */
+document.addEventListener("focusin", ev => { if(ev.target.matches && ev.target.matches("input[data-select-all]")) setTimeout(() => ev.target.select(), 0); });
 document.addEventListener("change", async ev => {
   const t = ev.target;
   if(t.dataset && t.dataset.upload === "photo" && t.files && t.files[0]){
@@ -2655,6 +2755,7 @@ document.addEventListener("change", ev => {
   }
   if(ev.target.dataset && ev.target.dataset.change === "skillFilter"){ S.skillFilter = ev.target.value || null; render(); const el = document.getElementById("skill-filter"); if(el) el.focus(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "pmPlayer"){ S.pmPlayer = ev.target.value; S.meetingId = null; render(); return; }
+  if(ev.target.dataset && ev.target.dataset.change === "invTeam"){ S.invTeam = ev.target.value; render(); const el = document.querySelector(".inv-team"); if(el) el.focus(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "chatTeam"){ S.chatTeam = ev.target.value; render(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "chartSkill"){ S.chartSkill = ev.target.value; render(); const s = document.getElementById("chart-skill"); if(s) s.focus(); }
 });
@@ -3175,6 +3276,10 @@ function unreadIn(pid, mid){
 function pmUnreadFor(pid){ return unreadIn(pid, null) + meetingsFor(pid).reduce((n, mt) => n + unreadIn(pid, mt.id), 0); }
 function totalPmUnread(){ if(!S.me) return 0; return pmPlayers().reduce((n, p) => n + pmUnreadFor(p.id), 0); }
 const openMeetings = pid => meetingsFor(pid).filter(m => m.status === "requested" || m.status === "scheduled").length;
+/* meeting requests waiting on you: coaches see every new request; families see requests the coach made */
+const meetingRequests = pid => meetingsFor(pid).filter(m => m.status === "requested" && m.createdBy !== S.uid).length;
+function totalMeetingRequests(){ if(!S.me) return 0; return pmPlayers().reduce((n, p) => n + meetingRequests(p.id), 0); }
+const reqBadge = n => n ? `<span class="badge req-badge" aria-label="${n} meeting request${n>1?"s":""}">${n} request${n>1?"s":""}</span>` : "";
 
 let pmReadPending = false;
 async function markPmRead(){
@@ -3243,10 +3348,10 @@ function messagesView(){
   const p = players.find(x => x.id === S.pmPlayer);
   const fams = S.members.filter(m => m.role === "family" && (m.playerIds||[]).includes(p.id));
   const famNames = fams.map(m => m.name).filter(Boolean);
-  const nOpen = openMeetings(p.id), mUnread = meetingsFor(p.id).reduce((n, mt) => n + unreadIn(p.id, mt.id), 0), cUnread = unreadIn(p.id, null);
+  const nReq = meetingRequests(p.id), mUnread = meetingsFor(p.id).reduce((n, mt) => n + unreadIn(p.id, mt.id), 0), cUnread = unreadIn(p.id, null);
   const side = `<aside class="chat-side" aria-label="Private conversations"><h2 class="side-h">${isStaff() ? "Players" : "Your player"}</h2>
-    ${players.map(pl => { const last = pmThread(pl.id).slice(-1)[0], u = pmUnreadFor(pl.id), om = openMeetings(pl.id);
-      return `<button data-act="pmPlayer" data-id="${esc(pl.id)}" aria-current="${pl.id===p.id}"><span class="tn"><span>${esc(pl.name)}${om?` <span class="pill warn" style="font-size:.68rem">${om} meeting${om>1?"s":""}</span>`:""}</span><span class="tp">${last ? esc((last.authorName||"") + ": " + last.text) : isStaff() ? esc(teamName(pl.teamId)) : "No messages yet"}</span></span>${u?`<span class="badge">${u}</span>`:""}</button>`; }).join("")}
+    ${players.map(pl => { const last = pmThread(pl.id).slice(-1)[0], u = pmUnreadFor(pl.id), rq = meetingRequests(pl.id);
+      return `<button data-act="pmPlayer" data-id="${esc(pl.id)}" aria-current="${pl.id===p.id}"><span class="tn"><span>${esc(pl.name)}${rq ? " " + reqBadge(rq) : ""}</span><span class="tp">${last ? esc((last.authorName||"") + ": " + last.text) : isStaff() ? esc(teamName(pl.teamId)) : "No messages yet"}</span></span>${u?`<span class="badge">${u}</span>`:""}</button>`; }).join("")}
   </aside>`;
   const head = `<div class="chat-head">
     <div class="stack" style="gap:0"><h2>${esc(p.name)}</h2><span class="small muted">🔒 ${(() => { const cs = coachesOfTeam(p.teamId).map(m => m.name).filter(Boolean); return cs.length ? esc(cs.join(", ")) + " (" + esc(teamName(p.teamId)) + " coaches)" : esc(teamName(p.teamId)) + " coaches"; })()} · club admin · ${famNames.length ? esc(famNames.join(", ")) : "family (not connected yet)"}</span></div>
@@ -3254,7 +3359,7 @@ function messagesView(){
   </div>
   <div class="subtabs pm-tabs" role="tablist">
     <button role="tab" data-act="pmTab" data-id="chat" aria-selected="${S.pmTab!=="meetings"}">Private chat${cUnread?` <span class="badge">${cUnread}</span>`:""}</button>
-    <button role="tab" data-act="pmTab" data-id="meetings" aria-selected="${S.pmTab==="meetings"}">Meeting room${nOpen?` · ${nOpen} open`:""}${mUnread?` <span class="badge">${mUnread}</span>`:""}</button>
+    <button role="tab" data-act="pmTab" data-id="meetings" aria-selected="${S.pmTab==="meetings"}">Meeting room${nReq ? " " + reqBadge(nReq) : ""}${mUnread?` <span class="badge">${mUnread}</span>`:""}</button>
   </div>`;
   let main;
   if(S.pmTab !== "meetings"){
@@ -3453,6 +3558,7 @@ FORMS.findClub = async fd => {
 FORMS.requestTeam = async fd => {
   const f = S.find; if(!f || !f.pick) return;
   closeModal();
+  if(fd.get("pid") && (f.choose || []).includes(fd.get("pid"))) f.pid = fd.get("pid");
   const ok = await save(() => rpc("request_team", {pid:f.pid, tid:f.pick.teamId, p_note:String(fd.get("note") || "").trim()}), "Request sent to " + f.pick.clubName);
   if(ok){ S.find = null; S.view = "home"; S.childId = f.pid; refreshAll(); }
 };
@@ -3930,7 +4036,7 @@ function authView(){
   const coach = S.portal === "coach", college = S.portal === "college", pro = S.portal === "pro";
   const mode = S.authMode || "signin";
   const title = mode === "signup" ? "Create your account" : mode === "reset" ? "Reset your password" : "Sign in";
-  const side = pro
+  let side = pro
     ? `<span class="pill plain" style="align-self:flex-start">Pro scout</span>
        <h1>${mode==="signup"?"Scout the next generation":"Welcome back"}</h1>
        <p style="max-width:52ch">Search Recruitment Profiles of players aged ${RECRUIT_AGE} and over by position, age, playing status and level. Keep a private shortlist and message families directly.</p>
@@ -3949,6 +4055,7 @@ function authView(){
        <h1>${mode==="signup"?"Follow your player's progress":"Welcome back"}</h1>
        <p style="max-width:52ch">See your coach's reviews, practice the drills they pick for you, build a highlight profile and chat with your team.</p>
        <div class="card stack"><h2 class="h3">First time here?</h2><p class="small">Create an account with your email and set up your player's profile. Then find your club and ask to join your team.</p></div>`;
+  if(S.invite && (coach || S.portal === "family")) side = inviteBanner() + side;
   return `<button class="btn ghost back" data-act="pickPortal" data-id="">← ${pro ? "Not a pro scout? Go back" : college ? "Not a college coach? Go back" : coach?"Not a coach? Switch to Parent / Player":"Not a parent or player? Switch to Coach"}</button>
   <section class="hero">
     <div class="stack">${side}</div>
@@ -4133,11 +4240,14 @@ async function onSession(session, event){
   if(location.hash === "#parent") savePortal("family");
   if(location.hash === "#college") savePortal("college");
   if(location.hash === "#pro") savePortal("pro");
+  try { S.invite = JSON.parse(localStorage.getItem("np-invite") || "null"); } catch(_){ S.invite = null; }
+  if(readInviteHash(location.hash.slice(1))){ S.authMode = "signup"; try { history.replaceState(null, "", location.pathname + location.search); } catch(_){} }
   if(!cfg.supabaseUrl || !cfg.supabaseKey || /YOUR_/.test(cfg.supabaseUrl + cfg.supabaseKey)){
     S.loading = false; S.noConfig = true; render(); return;
   }
   sb = createClient(cfg.supabaseUrl, cfg.supabaseKey, {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}});
   S.db = DB; S.assets = ASSETS;
+  loadInviteInfo();
   render();
   loadTimer = setTimeout(() => { if(S.loading){ S.notice = "Still connecting. Check your internet connection."; render(); } }, 10000);
   sb.auth.onAuthStateChange((event, session) => { setTimeout(() => onSession(session, event), 0); });
