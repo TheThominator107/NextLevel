@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-i18nv="1">
+<html lang="en" data-i18nv="3">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -393,8 +393,16 @@ ol.numbered{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6p
 @media (max-width:760px){.foot-in{grid-template-columns:1fr}.fcols{grid-template-columns:1fr 1fr}}
 
 /* home */
-.home-hero{display:grid;grid-template-columns:1.1fr 1fr;gap:24px;align-items:center;padding:8px 0 4px}
-.hh-copy{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px;box-shadow:var(--shadow);gap:14px}
+/* hero: one box with the slogan, the intro video, then the sign-up options */
+.home-hero{display:flex;flex-direction:column;align-items:center;gap:20px;padding:32px 28px;text-align:center}
+.hh-copy{gap:12px;align-items:center;max-width:760px}
+.hh-copy .eyebrow{align-self:center}
+.home-hero .hh-art{width:100%;max-width:760px;padding:0}
+.hh-signup{gap:10px;align-items:center}
+.hh-signup .hh-cta{justify-content:center}
+.home-hero .iv-controls,.home-hero .iv-chaps{justify-content:center}
+.home-hero .iv-text{text-align:left}
+.home-hero .iv-text > summary{text-align:center}
 .hh-copy h1{font-size:3rem;line-height:1.02}
 .hh-copy .lead{margin:0}
 .hh-cta{gap:12px;margin-top:6px}
@@ -451,12 +459,11 @@ ol.numbered{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6p
 .skip:focus{left:8px}
 @media (max-width:900px){
   .home-hero{grid-template-columns:1fr;gap:20px}.hh-copy h1{font-size:2.5rem}
-  .home-hero .hh-art{order:-1} /* phones and tablets: the intro video comes first */
   .aud-grid{grid-template-columns:1fr 1fr}.home-facts{grid-template-columns:1fr 1fr}
   .home-facts div:nth-child(3){border-left:0}.home-facts div:nth-child(n+3){border-top:1px solid var(--line)}
   .safety-band,.prog-list{grid-template-columns:1fr}
 }
-@media (max-width:520px){.aud-grid{grid-template-columns:1fr}.hh-copy h1{font-size:2.15rem}.sec-head h2{font-size:1.7rem}.hh-cta .btn{flex:1 1 100%}.hh-copy{padding:20px}}
+@media (max-width:520px){.aud-grid{grid-template-columns:1fr}.hh-copy h1{font-size:2.15rem}.sec-head h2{font-size:1.7rem}.hh-cta .btn{flex:1 1 100%}.home-hero{padding:22px 16px;gap:16px}.hh-signup{width:100%}}
 .small-brand{color:var(--ink)}
 .small-brand .wordmark{font-size:1.25rem}
 
@@ -766,6 +773,11 @@ summary{min-height:28px;display:flex;align-items:center;gap:6px;cursor:pointer}
 .setup-mini{padding:14px 18px}
 .setup-mini h2{margin:0}
 .badge.req-badge{width:auto;min-width:0;padding:0 8px;border-radius:999px;font-size:.72rem;white-space:nowrap}
+/* drill video locked without Home Training */
+.anim-locked{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:12px;background:var(--chip);border:1px dashed var(--line);font-size:.9rem}
+.anim-locked .al-play{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--surface);color:var(--muted);font-size:.8rem;flex:none}
+.anim-locked .al-txt{flex:1 1 180px;color:var(--muted)}
+.chat-monitor{margin:6px 0 0}
 /* invite links */
 .invite-box{display:flex;flex-direction:column;gap:12px}
 .invite-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
@@ -994,7 +1006,7 @@ main > p.small, main > p.muted{background:var(--surface);border:1px solid var(--
 .aud h3{margin-top:4px}
 .home-sec{margin-top:28px;gap:18px}
 .home-facts span{font-size:.85rem}
-.hh-copy .lead{max-width:34ch}
+.hh-copy .lead{max-width:44ch}
 .hh-alt{margin:0}
 .feature p,.aud p,.hstep p{line-height:1.5}
 .ex-more{margin-top:4px}

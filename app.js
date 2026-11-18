@@ -978,6 +978,11 @@ function chartHtml(rs){
 }
 
 function stepsLocked(){ return !S.uid || (!isStaff() && !familyHasHome()); }
+/* drill videos are part of Home Training: a slim locked bar instead of the animation */
+function animLockedHtml(){
+  const go = S.uid ? `<button type="button" class="btn sm" data-act="go" data-view="plans">See Home Training</button>` : `<a class="btn sm" href="#pricing">See Home Training</a>`;
+  return `<div class="anim-locked"><span class="al-play" aria-hidden="true">▶</span><span class="al-txt">🔒 The animated demo comes with Home Training</span>${go}</div>`;
+}
 /* full instructions: inline for free samples and club drills, otherwise from drill_steps (Home Training) */
 function drillInfo(d){
   if(d.steps && d.steps.length) return {steps:d.steps, setup:d.setup || "", reps:d.reps || "", points:d.points || [], easier:d.easier || "", harder:d.harder || ""};
@@ -1020,7 +1025,7 @@ function drillCard(d, opts={}){
   }
   return `<div class="drill">
     <div class="row between"><h3>${esc(d.title)}</h3><span class="row" style="gap:6px">${d.free && !stepsLocked() ? "" : d.free ? '<span class="pill good">Free sample</span>' : ""}${a && byFamily(a) ? '<span class="pill good">Added from recommendations</span>' : ""}${d.gk?'<span class="pill warn">Goalkeeper</span>':""}${d.custom?'<span class="pill plain">Club drill</span>':""}</span></div>
-    ${hasAnim(d.id) ? animSvg(d.id, d.title) : ""}
+    ${hasAnim(d.id) ? (stepsLocked() ? animLockedHtml() : animSvg(d.id, d.title)) : ""}
     <div class="dmeta"><span>${esc(d.category)}</span><span>· ${esc(d.minutes)} min</span><span>· ${esc(d.equipment)}</span><span>· ${esc(levelOf(d))}</span></div>
     ${d.goal ? `<p class="dgoal">${esc(d.goal)}</p>` : ""}
     ${(d.skills||[]).length ? `<div class="trains small"><span class="muted">Trains:</span> ${(d.skills).map(k => esc(SKILL_LABEL[k] || k)).join(" · ")}</div>` : ""}
@@ -1808,6 +1813,7 @@ function chatView(){
         <label for="chat-input" class="small muted">Message ${esc(team.name)}</label>
         <textarea id="chat-input" name="text" maxlength="1000" rows="2" placeholder="Write a message. Enter sends, Shift+Enter adds a line." ${S.canWrite?"":"disabled"}></textarea>
         <div class="row">${isStaff()?`<label class="small row" for="chat-ann" style="gap:6px"><input type="checkbox" id="chat-ann" name="announce"> Post as announcement (pinned)</label>`:`<span class="small muted">Coaches and team families can see this chat.</span>`}<button class="btn primary" type="submit" ${S.canWrite?"":"disabled"}>Send</button></div>
+        ${MONITOR_NOTE}
       </form>
     </section>
   </div>`;
@@ -2878,7 +2884,7 @@ const AUDIENCES = [
   {id:"scouts", title:"Pro scouts", text:`Search players ${RECRUIT_AGE}+. Every scout is approved.`, link:["#pro","Ask for access"]}];
 const HOME_FAQ = [
   ["Who owns a player's profile?", `The family. If the player changes clubs, the family keeps everything and the old club loses access.`],
-  ["Is it safe for young players?", `Yes. Reviews are private to the family and their coaches, players under ${RECRUIT_AGE} never get a public link, and every scout is approved by hand. <a href="#safety">How we keep players safe</a>`],
+  ["Is it safe for young players?", `Yes. Reviews are private to the family and their coaches, players under ${RECRUIT_AGE} never get a public link, and every scout is approved by hand. Chats are monitored by clubs and ${APP_NAME}. <a href="#safety">How we keep players safe</a>`],
   ["What does it cost?", `Clubs pay per team or one price for unlimited teams. College coaches and scouts are free. <a href="#pricing">See pricing</a>`],
   ["Do the drills need a team or a coach?", `No. Every solo drill needs only a ball, a few cones and a wall.`],
   ["Can a rec league or a private trainer use it?", `Yes. Each team or training group is set up the same way. <a href="#clubs">See how</a>`],
@@ -2887,15 +2893,17 @@ const HOME_FAQ = [
 function homeView(){
   const step = (n, t, x) => `<div class="hstep"><span class="step-n">${n}</span><div class="stack" style="gap:4px"><h3>${t}</h3><p class="muted">${x}</p></div></div>`;
   const facts = [[FIELD_SKILLS.length + " + " + GK_SKILLS.length, "field and keeper skills per review"], [String(BUILTIN_DRILLS.length), "animated solo drills"], [String(TEAM_DRILLS.length), "team drills for practice"], ["3", "ways to get recruited"]];
-  return `<section class="home-hero">
+  return `<section class="home-hero card">
     <div class="stack hh-copy">
       <span class="eyebrow">Youth soccer, from first touch to first offer</span>
       <h1>Develop every player.<br>Get every player seen.</h1>
       <p class="lead">Coach reviews, home training and recruiting for youth soccer, all in one place.</p>
+    </div>
+    <div class="hh-art">${introHtml()}</div>
+    <div class="stack hh-signup">
       <div class="row hh-cta"><button type="button" class="btn primary lg" data-act="pickPortal" data-id="coach" data-mode="signup">Start your club</button><button type="button" class="btn lg" data-act="pickPortal" data-id="family" data-mode="signup">I'm a parent or player</button></div>
       <p class="small muted hh-alt">College coach? <a href="#college">Join free</a> · Scout? <a href="#pro">Ask for access</a> · <a href="#signin">Sign in</a></p>
     </div>
-    <div class="hh-art card">${introHtml()}</div>
   </section>
   <section class="home-facts" aria-label="${APP_NAME} at a glance">${facts.map(([n, t]) => `<div><b>${n}</b><span>${t}</span></div>`).join("")}</section>
 
@@ -2986,7 +2994,7 @@ function pageClubs(){
 ACTS.progJump = (ds, el, ev) => { if(ev) ev.preventDefault(); const t = document.getElementById("prog-" + ds.id); if(t){ t.scrollIntoView({behavior:"smooth", block:"start"}); t.classList.add("flash"); setTimeout(() => t.classList.remove("flash"), 1200); } };
 
 /* ---------- safety and the legal pages ---------- */
-const LEGAL_UPDATED = "November 15, 2026";
+const LEGAL_UPDATED = "November 18, 2026";
 function pageSafety(){
   const row = (what, who) => `<tr><th scope="row">${what}</th><td>${who}</td></tr>`;
   return `<section class="page-hero stack"><span class="eyebrow">Safety</span>
@@ -2995,8 +3003,8 @@ function pageSafety(){
   <div class="card stack"><h2>Who can see what</h2>
     <div class="tbl-wrap"><table class="who-sees"><thead><tr><th scope="col">Information</th><th scope="col">Who can see it</th></tr></thead><tbody>
       ${row("Coach reviews and notes", "The family, their coaches and the club admin. Never public.")}
-      ${row("Private messages", "The family, their coaches and the club admin.")}
-      ${row("Team chat", "Families and coaches on that team.")}
+      ${row("Private messages", "The family, their coaches and the club admin. Monitored by the club and " + APP_NAME + " for safety.")}
+      ${row("Team chat", "Families and coaches on that team. Monitored by the club and " + APP_NAME + " for safety.")}
       ${row("Player profile", "The family and their club. Public only if the family chooses, from " + RECRUIT_AGE + ".")}
       ${row("Recruiting: College", `Verified college coaches, if the parent turns it on. Ages ${RECRUIT_AGE}+.`)}
       ${row("Recruiting: Pro", `Approved scouts, if the parent turns it on. Ages ${RECRUIT_AGE}+.`)}
@@ -3013,6 +3021,7 @@ function pageSafety(){
       <li>Colleges and scouts message the family, never the player.</li>
       <li>At most one message a week per coach or scout.</li>
       <li>Coaches only message their own teams' families.</li>
+      <li>Team chats and private messages are monitored by the club and ${APP_NAME}.</li>
       <li>Scouts who change organization are checked again.</li></ul></div>
   </div>
   <div class="card stack"><h2>Tips for families</h2><ul class="ticks">
@@ -3058,6 +3067,7 @@ function legalPage(kind){
       "<b>Contact form messages</b> you send us.")),
     P("What we don't do", L("We don't show ads.", "We don't sell or rent anyone's information.", "We don't use your information to build advertising profiles.")),
     P("How we use it", "To run the service: show reviews and drills to the right people, recommend drills, deliver messages, show Recruitment Profiles in the sections a family has turned on, check college coach and scout accounts, answer your questions, and keep the service secure."),
+    P("Monitoring of chats", `To keep players safe, team chats, private messages and meeting rooms are monitored by the club the team belongs to and by ${APP_NAME}. Messages that break our <a href="#terms">Terms of Use</a> can be removed, and concerns about a child's safety can be reported to the authorities.`),
     P("Who can see it", `Each part of a player's information is only shown to the people listed on our <a href="#safety">Safety page</a>. Recruiting listings are off until a parent turns them on. We share information with the companies that host and run ${APP_NAME} for us (database and file storage, and website hosting) only so they can provide that service, and we'd share it if the law required us to.`),
     P("Children", `Many players are under 13. Accounts for players under 13 must be created and managed by a parent or guardian, who gives consent for the information they add. Players under ${RECRUIT_AGE} never have a public profile link, and youth club coaches only see their first name, last initial and birth year. A parent can review, change or delete their child's information at any time from their account, or by contacting us.`),
     P("Your choices", L("Edit your player's profile and recruiting details at any time.", "Turn each recruiting section on or off at any time.", "Make a profile private.", "Leave a team or club; the club loses access to your player's information.", `Ask us to delete your account and your players' information: <a href="#contact">contact us</a> and choose <b>Privacy request</b>.`)),
@@ -3149,7 +3159,7 @@ function pageParents(){
     ${feature("Real feedback","Ratings, strengths and a note after every review.")}
     ${feature("Progress over the season","See what's improving and what's next.")}
     ${feature("15 minutes at home","Drills from the review, ticked off each week.")}
-    ${feature("Team chat","Schedule changes from the coach, in one place.")}
+    ${feature("Team chat",`Schedule changes from the coach, in one place. Chats are monitored by the club and ${APP_NAME}.`)}
     ${feature("Recruiting when ready",`Youth clubs at any age, colleges and scouts from ${RECRUIT_AGE}.`)}
     ${feature("Private and safe","Only your family and the coaches see reviews.")}
   </div>
@@ -3281,6 +3291,7 @@ const openMeetings = pid => meetingsFor(pid).filter(m => m.status === "requested
 /* meeting requests waiting on you: coaches see every new request; families see requests the coach made */
 const meetingRequests = pid => meetingsFor(pid).filter(m => m.status === "requested" && m.createdBy !== S.uid).length;
 function totalMeetingRequests(){ if(!S.me) return 0; return pmPlayers().reduce((n, p) => n + meetingRequests(p.id), 0); }
+const MONITOR_NOTE = `<p class="small muted chat-monitor">🛡 Chats are monitored by your club and ${APP_NAME} to keep players safe.</p>`;
 const reqBadge = n => n ? `<span class="badge req-badge" aria-label="${n} meeting request${n>1?"s":""}">${n} request${n>1?"s":""}</span>` : "";
 
 let pmReadPending = false;
@@ -3316,7 +3327,8 @@ function composerHtml(placeholder, form, extra = ""){
   return `<form class="composer" data-form="${form}">
     <label for="pm-input" class="small muted">${placeholder}</label>
     <textarea id="pm-input" name="text" maxlength="2000" rows="2" placeholder="Write a message. Enter sends, Shift+Enter adds a line."></textarea>
-    <div class="row"><span class="small muted">🔒 Private: only this player's family, their team's coaches and the club admin can read this.</span>${extra}<button class="btn primary" type="submit">Send</button></div>
+    <div class="row"><span class="small muted">🔒 Private to this player's family, their team's coaches and the club admin.</span>${extra}<button class="btn primary" type="submit">Send</button></div>
+    ${MONITOR_NOTE}
   </form>`;
 }
 function fmtWhen(ts){
@@ -3365,7 +3377,7 @@ function messagesView(){
   </div>`;
   let main;
   if(S.pmTab !== "meetings"){
-    main = `<div class="thread" id="pm-thread" data-key="${esc(readKey(p.id,null))}" aria-live="polite">${bubblesHtml(pmThread(p.id), isStaff() ? `Start a private conversation with ${esc(p.name)}'s family. Only they, ${esc(p.name)}'s team coaches and the club admin can see it.` : `Message your coaches privately. Only your family, your team's coaches and the club admin can see this.`)}</div>
+    main = `<div class="thread" id="pm-thread" data-key="${esc(readKey(p.id,null))}" aria-live="polite">${bubblesHtml(pmThread(p.id), isStaff() ? `Start a private conversation with ${esc(p.name)}'s family. It's shared with them, ${esc(p.name)}'s team coaches and the club admin.` : `Message your coaches privately. It's shared with your family, your team's coaches and the club admin.`)}</div>
       ${p.clubId ? composerHtml("Message about " + esc(p.name), "pm") : `<p class="small muted composer">${esc(p.name)} isn't on a team right now, so new messages are paused. Your past messages stay here.</p>`}`;
   } else if(S.meetingId && meetingsFor(p.id).some(m => m.id === S.meetingId)){
     main = meetingRoom(p, S.meetings.find(m => m.id === S.meetingId));
