@@ -1,4 +1,4 @@
--- NextPass: ALL database updates (002 to 020) in one file.
+-- NextPass: ALL database updates (002 to 021) in one file.
 -- Paste into Supabase -> SQL Editor -> New query -> Run.
 -- Safe to run no matter which updates you have already run, and safe to run more than once.
 -- If Supabase asks you to confirm a 'destructive operation', click 'Run this query' (it only removes old, unused parts).
@@ -1245,10 +1245,11 @@ end $$;
 -- ---------- accounts --------------------------------------------------------
 
 alter table public.members drop constraint if exists members_role_check;
-alter table public.members add constraint members_role_check check (role in ('admin','coach','family','college'));
+-- 'pro' (update 016) is allowed here too, so running all updates again keeps pro scout accounts valid
+alter table public.members add constraint members_role_check check (role in ('admin','coach','family','college','pro'));
 alter table public.members drop constraint if exists members_club_by_role;
 alter table public.members add constraint members_club_by_role
-  check ((role in ('family','college') and club_id is null) or (role in ('admin','coach') and club_id is not null));
+  check ((role in ('family','college','pro') and club_id is null) or (role in ('admin','coach') and club_id is not null));
 
 create table if not exists public.college_coaches (
   id         uuid primary key references auth.users(id) on delete cascade,
@@ -2127,6 +2128,28 @@ $$;
 
 revoke all on function public.team_invite_info(uuid) from public;
 grant execute on function public.team_invite_info(uuid) to anon, authenticated;
+
+-- Done. You should see "Success. No rows returned".
+
+
+-- =================== 021_meeting_notifications.sql ===================
+-- NextPass update 021: meeting notifications
+-- Paste into Supabase -> SQL Editor -> New query -> Run. Safe to run more than once.
+-- Records who last changed each meeting, so the other side gets the notification
+-- ("Coach scheduled your meeting") and nobody is notified about their own change.
+
+alter table public.meetings add column if not exists updated_by uuid references auth.users(id) on delete set null;
+
+create or replace function public.meetings_touch() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  new.updated_by := coalesce(auth.uid(), new.updated_by, new.created_by);
+  return new;
+end $$;
+
+drop trigger if exists meetings_touch on public.meetings;
+create trigger meetings_touch before insert or update on public.meetings
+  for each row execute function public.meetings_touch();
 
 -- Done. You should see "Success. No rows returned".
 

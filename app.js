@@ -658,7 +658,7 @@ function topbar(){
   if(S.me && (S.club || !isStaff())){
     const items = navItems();
     const allUnread = totalUnread() + totalPmUnread() + totalMeetingRequests();
-    tabs = `<button type="button" class="menu-btn app-menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="app-nav">${S.menuOpen ? "Close" : "Menu"}${!S.menuOpen && allUnread ? `<span class="badge">${allUnread>99?"99+":allUnread}</span>` : ""}</button>
+    tabs = `${bellHtml()}<button type="button" class="menu-btn app-menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="app-nav">${S.menuOpen ? "Close" : "Menu"}${!S.menuOpen && allUnread ? `<span class="badge">${allUnread>99?"99+":allUnread}</span>` : ""}</button>
     <nav id="app-nav" class="tabs app-tabs${S.menuOpen ? " open" : ""}${S.navQuiet ? " dd-quiet" : ""}" aria-label="Main">${items.map(it => it.g ? navGroup(it) : navBtn(it)).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a>${langToggle("nav-lang")}<button class="signout-link" data-act="signOut">Sign out</button></nav>`;
   }
   return `<header class="top"><div class="top-in">
@@ -668,6 +668,7 @@ function topbar(){
   </div></header>`;
 }
 function render(){
+  if(S.me && !S.loading) setTimeout(checkNotices, 0);
   if(S.invite && S.me && !S.loading && !S.inviteBusy) setTimeout(applyInvite, 0);
   const app = document.getElementById("app");
   let body;
@@ -2646,12 +2647,14 @@ ACTS.setLang = ds => setLang(ds.id);
 ACTS.navDd = ds => { S.navOpen = S.navOpen === ds.g ? null : ds.g; render(); const b = document.querySelector(`.nav-dd-btn[data-g="${ds.g}"]`); if(b) b.focus(); };
 document.addEventListener("click", ev => {
   if(S.navOpen && !ev.target.closest(".nav-dd")){ S.navOpen = null; render(); }
+  if(S.notifOpen && !ev.target.closest(".notif-wrap")){ S.notifOpen = false; render(); }
 }, true);
 /* after picking from a hover menu, keep it shut until the mouse leaves it */
 document.addEventListener("mouseover", ev => {
   if(S.navQuiet && !ev.target.closest(".nav-dd")){ S.navQuiet = false; const n = document.getElementById("app-nav"); if(n) n.classList.remove("dd-quiet"); }
 });
 document.addEventListener("keydown", ev => {
+  if(ev.key === "Escape" && S.notifOpen){ S.notifOpen = false; render(); const b = document.querySelector(".bell-btn"); if(b) b.focus(); return; }
   if(ev.key === "Escape" && S.navOpen){ const g = S.navOpen; S.navOpen = null; render(); const b = document.querySelector(`.nav-dd-btn[data-g="${g}"]`); if(b) b.focus(); }
 });
 
@@ -3280,6 +3283,117 @@ function pmPlayers(){
 }
 const pmThread = (pid, mid = null) => S.pmessages.filter(m => m.playerId === pid && (mid ? m.meetingId === mid : !m.meetingId));
 const meetingsFor = pid => S.meetings.filter(m => m.playerId === pid);
+/* ---------- meeting notifications ----------
+   The bell lists what changed in your meetings since you last looked, plus reminders
+   a day and an hour before. With permission, the same news shows as a phone or computer
+   notification while NextPass is open in any tab. Who changed a meeting comes from
+   updated_by (database update 021); without it, the person who created it. */
+const DAY = 864e5, HOUR = 36e5;
+const nKey = k => "np-" + k + "-" + (S.uid || "");
+function lsGet(k, d){ try { const v = localStorage.getItem(nKey(k)); return v == null ? d : JSON.parse(v); } catch(_){ return d; } }
+function lsSet(k, v){ try { localStorage.setItem(nKey(k), JSON.stringify(v)); } catch(_){} }
+function meetingNotices(){
+  if(!S.me || isScout() || isCollege()) return [];
+  const now = Date.now(), out = [], mine = new Set(pmPlayers().map(p => p.id));
+  for(const m of S.meetings){
+    if(!mine.has(m.playerId)) continue;
+    const p = S.players.find(x => x.id === m.playerId), who = m.createdByName || "Someone";
+    const theirs = m.updatedBy ? m.updatedBy !== S.uid : (!isStaff() || m.createdBy !== S.uid);   /* only coaches schedule, so for families any change came from the coach */
+    const base = {m, p, pname: p ? p.name : ""};
+    if(m.status === "requested" && m.createdBy !== S.uid)
+      out.push({...base, kind:"request", at:m.createdAt || 0, icon:"📩", text:`${who} asked for a meeting: ${m.topic}`});
+    if(m.status === "scheduled" && theirs && m.scheduledAt > now - HOUR)
+      out.push({...base, kind:"scheduled", at:m.updatedAt || 0, icon:"🗓", text:`Meeting scheduled: ${m.topic}`, sub:fmtWhen(m.scheduledAt)});
+    if(m.status === "cancelled" && theirs && (m.updatedAt || 0) > now - 14 * DAY)
+      out.push({...base, kind:"cancelled", at:m.updatedAt || 0, icon:"✖", text:`Meeting cancelled: ${m.topic}`});
+    if(m.status === "scheduled" && m.scheduledAt > now){
+      const left = m.scheduledAt - now;
+      if(left <= HOUR) out.push({...base, kind:"soon1", at:Math.max(m.scheduledAt - HOUR, m.updatedAt || 0), icon:"⏰", text:`Meeting in less than an hour: ${m.topic}`, sub:fmtWhen(m.scheduledAt)});
+      else if(left <= DAY) out.push({...base, kind:"soon24", at:Math.max(m.scheduledAt - DAY, m.updatedAt || 0), icon:"⏰", text:`Meeting coming up: ${m.topic}`, sub:fmtWhen(m.scheduledAt)});
+    }
+  }
+  out.forEach(n => n.key = n.m.id + ":" + n.kind + ":" + n.at);
+  return out.sort((a, b) => b.at - a.at);
+}
+const noticesUnread = list => { const seen = lsGet("notif-seen", 0); return list.filter(n => n.at > seen).length; };
+function bellHtml(){
+  if(!S.me || isScout() || isCollege()) return "";
+  const list = meetingNotices(), n = noticesUnread(list), open = !!S.notifOpen;
+  return `<div class="notif-wrap">
+    <button type="button" class="bell-btn" data-act="notifToggle" aria-expanded="${open}" aria-controls="notif-panel" aria-label="Notifications${n ? ", " + n + " new" : ""}">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      ${n ? `<span class="badge bell-badge">${n > 9 ? "9+" : n}</span>` : ""}</button>
+    ${open ? notifPanel(list) : ""}
+  </div>`;
+}
+function notifPanel(list){
+  const seen = S.notifSeenBefore || 0;
+  const perm = typeof Notification === "undefined" ? "none" : Notification.permission;
+  const ios = /iP(hone|ad|od)/.test(navigator.userAgent) && !window.navigator.standalone;
+  const onOff = perm === "default" ? `<div class="notif-perm"><p class="small">Get a notification on this device when a meeting is scheduled, changed or about to start.</p><button type="button" class="btn sm primary" data-act="notifAllow">Turn on notifications</button></div>`
+    : perm === "denied" ? `<p class="small muted notif-perm">Notifications are blocked for this site. Turn them on in your browser's site settings.</p>`
+    : perm === "none" && ios ? `<p class="small muted notif-perm">On iPhone, tap Share → Add to Home Screen and open NextPass from there to get notifications.</p>` : "";
+  return `<div class="notif-panel" id="notif-panel" role="region" aria-label="Notifications">
+    <div class="row between"><h2 class="h3" style="margin:0">Notifications</h2>${perm === "granted" ? `<span class="small muted">🔔 On for this device</span>` : ""}</div>
+    ${list.length ? `<ul class="notif-list">${list.map(n => `<li><button type="button" class="notif-item${n.at > seen ? " new" : ""}" data-act="notifOpen" data-id="${esc(n.m.id)}">
+        <span class="ni-ic" aria-hidden="true">${n.icon}</span><span class="ni-body"><b>${esc(n.text)}</b>${n.sub ? `<span class="small">${esc(n.sub)}</span>` : ""}<span class="small muted">${esc(n.pname)}${n.at > seen ? ` · <span class="ni-new">New</span>` : ""}</span></span></button></li>`).join("")}</ul>`
+      : `<p class="small muted">Nothing new. Meeting requests, scheduled times and reminders show up here.</p>`}
+    ${onOff}
+  </div>`;
+}
+ACTS.notifToggle = () => {
+  S.notifOpen = !S.notifOpen;
+  if(S.notifOpen){ S.notifSeenBefore = lsGet("notif-seen", 0); lsSet("notif-seen", Date.now()); }
+  render(); const b = document.querySelector(".bell-btn"); if(b) b.focus();
+};
+ACTS.notifOpen = ds => {
+  const m = S.meetings.find(x => x.id === ds.id); S.notifOpen = false; if(!m) return render();
+  S.view = "messages"; S.pmPlayer = m.playerId; S.pmTab = "meetings"; S.meetingId = m.id; S.menuOpen = false; render(); window.scrollTo(0, 0);
+};
+ACTS.notifAllow = async () => {
+  try { await Notification.requestPermission(); } catch(_){}
+  if(typeof Notification !== "undefined" && Notification.permission === "granted"){ lsSet("notified", meetingNotices().map(n => n.key)); toast("Notifications are on for this device"); }
+  render();
+};
+/* show a phone/computer notification (or a toast) for anything new since the last check */
+function checkNotices(){
+  if(!S.me || S.loading) return;
+  const list = meetingNotices(), done = lsGet("notified", null), keys = list.map(n => n.key);
+  if(done === null){ lsSet("notified", keys); return; }   /* first visit on this device: no flood of old news */
+  const fresh = list.filter(n => !done.includes(n.key) && n.at > Date.now() - DAY);
+  if(!fresh.length) return;
+  lsSet("notified", Array.from(new Set(done.concat(keys))).slice(-300));
+  const sys = typeof Notification !== "undefined" && Notification.permission === "granted";
+  for(const n of fresh.slice(0, 3)){
+    const title = window.npT ? window.npT(n.text) : n.text, body = [n.sub, n.pname].filter(Boolean).join(" · ");
+    if(sys){
+      try { const note = new Notification(title, {body, tag:n.key, icon:"brand/mark.svg"}); note.onclick = () => { window.focus(); ACTS.notifOpen({id:n.m.id}); note.close(); }; } catch(_){ toast(title); }
+    } else toast(title + (body ? " · " + body : ""));
+  }
+  const badge = document.querySelector(".bell-btn"); if(badge && !S.notifOpen) render();
+}
+setInterval(checkNotices, 60 * 1000);
+
+/* add a scheduled meeting to the phone's or computer's calendar, with reminders a day and an hour before */
+function icsEsc(t){ return String(t || "").replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n"); }
+function icsDate(ms){ return new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, ""); }
+ACTS.meetingIcs = ds => {
+  const m = S.meetings.find(x => x.id === ds.id); if(!m || !m.scheduledAt) return;
+  const p = S.players.find(x => x.id === m.playerId) || {}, video = /^https:/i.test(m.location || "");
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//NextPass//Meetings//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "BEGIN:VEVENT",
+    "UID:" + m.id + "@nextpasssoccer.com", "DTSTAMP:" + icsDate(Date.now()), "DTSTART:" + icsDate(m.scheduledAt), "DTEND:" + icsDate(m.scheduledAt + 30 * 60e3),
+    "SUMMARY:" + icsEsc(APP_NAME + " meeting: " + m.topic + (p.name ? " (" + p.name + ")" : "")),
+    "LOCATION:" + icsEsc(video ? "Video call" : m.location), "URL:" + (video ? m.location : APP_URL),
+    "DESCRIPTION:" + icsEsc((m.details ? m.details + "\n\n" : "") + (video ? "Join: " + m.location + "\n" : "") + "Meeting room: " + APP_URL),
+    "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + icsEsc(m.topic), "TRIGGER:-P1D", "END:VALARM",
+    "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + icsEsc(m.topic), "TRIGGER:-PT1H", "END:VALARM",
+    "END:VEVENT", "END:VCALENDAR"];
+  const url = URL.createObjectURL(new Blob([lines.join("\r\n")], {type:"text/calendar;charset=utf-8"}));
+  const a = document.createElement("a"); a.href = url; a.download = "nextpass-meeting.ics"; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  toast("Calendar file ready. Open it to add the meeting and its reminders.");
+};
+
 const readKey = (pid, mid) => mid ? "m:" + mid : "p:" + pid;
 function unreadIn(pid, mid){
   const lr = (S.me && S.me.lastRead && S.me.lastRead[readKey(pid, mid)]) || 0;
@@ -3421,6 +3535,7 @@ function meetingRoom(p, m){
       ${r ? reviewMini(r) : ""}
       ${m.notes ? `<div class="note"><b>Meeting notes</b><p style="white-space:pre-wrap;margin-top:4px">${esc(m.notes)}</p></div>` : ""}
       <div class="row">
+        ${m.status === "scheduled" && m.scheduledAt > Date.now() ? `<button class="btn sm" data-act="meetingIcs" data-id="${esc(m.id)}">🗓 Add to calendar</button>` : ""}
         ${staff && active ? `<button class="btn primary sm" data-act="modal" data-m="meetingSchedule" data-id="${esc(m.id)}">${m.status === "scheduled" ? "Change time or place" : "Schedule it"}</button>` : ""}
         ${staff && m.status !== "cancelled" ? `<button class="btn sm" data-act="modal" data-m="meetingNotes" data-id="${esc(m.id)}">${m.status === "done" ? "Edit notes" : "Add notes & mark done"}</button>` : ""}
         ${active && (staff || mineReq) ? `<button class="btn ghost sm" data-act="cancelMeeting" data-id="${esc(m.id)}">Cancel meeting</button>` : ""}
@@ -3595,7 +3710,7 @@ FORMS.meetingNew = async (fd, form) => {
 };
 FORMS.meetingSchedule = async (fd, form) => {
   const when = fd.get("when"); closeModal();
-  await save(() => S.db.doc("meetings/" + form.dataset.id).update({status:"scheduled", scheduledAt:new Date(when).getTime(), location:String(fd.get("where")||"").trim(), updatedAt:Date.now()}), "Meeting scheduled");
+  await save(() => S.db.doc("meetings/" + form.dataset.id).update({status:"scheduled", scheduledAt:new Date(when).getTime(), location:String(fd.get("where")||"").trim(), updatedAt:Date.now()}), "Meeting scheduled. The family gets a notification.");
 };
 FORMS.meetingNotes = async (fd, form) => {
   closeModal();

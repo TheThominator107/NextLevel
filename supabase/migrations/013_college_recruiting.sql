@@ -12,10 +12,11 @@
 -- ---------- accounts --------------------------------------------------------
 
 alter table public.members drop constraint if exists members_role_check;
-alter table public.members add constraint members_role_check check (role in ('admin','coach','family','college'));
+-- 'pro' (update 016) is allowed here too, so running all updates again keeps pro scout accounts valid
+alter table public.members add constraint members_role_check check (role in ('admin','coach','family','college','pro'));
 alter table public.members drop constraint if exists members_club_by_role;
 alter table public.members add constraint members_club_by_role
-  check ((role in ('family','college') and club_id is null) or (role in ('admin','coach') and club_id is not null));
+  check ((role in ('family','college','pro') and club_id is null) or (role in ('admin','coach') and club_id is not null));
 
 create table if not exists public.college_coaches (
   id         uuid primary key references auth.users(id) on delete cascade,
