@@ -1,2 +1,3 @@
 User-agent: *
 Allow: /
+Sitemap: https://nextpasssoccer.com/sitemap.xml
