@@ -116,17 +116,31 @@ const reduced = () => { try { return matchMedia("(prefers-reduced-motion: reduce
 const state = {t:0, playing:true, last:null, raf:null, root:null, visible:true, userPaused:false, sound:false, audio:null};
 const JINGLE = "audio/intro-jingle.mp3?v=3";  /* bump when the jingle changes, so browsers fetch the new one */
 
-/* the music follows the video's clock; it only plays after someone turns the sound on */
+/* the music only plays after someone turns the sound on. While it plays, the music is the clock and the
+   animation follows it. The music is only moved on purpose (sound on, play, chapter, replay), never to chase
+   the animation: phones (iPhone above all) stall for a moment on every jump, which made it stutter */
+function audioOn(){ return state.sound && state.playing && state.visible && !document.hidden && state.root && state.root.isConnected; }
 function syncAudio(){
   const a = state.audio; if(!a) return;
-  const on = state.sound && state.playing && state.visible && !document.hidden && state.root && state.root.isConnected;
-  if(!on){ if(!a.paused) a.pause(); return; }
+  if(!audioOn()){ if(!a.paused) a.pause(); state.playPending = false; return; }
   if(!a.src) return;                                     /* still loading */
-  const now = performance.now();
-  if(!a.seeking && (Math.abs(a.currentTime - state.t) > .3 || a.ended) && now - (state.lastSeek || 0) > 400){
-    state.lastSeek = now; try { a.currentTime = state.t; } catch(_){}
+  if(a.paused || a.ended){
+    if(state.playPending) return;
+    if(state.wantSeek || a.ended || Math.abs(a.currentTime - state.t) > .3){ try { a.currentTime = state.t; } catch(_){} }
+    state.wantSeek = false; state.playPending = true;
+    const done = () => { state.playPending = false; };
+    const pr = a.play(); if(pr && pr.then) pr.then(done, done); else done();
+  } else if(state.wantSeek){
+    state.wantSeek = false; try { a.currentTime = state.t; } catch(_){}
   }
-  if(a.paused) a.play().catch(() => {});
+}
+/* while the music is really playing, keep the animation on the music's time */
+function followAudio(prevT){
+  const a = state.audio;
+  if(!a || !audioOn() || a.paused || a.seeking || a.readyState < 3 || state.wantSeek) return;
+  if(state.t < prevT){ state.wantSeek = true; return; }  /* the animation looped: start the music again with it */
+  const at = a.currentTime;
+  if(at < INTRO_DURATION && Math.abs(at - state.t) > .12) state.t = at;
 }
 
 function fx(el, p, kind){
@@ -178,8 +192,9 @@ function loop(now){
   state.raf = null;
   const wrap = state.root; if(!wrap || !wrap.isConnected){ state.root = null; syncAudio(); if(state.audio) state.audio.pause(); return; }
   if(state.playing && state.visible && !document.hidden){
+    const prevT = state.t;
     if(state.last != null) state.t = (state.t + Math.min(.1, (now - state.last) / 1000)) % INTRO_DURATION;
-    state.last = now;
+    state.last = now; followAudio(prevT);
     const idx = renderAt(wrap, state.t); syncControls(wrap, idx); syncAudio();
     state.raf = requestAnimationFrame(loop);
   } else { state.last = null; syncAudio(); }
@@ -198,8 +213,8 @@ export function introMount(root = document){
   if("IntersectionObserver" in window) new IntersectionObserver(es => { state.visible = es[0].isIntersecting; kickLoop(); }, {threshold: .2}).observe(wrap.querySelector(".iv"));
   wrap.addEventListener("click", e => {
     const b = e.target.closest("[data-iv]"); if(!b) return;
-    if(b.dataset.iv === "toggle"){ state.playing = !state.playing; state.userPaused = !state.playing; }
-    if(b.dataset.iv === "chap"){ state.t = SCENES[+b.dataset.i].start + .01; }
+    if(b.dataset.iv === "toggle"){ state.playing = !state.playing; state.userPaused = !state.playing; state.wantSeek = true; }
+    if(b.dataset.iv === "chap"){ state.t = SCENES[+b.dataset.i].start + .01; state.wantSeek = true; }
     if(b.dataset.iv === "sound"){
       state.sound = !state.sound;
       if(state.sound){
@@ -208,7 +223,7 @@ export function introMount(root = document){
           state.audio = new Audio();
           fetch(JINGLE).then(r => r.blob()).then(bl => { state.audio.src = URL.createObjectURL(bl); syncAudio(); }).catch(() => { state.audio.src = JINGLE; syncAudio(); });
         }
-        state.playing = true; state.userPaused = false;
+        state.playing = true; state.userPaused = false; state.wantSeek = true;
       }
     }
     state.last = null;
@@ -220,5 +235,5 @@ export function introMount(root = document){
 document.addEventListener("visibilitychange", () => { state.last = null; syncAudio(); kickLoop(); });
 
 /* for exporting the video file and for tests: draw one exact moment */
-export function introSeek(t){ const wrap = state.root; if(!wrap) return; state.playing = false; state.t = t; syncControls(wrap, renderAt(wrap, t)); syncAudio(); }
+export function introSeek(t){ const wrap = state.root; if(!wrap) return; state.playing = false; state.t = t; state.wantSeek = true; syncControls(wrap, renderAt(wrap, t)); syncAudio(); }
 if(typeof window !== "undefined"){ window.__introSeek = introSeek; window.__introState = state; }
