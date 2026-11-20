@@ -1861,7 +1861,9 @@ function readHash(){
     try { history.replaceState(null, "", location.pathname + location.search); } catch(_){}
     loadInviteInfo(); render(); window.scrollTo(0,0); return;
   }
-  if(PAGE_IDS.includes(h)){ S.publicPage = h; S.menuOpen = false; S.publicSlug = null; S.pub = null; if(h !== "contact") S.contactSent = null; render(); window.scrollTo(0,0); return; }
+  if(PAGE_IDS.includes(h)){ S.publicPage = h; S.menuOpen = false; S.publicSlug = null; S.pub = null; if(h !== "contact") S.contactSent = null; render(); window.scrollTo(0,0);
+    if(h === "for-parents"){ const sec = document.getElementById("for-parents-sec"); if(sec){ sec.scrollIntoView({block:"start"}); sec.focus({preventScroll:true}); } }
+    return; }
   if(h === "signin" || h === ""){ S.wantSignin = h === "signin"; S.publicPage = null; S.menuOpen = false; if(S.publicSlug){ S.publicSlug = null; S.pub = null; } render(); window.scrollTo(0,0); return; }
   if(h === "coach" || h === "parent" || h === "college" || h === "pro"){ savePortal(h === "coach" ? "coach" : h === "college" ? "college" : h === "pro" ? "pro" : "family"); S.publicPage = null; if(S.publicSlug){ S.publicSlug = null; S.pub = null; } if(!S.uid){ S.authMode = "signin"; } render(); return; }
   const m = /^profile-([a-z0-9]+)$/.exec(h);
@@ -2786,13 +2788,14 @@ const planName = k => k === "unlimited" ? "Club Unlimited" : "Club (per team)";
 const CLUB_FEATURES = `<li>Player and keeper reviews</li><li>Progress timelines</li><li>Drill library and session planner</li><li>Team chat</li><li>Optional Home Training for all</li>`;
 const PUBLIC_PAGES = [
   ["how-it-works","How it works"], ["drills","Drills"], ["clubs","Clubs & Teams"], ["recruiting","Recruiting"],
-  ["for-parents","For Parents"], ["pricing","Pricing"], ["contact","Contact Us"]
+  ["pricing","Pricing"], ["contact","Contact Us"]
 ];
 const FOOTER_PAGES = [["safety","Safety"],["privacy","Privacy"],["terms","Terms"],["accessibility","Accessibility"]];
-const PAGE_IDS = PUBLIC_PAGES.concat(FOOTER_PAGES).map(p => p[0]);
+const PAGE_IDS = PUBLIC_PAGES.concat(FOOTER_PAGES, [["for-parents"]]).map(p => p[0]);   /* #for-parents: the parents section of How it works (older links) */
 
 function publicNav(){
-  const links = PUBLIC_PAGES.map(([id,label]) => `<a href="#${id}" class="navlink" ${S.publicPage===id?'aria-current="page"':""}>${label}</a>`).join("");
+  const cur = S.publicPage === "for-parents" ? "how-it-works" : S.publicPage;   /* the parents section lives on How it works */
+  const links = PUBLIC_PAGES.map(([id,label]) => `<a href="#${id}" class="navlink" ${cur===id?'aria-current="page"':""}>${label}</a>`).join("");
   return `<button type="button" class="menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="site-nav">${S.menuOpen ? "Close" : "Menu"}</button>
     <nav id="site-nav" class="site-nav${S.menuOpen ? " open" : ""}" aria-label="Site">${links}${langToggle("navlink")}<a href="#signin" class="btn primary sm nav-signin">Sign in</a></nav>`;
 }
@@ -2819,7 +2822,7 @@ function publicPage(){
     case "drills": return pageDrills();
     case "clubs": return pageClubs();
     case "recruiting": return pageRecruiting();
-    case "for-parents": return pageParents();
+    case "for-parents": return pageHow();
     case "pricing": return pagePricing();
     case "contact": return pageContact();
     case "safety": return pageSafety();
@@ -2848,10 +2851,19 @@ function pageHow(){
     </div>
   </div>
   <div class="grid3">
-    ${feature("Reviews that show progress","Every review is saved, so families see what improved.")}
-    ${feature("Drills picked for each player","Based on the lowest ratings and the coach's notes.")}
-    ${feature("Team chat","Schedule changes and announcements in one place.")}
+    ${feature("Reviews that show progress","Ratings, strengths and a note after every review. Every review is saved, so families see what improved.")}
+    ${feature("Drills picked for each player","Based on the lowest ratings and the coach's notes. About 15 minutes at home, ticked off each week.")}
+    ${feature("Team chat",`Schedule changes and announcements in one place. Chats are monitored by the club and ${APP_NAME}.`)}
   </div>
+  <section id="for-parents-sec" class="card stack callout" aria-labelledby="h-parents" tabindex="-1">
+    <span class="eyebrow">For parents</span>
+    <h2 id="h-parents">Know what your child is working on</h2>
+    <p>See the coach's feedback and help with the right drills at home.</p>
+    <div class="grid2">
+      <div class="stack" style="gap:4px"><b>Private and safe</b><p class="muted">Only your family and your child's coaches see reviews. <a href="#safety">How we keep players safe</a></p></div>
+      <div class="stack" style="gap:4px"><b>Recruiting when ready</b><p class="muted">Youth clubs at any age, colleges and scouts from ${RECRUIT_AGE}. <a href="#recruiting">How recruiting works</a></p></div>
+    </div>
+  </section>
   ${cta()}`;
 }
 
@@ -3152,23 +3164,6 @@ function pageRecruiting(){
   <div class="row cta-row">
     <button type="button" class="btn primary" data-act="pickPortal" data-id="family">Build a Recruitment Profile</button>
     <button type="button" class="btn" data-act="pickPortal" data-id="college">College coach? Join free</button></div>`;
-}
-
-function pageParents(){
-  return `<section class="page-hero stack"><span class="eyebrow">For Parents</span>
-    <h1>Know what your child is working on</h1>
-    <p class="lead">See the coach's feedback and help with the right drills at home.</p></section>
-  <div class="grid3">
-    ${feature("Real feedback","Ratings, strengths and a note after every review.")}
-    ${feature("Progress over the season","See what's improving and what's next.")}
-    ${feature("15 minutes at home","Drills from the review, ticked off each week.")}
-    ${feature("Team chat",`Schedule changes from the coach, in one place. Chats are monitored by the club and ${APP_NAME}.`)}
-    ${feature("Recruiting when ready",`Youth clubs at any age, colleges and scouts from ${RECRUIT_AGE}.`)}
-    ${feature("Private and safe","Only your family and the coaches see reviews.")}
-  </div>
-  <div class="card stack callout"><h2>How to join</h2>
-    <ol class="numbered"><li>Sign up as a parent or player.</li><li>Create your player's profile.</li><li>Find your club and ask to join the team.</li></ol>
-    <div class="row cta-row"><button type="button" class="btn primary" data-act="pickPortal" data-id="family">Sign up as a parent or player</button></div></div>`;
 }
 
 function pagePricing(){
@@ -4365,6 +4360,7 @@ async function onSession(session, event){
   if(m) S.publicSlug = m[1];
   try { S.portal = localStorage.getItem("np.portal") || null; } catch(_){}
   if(PAGE_IDS.includes(location.hash.slice(1))) S.publicPage = location.hash.slice(1);
+  if(location.hash === "#for-parents"){ let n = 0; const go = () => { const sec = document.getElementById("for-parents-sec"); if(sec){ sec.scrollIntoView({block:"start"}); sec.focus({preventScroll:true}); } else if(++n < 30) setTimeout(go, 150); }; setTimeout(go, 150); }
   if(location.hash === "#coach") savePortal("coach");
   if(location.hash === "#parent") savePortal("family");
   if(location.hash === "#college") savePortal("college");
