@@ -878,10 +878,8 @@ function setupFamBtn(){
 function setupCard(){
   if(!isStaff() || !S.club) return "";
   const key = "np-setup-hidden-" + S.club.id; let hidden = false; try { hidden = localStorage.getItem(key) === "1"; } catch(_){}
-  const coaches = S.members.filter(m => m.role === "admin" || m.role === "coach").length;
   const steps = [
     [S.teams.length > 0, "Add your teams", "One for each team, training group or camp.", `<button class="btn sm" data-act="modal" data-m="team">Add a team</button>`],
-    [coaches > 1, "Invite your other coaches", `Send them your coach invite link. It opens sign-up with your club code (<b class="code">${esc(S.club.code)}</b>) filled in.`, `<button class="btn sm" data-act="copy" data-text="${esc(coachInviteUrl())}" data-label="Coach invite link">Copy coach invite link</button>`],
     [S.players.length > 0, "Get families to join", `Send each team's family invite link. Families sign up with the team already picked, and you approve them here.`, setupFamBtn()],
     [S.reviews.length > 0, "Write your first review", "Open a player, rate each skill from 1 to 5 and add a short note.", ""],
     [S.assignments.length > 0, "Assign a home drill", "Pick from the drill library, or use the drills suggested after a review.", `<button class="btn sm" data-act="go" data-view="drills">Open the drill library</button>`]];
