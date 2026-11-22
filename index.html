@@ -31,6 +31,7 @@
 @font-face{font-family:"Inter";font-style:normal;font-weight:700;font-display:swap;src:url(fonts/inter-700.woff) format("woff")}
 @font-face{font-family:"Inter Display";font-style:normal;font-weight:700;font-display:swap;src:url(fonts/inter-display-700.woff) format("woff")}
 @font-face{font-family:"Inter Display";font-style:normal;font-weight:800;font-display:swap;src:url(fonts/inter-display-800.woff) format("woff")}
+@font-face{font-family:"Big Shoulders";font-style:normal;font-weight:700;font-display:swap;src:url(fonts/bigshoulders-700.woff) format("woff")}
 :root{
   /* layout: slim top bar + one working column; coach goes roster -> player, family lands on one child's page */
   --ink:#14213a;
@@ -1047,6 +1048,151 @@ main > p.small, main > p.muted{background:var(--surface);border:1px solid var(--
   .aud-go{margin-top:4px;font-size:.86rem}
   .home-sec{margin-top:20px}
 }
+
+/* =====================================================================
+   Design system, Nov 2026: one calm chalk page, kit navy type, signal orange
+   for actions, and the pitch saved for one place: the turf band behind each
+   page title. Page and section titles use Big Shoulders (stadium signage);
+   everything you read or tap uses Inter.
+   ===================================================================== */
+:root{
+  --headline:"Big Shoulders","Inter Display","Arial Narrow",system-ui,sans-serif;
+  --paper:#f3f5f8; --line:#d9e0ea; --chip:#ebf0f7;
+  --turf:#1a4d31; --turf-2:#1d5537; --turf-ink:#ffffff; --turf-soft:#d5e8db; --turf-kick:#ffc9a8;
+  --shadow:0 1px 2px rgba(19,32,58,.05);
+  --shadow-lift:0 2px 4px rgba(19,32,58,.06),0 12px 28px rgba(19,32,58,.10);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --paper:#0f1522; --line:#26324a; --turf:#11331f; --turf-2:#133a24; --turf-soft:#c9e0d1; --turf-kick:#ffb98f; --shadow:0 1px 2px rgba(0,0,0,.35); --shadow-lift:0 12px 30px rgba(0,0,0,.45); } }
+:root[data-theme="dark"]{ --paper:#0f1522; --line:#26324a; --turf:#11331f; --turf-2:#133a24; --turf-soft:#c9e0d1; --turf-kick:#ffb98f; --shadow:0 1px 2px rgba(0,0,0,.35); --shadow-lift:0 12px 30px rgba(0,0,0,.45); }
+
+/* the page: plain chalk, no stripes behind reading content */
+body{background:var(--paper);background-image:none;line-height:1.55}
+body::before{display:none}
+#app{overflow-x:clip}
+::selection{background:#ffd9c4;color:#13203a}
+
+/* type scale (16px base): 14 · 16 · 18 · 22 · 28 · 36 · 44+ */
+h1,.sec-head h2,.final-cta h2,.portal .ptitle{font-family:var(--headline);font-weight:700;letter-spacing:.004em;line-height:1;text-wrap:balance}
+h1{font-size:2.5rem}
+h2{font-family:var(--body);font-size:1.375rem;font-weight:700;letter-spacing:-.018em;line-height:1.25}
+h3{font-family:var(--body);font-size:1.0625rem;font-weight:650;letter-spacing:-.01em;line-height:1.3}
+h2.h3{font-family:var(--body)}
+.sec-head h2,.final-cta h2{font-size:2.75rem;letter-spacing:.004em}
+.portal .ptitle{font-size:2rem;letter-spacing:.004em}
+.lead{font-size:1.125rem;line-height:1.6;max-width:60ch}
+/* labels above headings: quiet sentence case, not tracked capitals */
+.eyebrow{font-family:var(--body);font-size:.9rem;font-weight:600;letter-spacing:0;text-transform:none;color:var(--accent);border:0;padding:0}
+/* big figures read like a scoreboard */
+.tile .big,.overall .big,.plan .price,.home-facts b,.score,.step-n{font-family:var(--headline);font-weight:700;letter-spacing:0;font-variant-numeric:lining-nums tabular-nums}
+.overall .big{font-size:3.4rem;line-height:.95}
+.tile .big{font-size:2.75rem}
+.plan .price{font-size:3rem;line-height:1}
+.home-facts b{font-size:2.6rem;line-height:1}
+.score{font-size:1.4rem}
+.step-n{font-size:1.15rem}
+.avatar,.photo.ph{font-family:var(--headline);font-weight:700;letter-spacing:.01em}
+
+/* panels: one border, one radius, almost no shadow; no coloured stripe on every card */
+.card{border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+.card.paywall,.card.rec-card,.portal,.chat .card{border-top-width:1px}
+.card.plan.featured{border:2px solid var(--accent);box-shadow:var(--shadow-lift)}
+.callout{border-left:4px solid var(--blue)}
+.modal,.nav-dd-menu,.notif-panel{box-shadow:var(--shadow-lift)}
+
+/* things that used to need a white box to stand off the pitch now sit on the page */
+main > .stack:has(> h1), main > .row:has(> .stack > h1){background:none;border:0;box-shadow:none;padding:4px 0 0;border-radius:0}
+main > .subtabs, .card ~ .subtabs{background:none;border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;padding:0}
+.sg-title{background:none;border:0;box-shadow:none;padding:0;font-size:1.15rem}
+main > .btn.ghost, main > a.btn.ghost, .btn.ghost.back{background:none;border-color:transparent;box-shadow:none;padding:6px 2px;color:var(--blue-deep)}
+main > .btn.ghost:hover, .btn.ghost.back:hover{text-decoration:underline;text-underline-offset:3px}
+main > p.small, main > p.muted{background:none;border:0;padding:0}
+.sec-head{background:none;border:0;box-shadow:none;padding:0;border-radius:0;gap:6px}
+.hsteps .hstep{box-shadow:var(--shadow);border-radius:12px}
+.ex-more > summary{box-shadow:none}
+
+/* controls: one height, clear edges, comfortable to tap */
+.btn{min-height:40px;padding:8px 16px;border-radius:8px;border-color:#c3ccd9;font-weight:600;transition:background-color .15s,border-color .15s}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{border-color:var(--accent)}
+.btn.primary:hover{filter:none;background:#a93b15;border-color:#a93b15}
+.btn.sm{min-height:32px;padding:4px 12px;border-radius:7px}
+.btn.lg{min-height:48px;padding:12px 24px;font-size:1rem}
+.btn.ghost{border-color:transparent}
+.pill{border-radius:999px}
+input,select,textarea{border-radius:8px}
+a{text-underline-offset:2px}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .btn{border-color:var(--line)} :root:not([data-theme="light"]) .btn:hover{border-color:var(--muted)} :root:not([data-theme="light"]) .btn.primary:hover{background:#ff8a55;border-color:#ff8a55} }
+:root[data-theme="dark"] .btn{border-color:var(--line)}
+
+/* header: kit navy, current page underlined in orange */
+.top{background:#13203a;box-shadow:0 1px 0 rgba(255,255,255,.06)}
+.site-nav .navlink{opacity:.86}
+
+/* the stage: page titles stand on a strip of turf with the penalty box chalked in */
+main > section.page-hero.stack, main > .home-hero.card{position:relative;isolation:isolate;max-width:none;align-self:stretch;margin:0 0 12px;background:var(--turf);border:0;border-radius:0;box-shadow:none;color:var(--turf-ink)}
+main > section.page-hero.stack:first-child, main > .home-hero.card:first-child{margin-top:-24px}
+main > section.page-hero.stack{padding:60px 0 56px;gap:14px}
+main > .home-hero.card{padding:56px 0 52px}
+.page-hero::before,.home-hero::before{content:"";position:absolute;z-index:-1;top:0;bottom:0;left:calc(50% - 50vw);right:calc(50% - 50vw);
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 600' preserveAspectRatio='xMaxYMid meet'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.22' stroke-width='3'%3E%3Cpath d='M400 70H210V530H400'/%3E%3Cpath d='M400 205H335V395H400'/%3E%3Cpath d='M210 228A101 101 0 0 0 210 372'/%3E%3C/g%3E%3Ccircle cx='280' cy='300' r='4' fill='%23ffffff' fill-opacity='.3'/%3E%3C/svg%3E") right -30px center / auto 112% no-repeat, repeating-linear-gradient(90deg,var(--turf) 0 120px,var(--turf-2) 120px 240px)}
+.home-hero::before{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 600' preserveAspectRatio='xMaxYMid meet'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.22' stroke-width='3'%3E%3Cpath d='M400 70H210V530H400'/%3E%3Cpath d='M400 205H335V395H400'/%3E%3Cpath d='M210 228A101 101 0 0 0 210 372'/%3E%3C/g%3E%3Ccircle cx='280' cy='300' r='4' fill='%23ffffff' fill-opacity='.3'/%3E%3C/svg%3E") right -30px center / auto 100% no-repeat, repeating-linear-gradient(90deg,var(--turf) 0 120px,var(--turf-2) 120px 240px)}
+.page-hero h1,.hh-copy h1{color:var(--turf-ink);font-size:clamp(2.75rem,1.9rem + 3.2vw,4.5rem);line-height:.95;max-width:20ch}
+.hh-copy h1{max-width:none}
+.page-hero .lead,.hh-copy .lead{color:var(--turf-soft);font-size:1.2rem;max-width:52ch}
+.page-hero .eyebrow,.hh-copy .eyebrow{color:var(--turf-kick)}
+.page-hero a,.home-hero a:not(.btn),.hh-alt a,.home-hero .iv-text > summary{color:var(--turf-ink);text-decoration:underline;text-underline-offset:3px}
+.home-hero .muted,.home-hero .small,.hh-alt,.page-hero .muted,.page-hero .small{color:var(--turf-soft)}
+.page-hero :focus-visible,.home-hero :focus-visible{outline-color:#ffffff}
+.home-hero .btn:not(.primary){background:#ffffff;border-color:#ffffff;color:#13203a}
+.home-hero .btn:not(.primary):hover{background:#eef3f0}
+.home-hero .iv-text{color:var(--turf-soft)}
+.home-hero .iv-text > summary{display:block;text-align:center}
+.home-hero .iv-text[open]{background:rgba(0,0,0,.22);border-radius:10px;padding:10px 14px}
+.home-hero .hh-art{filter:drop-shadow(0 18px 30px rgba(0,0,0,.28))}
+
+/* stats under the home stage: figures, not cards */
+.home-facts{gap:0;background:none;border:0;border-block:1px solid var(--line);border-radius:0;box-shadow:none;padding:22px 0}
+.home-facts > *{background:none;border:0;box-shadow:none;border-left:1px solid var(--line);border-radius:0;padding:4px 20px}
+.home-facts > *:first-child{border-left:0;padding-left:0}
+.home-facts b{color:var(--accent)}
+
+/* footer: quiet, ruled off from the page */
+.site-foot{border-top:1px solid var(--line)}
+
+/* phones */
+@media (max-width:700px){
+  main > section.page-hero.stack{padding:40px 0 36px}
+  main > .home-hero.card{padding:36px 0 32px}
+  .page-hero::before{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 600' preserveAspectRatio='xMaxYMid meet'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.22' stroke-width='3'%3E%3Cpath d='M400 70H210V530H400'/%3E%3Cpath d='M400 205H335V395H400'/%3E%3Cpath d='M210 228A101 101 0 0 0 210 372'/%3E%3C/g%3E%3Ccircle cx='280' cy='300' r='4' fill='%23ffffff' fill-opacity='.3'/%3E%3C/svg%3E") right -90px center / auto 100% no-repeat, repeating-linear-gradient(90deg,var(--turf) 0 90px,var(--turf-2) 90px 180px)}
+  .home-hero::before{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 600' preserveAspectRatio='xMaxYMid meet'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.22' stroke-width='3'%3E%3Cpath d='M400 70H210V530H400'/%3E%3Cpath d='M400 205H335V395H400'/%3E%3Cpath d='M210 228A101 101 0 0 0 210 372'/%3E%3C/g%3E%3Ccircle cx='280' cy='300' r='4' fill='%23ffffff' fill-opacity='.3'/%3E%3C/svg%3E") right -120px top 20px / auto 360px no-repeat, repeating-linear-gradient(90deg,var(--turf) 0 90px,var(--turf-2) 90px 180px)}
+  h1{font-size:2.25rem}
+  .sec-head h2,.final-cta h2{font-size:2.25rem}
+  .home-facts{grid-template-columns:1fr 1fr;row-gap:16px}
+  .home-facts > *:nth-child(odd){border-left:0;padding-left:0}
+}
+@media (prefers-reduced-motion: reduce){ .btn{transition:none} }
+
+/* forms: white fields with edges you can see (3:1), labels in ink */
+:root{--input-bg:#ffffff;--input-line:#7c8aa1}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--input-bg:#111c31;--input-line:#5b6b85} }
+:root[data-theme="dark"]{--input-bg:#111c31;--input-line:#5b6b85}
+label.f{color:var(--ink)}
+input:hover,select:hover,textarea:hover{border-color:var(--ink)}
+
+/* orange edge only where something needs your action: requests and invites */
+form.auth-coach,.final-cta,.paywall,.recruit-head{border-top:1px solid var(--line)}
+.requests,.invites{border-top:3px solid var(--accent)}
+
+/* small headings in sentence case, not tracked capitals */
+th,.who-sees thead th{font-size:.8rem;font-weight:600;letter-spacing:0;text-transform:none;color:var(--muted)}
+.rgroup{font-size:.85rem;font-weight:700;letter-spacing:0;text-transform:none;color:var(--ink);margin-top:10px}
+.fcol .fh{font-size:.875rem;font-weight:700;letter-spacing:0;text-transform:none;color:var(--ink)}
+.chat-side h2,.chat-side h3{font-size:.85rem;letter-spacing:0;text-transform:none;font-weight:700}
+.drill-how .dh-row b,.drill-how .dh-points b{font-size:.8rem;letter-spacing:0;text-transform:none}
+
+/* app menu: the current page is underlined in orange, as on the public site */
+nav.tabs button[aria-current="page"]{background:none;color:inherit;box-shadow:inset 0 -3px 0 var(--accent);border-radius:0}
+@media (max-width:980px){ nav.tabs button[aria-current="page"]{box-shadow:inset 3px 0 0 var(--accent)} }
 </style>
 <script>/* Spanish: hide the page for a moment while the translations load (i18n.js) */
 try { if(localStorage.getItem("np-lang") === "es"){ document.documentElement.classList.add("i18n-wait"); document.documentElement.lang = "es"; } } catch(_){}</script>
