@@ -204,7 +204,7 @@ const S = {
   chartSkill:"overall", preview:false, loading:true, noDb:false, notice:null, subClubId:undefined,
   profiles:[], comments:[], ptab:"dev", assets:null, publicSlug:null, pub:null,
   sessions:[], sessTab:"plan", sessTeam:null, draft:null, tdPhase:"All", tdSkill:"", tdSearch:"", tdAllAges:false,
-  messages:[], chatTeam:null, pmessages:[], meetings:[], teamCoaches:[], pmPlayer:null, pmTab:"chat", meetingId:null
+  messages:[], chatTeam:null, pmessages:[], reactions:[], reactFor:null, meetings:[], teamCoaches:[], pmPlayer:null, pmTab:"chat", meetingId:null
 };
 const APP_URL = location.origin + location.pathname;
 /* invite links: coaches get #coach-join-<club code>, families get #team-<team id> */
@@ -430,7 +430,7 @@ async function save(fn, ok){
 let sb = null, channel = null, loadTimer;
 const TABLE = {clubs:"clubs", teams:"teams", players:"players", reviews:"reviews", assignments:"assignments", drills:"drills",
   members:"members", profiles:"player_profiles", comments:"comments", messages:"messages",
-  pmessages:"private_messages", meetings:"meetings", requests:"join_requests", interest:"recruit_interest", shortlist:"college_shortlist", college:"college_coaches", sessions:"team_sessions"};
+  pmessages:"private_messages", meetings:"meetings", requests:"join_requests", interest:"recruit_interest", shortlist:"college_shortlist", college:"college_coaches", sessions:"team_sessions", reactions:"message_reactions"};
 const PK = {profiles:"player_id"};
 const TABLE_TO_KEY = Object.fromEntries(Object.entries(TABLE).map(([k,v]) => [v,k]));
 TABLE_TO_KEY.clubs = "club"; TABLE_TO_KEY.family_links = "links"; TABLE_TO_KEY.team_coaches = "teamCoaches";
@@ -550,6 +550,7 @@ async function loadKey(key){
   if(key === "club") q = fam ? sb.rpc("family_clubs") : sb.from("clubs").select("*").eq("id", cid).maybeSingle();
   else if(key === "messages") q = byClub("messages").order("created_at", {ascending:false}).limit(600);
   else if(key === "pmessages") q = byClub("private_messages").order("created_at", {ascending:false}).limit(1500);
+  else if(key === "reactions") q = byClub("message_reactions").order("created_at", {ascending:false}).limit(5000);
   else if(key === "requests") q = byClub("join_requests").order("created_at", {ascending:false}).limit(300);
   else if(key === "interest") q = sb.from("recruit_interest").select("*").order("created_at", {ascending:false}).limit(300);
   else if(key === "pro") q = sb.from("pro_scouts").select("*").eq("id", S.uid).maybeSingle();
@@ -567,6 +568,7 @@ async function loadKey(key){
   if(cid !== S.subClubId) return;
   if(error){ console.error(key, error); if(key === "owner" || key === "scouts") return; /* not there until database update 016 is run */
     if(key === "sessions"){ S.sessionsMissing = true; render(); return; } /* not there until database update 018 is run */
+    if(key === "reactions"){ S.reactionsMissing = true; render(); return; } /* not there until database update 022 is run */
     S.notice = "Some data couldn't load. Reload the page to try again."; render(); return; }
   if(key === "club" && fam){ const before = JSON.stringify(S.clubs); S.clubs = (Array.isArray(data) ? data : []).map(camel); S.club = null; S.clubLoaded = true; if(before !== JSON.stringify(S.clubs)) loadSteps(); }
   else if(key === "club"){ const before = S.club && S.club.familyAccess; S.club = data ? camel(data) : null; S.clubLoaded = true; if(S.club && before !== undefined && before !== S.club.familyAccess) loadSteps(); }
@@ -578,7 +580,7 @@ async function loadKey(key){
   else if(key === "owner") S.owner = (data || []).length > 0;
   else if(key === "scouts") S.scouts = (Array.isArray(data) ? data : []).map(camel);
   else if(key === "teamCoaches") S.teamCoaches = data || [];
-  else { if(key === "sessions") S.sessionsMissing = false; S[key] = data.map(camel); }
+  else { if(key === "sessions") S.sessionsMissing = false; if(key === "reactions") S.reactionsMissing = false; S[key] = data.map(camel); }
   if(key === "members" || key === "links"){
     const links = S.links || [];
     S.members = S.members.map(m => ({...m, playerIds: links.filter(l => l.member_id === m.id).map(l => l.player_id)}));
@@ -589,7 +591,7 @@ function subscribeClub(cid){
   if(channel){ sb.removeChannel(channel); channel = null; }
   S.subClubId = cid; S.clubLoaded = false;
   S.club = null; S.teams = []; S.players = []; S.reviews = []; S.assignments = []; S.drills = []; S.members = []; S.links = [];
-  S.profiles = []; S.comments = []; S.messages = []; S.pmessages = []; S.meetings = []; S.teamCoaches = []; S.clubs = []; S.requests = []; S.interest = []; S.shortlist = []; S.scout = null; S.college = null; S.pro = null; S.proLoaded = false; S.scouts = []; S.owner = false; S.sessions = []; S.sessionsMissing = false; S.draft = null;
+  S.profiles = []; S.comments = []; S.messages = []; S.pmessages = []; S.reactions = []; S.reactFor = null; S.meetings = []; S.teamCoaches = []; S.clubs = []; S.requests = []; S.interest = []; S.shortlist = []; S.scout = null; S.college = null; S.pro = null; S.proLoaded = false; S.scouts = []; S.owner = false; S.sessions = []; S.sessionsMissing = false; S.draft = null;
   if(!cid) return;
   ALL_KEYS.forEach(k => loadKey(k));
   channel = sb.channel("club-" + cid)
@@ -604,7 +606,7 @@ function subscribeClub(cid){
     })
     .subscribe();
 }
-const ALL_KEYS = ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","meetings","teamCoaches","requests","interest","shortlist","college","pro","owner","scouts","sessions"];
+const ALL_KEYS = ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","reactions","meetings","teamCoaches","requests","interest","shortlist","college","pro","owner","scouts","sessions"];
 function refreshAll(){ ALL_KEYS.forEach(schedule); }
 function fixView(){
   const staffViews = ["roster","player","sessions","chat","messages","drills","recruit","plans","club"], famViews = ["home","chat","messages","drills","recruit","plans","account"];
@@ -1774,6 +1776,28 @@ function dayLabel(ts){
   if(d === y.toLocaleDateString("en-CA")) return "Yesterday";
   return new Date(ts).toLocaleDateString(LOC,{weekday:"short",month:"short",day:"numeric"});
 }
+/* emoji reactions on chat messages: one per person per message */
+const REACTS = [["👍","Thumbs up"],["👎","Thumbs down"],["❗","Important"],["❓","Question"],["😂","Laughing"]];
+const SMILE_SVG = `<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="12" r="8"/><path d="M8 14.2c.8 1.1 1.8 1.6 3 1.6s2.2-.5 3-1.6"/><circle cx="8.6" cy="9.8" r=".6" fill="currentColor"/><circle cx="13.4" cy="9.8" r=".6" fill="currentColor"/><path d="M20 2.5v5M17.5 5h5" stroke-width="1.6"/></svg>`;
+/* click (mouse) or press and hold (touch) a message to react */
+const rAttr = (kind, m) => S.reactionsMissing ? "" : ` data-rk="${kind}" data-rid="${esc(m.id)}"`;
+function reactIndex(){
+  const by = new Map();
+  for(const r of S.reactions){ if(!by.has(r.messageId)) by.set(r.messageId, []); by.get(r.messageId).push(r); }
+  return by;
+}
+function reactsHtml(kind, m, idx){
+  if(S.reactionsMissing) return "";
+  const rs = idx.get(m.id) || [], key = kind + ":" + m.id, open = S.reactFor === key;
+  const mineE = (rs.find(r => r.userId === S.uid) || {}).emoji;
+  const chips = REACTS.map(([e, label]) => {
+    const who = rs.filter(r => r.emoji === e); if(!who.length) return "";
+    const names = who.map(r => r.userId === S.uid ? "You" : (r.userName || "Someone")).join(", ");
+    return `<button type="button" class="react-chip${mineE === e ? " on" : ""}" data-act="react" data-k="${kind}" data-id="${esc(m.id)}" data-e="${e}" aria-pressed="${mineE === e}" title="${esc(names)}"><span aria-hidden="true">${e}</span><span class="sr-only">${label}</span> ${who.length}<span class="sr-only">: ${esc(names)}</span></button>`;
+  }).join("");
+  const pick = open ? `<div class="react-pick" role="group" aria-label="Pick a reaction">${REACTS.map(([e, label]) => `<button type="button" class="react-opt${mineE === e ? " on" : ""}" data-act="react" data-k="${kind}" data-id="${esc(m.id)}" data-e="${e}" aria-pressed="${mineE === e}" title="${label}"><span aria-hidden="true">${e}</span><span class="sr-only">${label}</span></button>`).join("")}</div>` : "";
+  return `<div class="reacts">${chips}<button type="button" class="react-add" data-act="reactOpen" data-k="${kind}" data-id="${esc(m.id)}" aria-expanded="${open}" aria-label="Add a reaction" title="Add a reaction">${SMILE_SVG}</button>${pick}</div>`;
+}
 function chatView(){
   const teams = myTeams();
   if(!teams.length) return `<h1>Team Chat</h1><div class="locked"><h2>No team chats yet</h2><p class="muted">${isStaff() ? "Add a team and its chat appears here for the coaches and every family on that team." : "Your player isn't on a team yet. Find your club under My player and ask to join a team. The chat opens once a coach approves."}</p>${isStaff()?`<button class="btn primary" data-act="modal" data-m="team">Add team</button>`:""}</div>`;
@@ -1784,6 +1808,7 @@ function chatView(){
   const coaches = S.members.filter(m => m.role === "coach" || m.role === "admin").length;
   const pin = ms.filter(m => m.announce).slice(-1)[0];
   let lastDay = "", lastAuthor = "", lastTs = 0, thread = "";
+  const ridx = reactIndex();
   for(const m of ms){
     const dl = dayLabel(m.createdAt);
     if(dl !== lastDay){ thread += `<div class="day">${esc(dl)}</div>`; lastDay = dl; lastAuthor = ""; }
@@ -1792,9 +1817,9 @@ function chatView(){
     const canDel = mine || isStaff();
     const roleTag = (m.role === "coach" || m.role === "admin") ? `<span class="pill good">Coach</span>` : "";
     if(m.announce){
-      thread += `<div class="msg announce"><div class="row between"><span class="pill warn">Announcement</span><span class="small muted">${esc(m.authorName||"Coach")} · ${msgTime(m.createdAt)}</span></div><div class="bubble">${esc(m.text)}</div>${canDel?`<button class="btn ghost sm del" data-act="delMsg" data-id="${esc(m.id)}">Delete</button>`:""}</div>`;
+      thread += `<div class="msg announce"><div class="row between"><span class="pill warn">Announcement</span><span class="small muted">${esc(m.authorName||"Coach")} · ${msgTime(m.createdAt)}</span></div><div class="bubble"${rAttr("team", m)}>${esc(m.text)}</div>${reactsHtml("team", m, ridx)}${canDel?`<button class="btn ghost sm del" data-act="delMsg" data-id="${esc(m.id)}">Delete</button>`:""}</div>`;
     } else {
-      thread += `<div class="msg${mine?" mine":""}">${grouped?"":`<div class="who">${mine?"":`<b>${esc(m.authorName||"Someone")}</b>${roleTag}`}<span>${msgTime(m.createdAt)}</span></div>`}<div class="bubble">${esc(m.text)}</div>${canDel?`<button class="btn ghost sm del" data-act="delMsg" data-id="${esc(m.id)}" aria-label="Delete message">Delete</button>`:""}</div>`;
+      thread += `<div class="msg${mine?" mine":""}">${grouped?"":`<div class="who">${mine?"":`<b>${esc(m.authorName||"Someone")}</b>${roleTag}`}<span>${msgTime(m.createdAt)}</span></div>`}<div class="bubble"${rAttr("team", m)}>${esc(m.text)}</div>${reactsHtml("team", m, ridx)}${canDel?`<button class="btn ghost sm del" data-act="delMsg" data-id="${esc(m.id)}" aria-label="Delete message">Delete</button>`:""}</div>`;
     }
     lastAuthor = m.announce ? "" : m.authorId; lastTs = m.createdAt;
   }
@@ -2650,17 +2675,61 @@ ACTS.navDd = ds => { S.navOpen = S.navOpen === ds.g ? null : ds.g; render(); con
 document.addEventListener("click", ev => {
   if(S.navOpen && !ev.target.closest(".nav-dd")){ S.navOpen = null; render(); }
   if(S.notifOpen && !ev.target.closest(".notif-wrap")){ S.notifOpen = false; render(); }
+  if(S.reactFor && !ev.target.closest(".reacts") && !ev.target.closest(".bubble[data-rk]")){ S.reactFor = null; render(); }
 }, true);
+/* reactions: a mouse click on a message opens the emoji; on a phone, press and hold */
+let rxPress = null, rxLastPointer = "mouse", rxHeld = false;
+document.addEventListener("pointerdown", ev => {
+  rxLastPointer = ev.pointerType || "mouse"; rxHeld = false;
+  const b = ev.target.closest(".bubble[data-rk]"); if(!b || ev.pointerType === "mouse") return;
+  clearTimeout(rxPress && rxPress.t);
+  rxPress = {x:ev.clientX, y:ev.clientY, t:setTimeout(() => {
+    rxHeld = true; rxPress = null;
+    try { if(navigator.vibrate) navigator.vibrate(12); } catch(_){}
+    const sel = window.getSelection && window.getSelection(); if(sel) sel.removeAllRanges();
+    openReact(b.dataset.rk, b.dataset.rid);
+  }, 450)};
+});
+const rxCancel = ev => { if(rxPress && (!ev || ev.type !== "pointermove" || Math.hypot(ev.clientX - rxPress.x, ev.clientY - rxPress.y) > 10)){ clearTimeout(rxPress.t); rxPress = null; } };
+["pointerup","pointercancel","pointermove"].forEach(t => document.addEventListener(t, rxCancel, {passive:true}));
+document.addEventListener("contextmenu", ev => { if(rxHeld || ev.target.closest(".bubble[data-rk]") && rxLastPointer !== "mouse") ev.preventDefault(); });
+document.addEventListener("click", ev => {
+  const b = ev.target.closest(".bubble[data-rk]"); if(!b) return;
+  if(rxLastPointer !== "mouse" && rxLastPointer !== "pen") return;      /* phones: press and hold instead of a tap */
+  const sel = window.getSelection && window.getSelection();
+  if(sel && String(sel).trim() && b.contains(sel.anchorNode)) return;     /* selecting text to copy, not reacting */
+  openReact(b.dataset.rk, b.dataset.rid);
+});
+function openReact(kind, id){
+  const key = kind + ":" + id;
+  S.reactFor = S.reactFor === key ? null : key; render();
+  const el = document.querySelector(S.reactFor ? `.react-pick [data-id="${CSS.escape(id)}"]` : `.react-add[data-id="${CSS.escape(id)}"]`);
+  if(el) el.focus({preventScroll:true});
+}
 /* after picking from a hover menu, keep it shut until the mouse leaves it */
 document.addEventListener("mouseover", ev => {
   if(S.navQuiet && !ev.target.closest(".nav-dd")){ S.navQuiet = false; const n = document.getElementById("app-nav"); if(n) n.classList.remove("dd-quiet"); }
 });
 document.addEventListener("keydown", ev => {
   if(ev.key === "Escape" && S.notifOpen){ S.notifOpen = false; render(); const b = document.querySelector(".bell-btn"); if(b) b.focus(); return; }
+  if(ev.key === "Escape" && S.reactFor){ const id = S.reactFor.split(":")[1]; S.reactFor = null; render(); const b = document.querySelector(`.react-add[data-id="${CSS.escape(id)}"]`); if(b) b.focus({preventScroll:true}); return; }
   if(ev.key === "Escape" && S.navOpen){ const g = S.navOpen; S.navOpen = null; render(); const b = document.querySelector(`.nav-dd-btn[data-g="${g}"]`); if(b) b.focus(); }
 });
 
 ACTS.openRec = ds => { S.playerId = ds.id; S.view = "player"; S.preview = false; S.ptab = "recruit"; S.recSec = ds.sec; window.scrollTo(0,0); render(); };
+ACTS.reactOpen = ds => openReact(ds.k, ds.id);
+ACTS.react = async ds => {
+  const id = ds.id + ":" + S.uid, cur = S.reactions.find(r => r.id === id), off = cur && cur.emoji === ds.e;
+  /* show it at once, then save; a failed save reloads the real state */
+  const before = S.reactions;
+  S.reactions = S.reactions.filter(r => r.id !== id);
+  if(!off) S.reactions = [{id, messageId:ds.id, kind:ds.k, userId:S.uid, userName:S.me.name || "", emoji:ds.e, createdAt:Date.now()}, ...S.reactions];
+  S.reactFor = null; render();
+  const back = document.querySelector(`.react-add[data-id="${CSS.escape(ds.id)}"]`); if(back) back.focus({preventScroll:true});
+  const ok = await save(() => off ? S.db.doc("reactions/" + id).delete()
+    : S.db.collection("reactions").doc(id).set({messageId:ds.id, kind:ds.k, userId:S.uid, userName:S.me.name || "", emoji:ds.e}));
+  if(!ok){ S.reactions = before; schedule("reactions"); render(); }
+};
 ACTS.hideSetup = () => { try { localStorage.setItem("np-setup-hidden-" + S.club.id, "1"); } catch(_){} render(); const b = document.querySelector('[data-act="showSetup"]'); if(b) b.focus(); };
 ACTS.showSetup = () => { try { localStorage.removeItem("np-setup-hidden-" + S.club.id); } catch(_){} render(); const b = document.querySelector('[data-act="hideSetup"]'); if(b) b.focus(); };
 ACTS.confirmGo = () => { const c = confirmed; confirmed = null; closeModal(); if(c) ACTS[c.act](c.ds, c.el, null); };
@@ -3421,13 +3490,14 @@ document.addEventListener("visibilitychange", () => { if(!document.hidden && S.v
 function bubblesHtml(ms, emptyText){
   if(!ms.length) return `<div class="muted" style="margin:auto;text-align:center;max-width:44ch">${emptyText}</div>`;
   let lastDay = "", lastAuthor = "", lastTs = 0, out = "";
+  const ridx = reactIndex();
   for(const m of ms){
     const dl = dayLabel(m.createdAt);
     if(dl !== lastDay){ out += `<div class="day">${esc(dl)}</div>`; lastDay = dl; lastAuthor = ""; }
     const mine = m.authorId === S.uid, grouped = m.authorId === lastAuthor && m.createdAt - lastTs < 5*60*1000;
     const canDel = mine || (S.me && S.me.role === "admin");
     const tag = (m.role === "coach" || m.role === "admin") ? `<span class="pill good">Coach</span>` : `<span class="pill plain">Family</span>`;
-    out += `<div class="msg${mine?" mine":""}">${grouped?"":`<div class="who">${mine?"":`<b>${esc(m.authorName||"Someone")}</b>${tag}`}<span>${msgTime(m.createdAt)}</span></div>`}<div class="bubble">${esc(m.text)}</div>${canDel?`<button class="btn ghost sm del" data-act="delPm" data-id="${esc(m.id)}" aria-label="Delete message">Delete</button>`:""}</div>`;
+    out += `<div class="msg${mine?" mine":""}">${grouped?"":`<div class="who">${mine?"":`<b>${esc(m.authorName||"Someone")}</b>${tag}`}<span>${msgTime(m.createdAt)}</span></div>`}<div class="bubble"${rAttr("private", m)}>${esc(m.text)}</div>${reactsHtml("private", m, ridx)}${canDel?`<button class="btn ghost sm del" data-act="delPm" data-id="${esc(m.id)}" aria-label="Delete message">Delete</button>`:""}</div>`;
     lastAuthor = m.authorId; lastTs = m.createdAt;
   }
   return out;
