@@ -1627,6 +1627,7 @@ function collegeAccount(){
       ${collegeFields(c)}
       <p class="small muted">Families see your name, title, school, program, division and school email (${esc(c.email || "")}) when you message them.</p>
       <div><button class="btn primary" type="submit">Save</button></div></form>
+    ${detailsCard(false)}
     <div class="card stack"><h2>Messages you've sent</h2>${sentList("None yet. Families reply to your school email.")}</div>
   </div>`;
 }
@@ -1645,6 +1646,7 @@ function proAccount(){
       ${proFields(s)}
       <p class="small muted">Families see your name, title, organization and email (${esc(s.email || "")}) when you message them.${st === "approved" ? " If you change your organization, your account goes back for approval." : ""}</p>
       <div><button class="btn primary" type="submit">Save</button></div></form>
+    ${detailsCard(false)}
     <div class="card stack"><h2>Messages you've sent</h2>${sentList("None yet. Families reply to your email.")}</div>
   </div>`;
 }
@@ -1978,6 +1980,7 @@ function clubView(){
       <div class="list">${S.teams.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(t=>{const n=S.players.filter(p=>p.teamId===t.id).length;const tcs = coachesOfTeam(t.id), mine = tcs.some(m => m.id === S.uid);
 return `<div class="row between"><span><b>${esc(t.name)}</b> <span class="muted small">${esc(t.ageGroup||"")}</span><br><span class="small muted">Coaches: ${tcs.length ? esc(tcs.map(m=>m.name||"Coach").join(", ")) : "none yet"}</span></span><span class="row">${isAdmin() ? `<button class="btn ghost sm" data-act="modal" data-m="teamCoaches" data-id="${esc(t.id)}">Assign coaches</button>` : `<button class="btn ghost sm" data-act="selfCoach" data-id="${esc(t.id)}" data-on="${mine?"0":"1"}">${mine ? "Leave team" : "I coach this team"}</button>`}<span class="muted small num">${n} player${n===1?"":"s"}</span>${n===0?`<button class="btn ghost sm" data-act="delTeam" data-id="${esc(t.id)}">Delete</button>`:""}</span></div>`;}).join("") || '<p class="muted">No teams yet.</p>'}</div>
     </div>
+    ${detailsCard(true)}
     <div class="card stack">
       <h2>Your account</h2>
       <p>${esc(S.me.name||"")} · ${admin?"Club admin":"Coach"}</p>
@@ -1987,6 +1990,23 @@ return `<div class="row between"><span><b>${esc(t.name)}</b> <span class="muted 
   </div>`;
 }
 
+/* Account: your own details. Names show to your club; phone and email stay private to you. */
+function splitName(n){ const t = String(n || "").trim().split(/\s+/); return [t[0] || "", t.slice(1).join(" ")]; }
+function detailsCard(withName){
+  const m = S.meta || {}, [f0, l0] = splitName(S.me && S.me.name);
+  const first = m.first_name != null ? m.first_name : f0, last = m.last_name != null ? m.last_name : l0;
+  const college = S.me && S.me.role === "college";
+  return `<form class="card stack" data-form="myDetails" data-names="${withName ? 1 : 0}"><h2>Your details</h2>
+    ${withName ? `<div class="grid2" style="gap:14px">
+      <label class="f" for="md-first">First name<input type="text" id="md-first" name="first" required maxlength="30" autocomplete="given-name" value="${esc(first)}"></label>
+      <label class="f" for="md-last">Last name<input type="text" id="md-last" name="last" maxlength="29" autocomplete="family-name" value="${esc(last)}"></label></div>` : ""}
+    <label class="f" for="md-phone">Phone number<input type="tel" id="md-phone" name="phone" maxlength="25" autocomplete="tel" inputmode="tel" pattern="[0-9+()\\-. ]{7,25}" value="${esc(m.phone || "")}" aria-describedby="md-phone-note"></label>
+    <p class="small muted" id="md-phone-note">Only you can see your phone number.</p>
+    <label class="f" for="md-email">Email<input type="email" id="md-email" name="email" required maxlength="120" autocomplete="email" value="${esc(S.email || "")}" aria-describedby="md-email-note"></label>
+    <p class="small muted" id="md-email-note">${S.pendingEmail ? `Waiting for you to confirm <b>${esc(S.pendingEmail)}</b>. Open the link we emailed you. Until then you sign in with ${esc(S.email)}.` : college ? "You sign in with this email. College coach accounts need a school email ending in .edu." : "You sign in with this email. If you change it, we email a link to confirm the new address."}</p>
+    <div><button class="btn primary" type="submit">Save details</button></div>
+  </form>`;
+}
 function accountView(){
   const kids = S.players.filter(p => (S.me.playerIds||[]).includes(p.id));
   return `<h1>Account</h1>
@@ -1998,6 +2018,7 @@ function accountView(){
         <span class="row"><button class="btn ghost sm" data-act="modal" data-m="editMine" data-player="${esc(k.id)}">Edit</button>${k.clubId ? `<button class="btn ghost sm" data-act="modal" data-m="leaveTeam" data-player="${esc(k.id)}">Leave team</button>` : pend ? "" : `<button class="btn sm" data-act="findTeam" data-player="${esc(k.id)}">Find team</button>`}</span></div>`; }).join("") || '<p class="muted">None yet.</p>'}</div>
       <div><button class="btn" data-act="modal" data-m="addChild">Add another player</button></div>
     </div>
+    ${detailsCard(true)}
     <div class="card stack"><h2>You</h2><p>${esc(S.me.name||"")} · Parent / player account</p>
       <p class="small muted">Your players' profiles, reviews and messages belong to your account. If a player leaves a club, you keep everything; that club's coaches lose access.</p></div>
     ${scoutApprovals()}
@@ -2126,9 +2147,17 @@ const MODALS = {
   addChild: () => `<h2>Add a player</h2><form data-form="addChild">
     ${playerSetupFields("ac")}
     <div class="row"><button class="btn primary" type="submit">Add player</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
-  editMine: ds => { const p = S.players.find(x => x.id === ds.player); if(!p) return "<p>Player not found.</p>"; return `<h2>Edit ${esc(p.name)}</h2><form data-form="editMine" data-id="${esc(p.id)}">
-    <label class="f" for="em-name">Player's name<input type="text" id="em-name" name="player" required maxlength="60" value="${esc(p.name)}"></label>
+  editMine: ds => { const p = S.players.find(x => x.id === ds.player); if(!p) return "<p>Player not found.</p>";
+    const [fn, ln] = splitName(p.name), pr = profileFor(p.id) || {}, main = (pr.positions || [])[0] || "";
+    return `<h2>Edit ${esc(p.name)}</h2><form data-form="editMine" data-id="${esc(p.id)}" class="stack">
+    <div class="grid2" style="gap:14px">
+      <label class="f" for="em-first">Player's first name<input type="text" id="em-first" name="first" required maxlength="30" value="${esc(fn)}"></label>
+      <label class="f" for="em-last">Player's last name<input type="text" id="em-last" name="last" maxlength="29" value="${esc(ln)}"></label></div>
     <label class="f" for="em-dob">Date of birth<input type="date" id="em-dob" name="dob" min="1990-01-01" max="${new Date().toLocaleDateString("en-CA")}" value="${esc(p.birthDate||"")}"></label>
+    <div class="grid2" style="gap:14px">
+      <label class="f" for="em-pos">Main position<select id="em-pos" name="main"><option value="">Not set</option>${FIELD_POSITIONS.map(([k,l]) => `<option value="${k}" ${main===k?"selected":""}>${k} – ${l}</option>`).join("")}</select></label>
+      <label class="f" for="em-foot">Stronger foot<select id="em-foot" name="foot">${["","Right","Left","Both"].map(f => `<option value="${f}" ${(pr.foot||"")===f?"selected":""}>${f||"Not set"}</option>`).join("")}</select></label></div>
+    <p class="small muted">More about ${esc(fn || "your player")}, like strengths, a bio and highlights, is under Player profile.</p>
     <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`; },
   findTeam: () => findTeamModal(),
   leaveTeam: ds => { const p = S.players.find(x => x.id === ds.player); if(!p) return "<p>Player not found.</p>"; const club = clubNameOf(p) || "the club";
@@ -3735,10 +3764,47 @@ FORMS.proEdit = async fd => {
   const ok = await save(() => rpc("update_pro", proArgs(fd)), "Saved");
   if(ok){ schedule("pro"); loadMe(); }
 };
+FORMS.myDetails = async (fd, form) => {
+  const names = form.dataset.names === "1";
+  const first = String(fd.get("first") || "").trim(), last = String(fd.get("last") || "").trim();
+  const phone = String(fd.get("phone") || "").trim(), email = String(fd.get("email") || "").trim().toLowerCase();
+  if(names && !first){ toast("Add your first name.", true); return; }
+  if(phone && !/^[0-9+()\-. ]{7,25}$/.test(phone)){ toast("Check the phone number: digits, spaces, + ( ) - only.", true); return; }
+  const emailChange = email && email !== String(S.email || "").toLowerCase();
+  if(emailChange && S.me.role === "college" && !/\.edu$/.test(email)){ toast("College coach accounts need a school email ending in .edu.", true); return; }
+  const btn = form.querySelector("button[type=submit]"); if(btn) btn.disabled = true;
+  try {
+    const name = names ? (first + " " + last).trim().slice(0, 60) : null;
+    if(names && name !== S.me.name){ const {error} = await sb.from("members").update({name}).eq("id", S.uid); if(error) throw dbErr(error); S.me.name = name; schedule("members"); }
+    const data = {phone}; if(names){ data.first_name = first; data.last_name = last; }
+    const r1 = await sb.auth.updateUser({data}); if(r1.error) throw r1.error;
+    S.meta = {...(S.meta || {}), ...data};
+    if(emailChange){
+      const r2 = await sb.auth.updateUser({email}, {emailRedirectTo: APP_URL});
+      if(r2.error) throw r2.error;
+      S.pendingEmail = email;
+      toast(`Saved. We emailed a confirmation link to ${email}. Your email changes once you open it.`);
+    } else toast("Details saved");
+  } catch(e){
+    console.error(e);
+    const m = String((e && e.message) || "");
+    toast(/already.*(registered|exists)|in use/i.test(m) ? "That email already has a NextPass account." : /rate|seconds/i.test(m) ? "Please wait a minute before trying again." : /invalid/i.test(m) && emailChange ? "That email address doesn't look right." : "Couldn't save your details. Try again.", true);
+  }
+  render();
+};
 FORMS.editMine = async (fd, form) => {
+  const p = S.players.find(x => x.id === form.dataset.id); if(!p) return;
+  const name = (String(fd.get("first") || "").trim() + " " + String(fd.get("last") || "").trim()).trim().slice(0, 60);
+  if(!name){ toast("Add the player's first name.", true); return; }
   closeModal();
-  const ok = await save(() => rpc("edit_player", {pid:form.dataset.id, p_name:String(fd.get("player")).trim(), p_birth_date: fd.get("dob") || null}), "Saved");
-  if(ok) schedule("players");
+  let ok = true;
+  if(name !== p.name || (fd.get("dob") || null) !== (p.birthDate || null)) ok = await save(() => rpc("edit_player", {pid:p.id, p_name:name, p_birth_date: fd.get("dob") || null}));
+  const pr = profileFor(p.id) || {}, cur = pr.positions || [], main = fd.get("main") || "", foot = fd.get("foot") || "";
+  if(ok && (main !== (cur[0] || "") || foot !== (pr.foot || ""))){
+    const positions = main ? [main].concat(cur.filter(x => x !== main)) : cur.slice(1);
+    ok = await saveProfile(p, {positions, foot});
+  }
+  if(ok){ toast("Saved"); schedule("players"); }
 };
 FORMS.findClub = async fd => {
   if(!S.find) return;
@@ -4405,6 +4471,8 @@ async function onSession(session, event){
   if(event === "PASSWORD_RECOVERY") S.recovery = true;
   const uid = session && session.user ? session.user.id : null;
   S.email = session && session.user ? (session.user.email || "") : "";
+  S.meta = session && session.user ? (session.user.user_metadata || {}) : {};
+  S.pendingEmail = session && session.user ? (session.user.new_email || "") : "";
   if(S.authChecked && uid === S.uid){ render(); return; }
   S.uid = uid; S.authChecked = true;
   if(!uid){
