@@ -635,8 +635,11 @@ function navItems(){
     const coached = myCoachTeamIds(), mine = all.filter(t => coached.includes(t.id));
     const list = !isAdmin() && mine.length ? mine : all;
     const req = pendingRequests().length;
-    const teams = {g:"teams", l:"My Teams", n:req, items:[{v:"roster", team:"all", l:"All teams", n:req}].concat(list.map(t => ({v:"roster", team:t.id, l:t.name})))};
-    return [teams, {g:"training", l:"Training", items:[{v:"sessions", l:"Team Drills"}, {v:"drills", l:"Home Drills"}]}, inbox, recruit, {v:"plans", l:"Pricing"}, {v:"club", l:"Club", n:pendingScouts().length}];
+    /* the club's own name heads the menu: Club, My Teams and each team */
+    const ps = pendingScouts().length;
+    const club = {g:"club", l:S.club.name, brand:true, n:req + ps, items:[{v:"club", l:"Club", n:ps}, {v:"roster", team:"all", l:"My Teams", n:req}]
+      .concat(list.map(t => ({v:"roster", team:t.id, l:t.name, sub:true})))};
+    return [club, {g:"training", l:"Training", items:[{v:"sessions", l:"Team Drills"}, {v:"drills", l:"Home Drills"}]}, inbox, recruit, {v:"plans", l:"Pricing"}];
   }
   return [{v:"home", l:"My player"}, {v:"drills", l:"Home Drills"}, inbox, recruit, {v:"plans", l:"Pricing"}, {v:"account", l:"Account", n:pendingScouts().length}];
 }
@@ -648,12 +651,12 @@ function navCurrent(it){
 }
 const navBadge = (n, label) => n ? `<span class="badge" aria-label="${n} ${label || "new"}">${n > 99 ? "99+" : n}</span>` : "";
 function navBtn(it){
-  return `<button data-act="go" data-view="${it.v}"${it.team ? ` data-team="${esc(it.team)}"` : ""}${it.sec ? ` data-sec="${it.sec}"` : ""} ${navCurrent(it) ? 'aria-current="page"' : ""}>${esc(it.l)}${navBadge(it.n)}</button>`;
+  return `<button data-act="go" data-view="${it.v}"${it.sub ? ` class="dd-sub" translate="no"` : ""}${it.team ? ` data-team="${esc(it.team)}"` : ""}${it.sec ? ` data-sec="${it.sec}"` : ""} ${navCurrent(it) ? 'aria-current="page"' : ""}>${esc(it.l)}${navBadge(it.n)}</button>`;
 }
 function navGroup(gr){
   const open = S.navOpen === gr.g, cur = gr.items.some(navCurrent);
   return `<div class="nav-dd${open ? " open" : ""}">
-    <button type="button" class="nav-dd-btn${cur ? " cur" : ""}" data-act="navDd" data-g="${gr.g}" aria-expanded="${open}" aria-controls="dd-${gr.g}">${esc(gr.l)}${open ? "" : navBadge(gr.n)}<span class="dd-chev" aria-hidden="true"></span></button>
+    <button type="button" class="nav-dd-btn${cur ? " cur" : ""}" data-act="navDd" data-g="${gr.g}" aria-expanded="${open}" aria-controls="dd-${gr.g}"${gr.brand ? ` title="${esc(gr.l)}"` : ""}>${gr.brand ? `<span class="dd-club" translate="no">${esc(gr.l)}</span>` : esc(gr.l)}${open ? "" : navBadge(gr.n)}<span class="dd-chev" aria-hidden="true"></span></button>
     <div class="nav-dd-menu" id="dd-${gr.g}" ${open ? "" : "hidden"}>${gr.items.map(navBtn).join("")}</div>
   </div>`;
 }
@@ -667,7 +670,7 @@ function topbar(){
   }
   return `<header class="top"><div class="top-in">
     <a href="#" class="brand" data-act="home" aria-label="${APP_NAME} home">${logoHtml()}</a>
-    ${S.club ? `<span class="clubname">${esc(S.club.name)}</span>` : ""}
+
     ${!S.uid && !S.noConfig ? publicNav() : (tabs || (S.uid ? `<nav class="tabs"><a href="#contact" class="signout-link">Contact</a>${langToggle("nav-lang")}<button class="signout-link" data-act="signOut">Sign out</button></nav>` : ""))}
   </div></header>`;
 }
