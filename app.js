@@ -204,7 +204,7 @@ const S = {
   chartSkill:"overall", preview:false, loading:true, noDb:false, notice:null, subClubId:undefined,
   profiles:[], comments:[], ptab:"dev", assets:null, publicSlug:null, pub:null,
   sessions:[], sessTab:"plan", sessTeam:null, draft:null, tdPhase:"All", tdSkill:"", tdSearch:"", tdAllAges:false,
-  messages:[], chatTeam:null, pmessages:[], reactions:[], reactFor:null, meetings:[], teamCoaches:[], pmPlayer:null, pmTab:"chat", meetingId:null
+  messages:[], chatTeam:null, pmessages:[], reactions:[], reactFor:null, opps:[], oppKind:"", oppGender:"", oppQ:"", meetings:[], teamCoaches:[], pmPlayer:null, pmTab:"chat", meetingId:null
 };
 const APP_URL = location.origin + location.pathname;
 /* invite links: coaches get #coach-join-<club code>, families get #team-<team id> */
@@ -430,7 +430,7 @@ async function save(fn, ok){
 let sb = null, channel = null, loadTimer;
 const TABLE = {clubs:"clubs", teams:"teams", players:"players", reviews:"reviews", assignments:"assignments", drills:"drills",
   members:"members", profiles:"player_profiles", comments:"comments", messages:"messages",
-  pmessages:"private_messages", meetings:"meetings", requests:"join_requests", interest:"recruit_interest", shortlist:"college_shortlist", college:"college_coaches", sessions:"team_sessions", reactions:"message_reactions"};
+  pmessages:"private_messages", meetings:"meetings", requests:"join_requests", interest:"recruit_interest", shortlist:"college_shortlist", college:"college_coaches", sessions:"team_sessions", reactions:"message_reactions", opps:"opportunities"};
 const PK = {profiles:"player_id"};
 const TABLE_TO_KEY = Object.fromEntries(Object.entries(TABLE).map(([k,v]) => [v,k]));
 TABLE_TO_KEY.clubs = "club"; TABLE_TO_KEY.family_links = "links"; TABLE_TO_KEY.team_coaches = "teamCoaches";
@@ -542,7 +542,7 @@ async function loadKey(key){
   const cid = S.subClubId; if(!cid) return;
   const fam = cid.startsWith("fam:"), col = cid.startsWith("college:"), pro = cid.startsWith("pro:");
   /* college coaches and pro scouts only load their own details, shortlist and messages */
-  if(col && !["college","shortlist","interest"].includes(key)) return;
+  if(col && !["college","shortlist","interest","opps"].includes(key)) return;
   if(pro && !["pro","shortlist","interest"].includes(key)) return;
   if((key === "college" && !col) || (key === "pro" && !pro) || (key === "shortlist" && fam) || (key === "sessions" && fam)) return;
   const byClub = t => fam ? sb.from(t).select("*") : sb.from(t).select("*").eq("club_id", cid);
@@ -550,6 +550,7 @@ async function loadKey(key){
   if(key === "club") q = fam ? sb.rpc("family_clubs") : sb.from("clubs").select("*").eq("id", cid).maybeSingle();
   else if(key === "messages") q = byClub("messages").order("created_at", {ascending:false}).limit(600);
   else if(key === "pmessages") q = byClub("private_messages").order("created_at", {ascending:false}).limit(1500);
+  else if(key === "opps") q = sb.from("opportunities").select("*").gte("starts_on", new Date(Date.now() - 60*86400000).toLocaleDateString("en-CA")).order("starts_on", {ascending:true}).limit(1000);
   else if(key === "reactions") q = byClub("message_reactions").order("created_at", {ascending:false}).limit(5000);
   else if(key === "requests") q = byClub("join_requests").order("created_at", {ascending:false}).limit(300);
   else if(key === "interest") q = sb.from("recruit_interest").select("*").order("created_at", {ascending:false}).limit(300);
@@ -569,6 +570,7 @@ async function loadKey(key){
   if(error){ console.error(key, error); if(key === "owner" || key === "scouts") return; /* not there until database update 016 is run */
     if(key === "sessions"){ S.sessionsMissing = true; render(); return; } /* not there until database update 018 is run */
     if(key === "reactions"){ S.reactionsMissing = true; render(); return; } /* not there until database update 022 is run */
+    if(key === "opps"){ S.oppsMissing = true; render(); return; } /* not there until database update 024 is run */
     S.notice = "Some data couldn't load. Reload the page to try again."; render(); return; }
   if(key === "club" && fam){ const before = JSON.stringify(S.clubs); S.clubs = (Array.isArray(data) ? data : []).map(camel); S.club = null; S.clubLoaded = true; if(before !== JSON.stringify(S.clubs)) loadSteps(); }
   else if(key === "club"){ const before = S.club && S.club.familyAccess; S.club = data ? camel(data) : null; S.clubLoaded = true; if(S.club && before !== undefined && before !== S.club.familyAccess) loadSteps(); }
@@ -580,7 +582,7 @@ async function loadKey(key){
   else if(key === "owner") S.owner = (data || []).length > 0;
   else if(key === "scouts") S.scouts = (Array.isArray(data) ? data : []).map(camel);
   else if(key === "teamCoaches") S.teamCoaches = data || [];
-  else { if(key === "sessions") S.sessionsMissing = false; if(key === "reactions") S.reactionsMissing = false; S[key] = data.map(camel); }
+  else { if(key === "sessions") S.sessionsMissing = false; if(key === "reactions") S.reactionsMissing = false; if(key === "opps") S.oppsMissing = false; S[key] = data.map(camel); }
   if(key === "members" || key === "links"){
     const links = S.links || [];
     S.members = S.members.map(m => ({...m, playerIds: links.filter(l => l.member_id === m.id).map(l => l.player_id)}));
@@ -591,7 +593,7 @@ function subscribeClub(cid){
   if(channel){ sb.removeChannel(channel); channel = null; }
   S.subClubId = cid; S.clubLoaded = false;
   S.club = null; S.teams = []; S.players = []; S.reviews = []; S.assignments = []; S.drills = []; S.members = []; S.links = [];
-  S.profiles = []; S.comments = []; S.messages = []; S.pmessages = []; S.reactions = []; S.reactFor = null; S.meetings = []; S.teamCoaches = []; S.clubs = []; S.requests = []; S.interest = []; S.shortlist = []; S.scout = null; S.college = null; S.pro = null; S.proLoaded = false; S.scouts = []; S.owner = false; S.sessions = []; S.sessionsMissing = false; S.draft = null;
+  S.profiles = []; S.comments = []; S.messages = []; S.pmessages = []; S.reactions = []; S.reactFor = null; S.opps = []; S.meetings = []; S.teamCoaches = []; S.clubs = []; S.requests = []; S.interest = []; S.shortlist = []; S.scout = null; S.college = null; S.pro = null; S.proLoaded = false; S.scouts = []; S.owner = false; S.sessions = []; S.sessionsMissing = false; S.draft = null;
   if(!cid) return;
   ALL_KEYS.forEach(k => loadKey(k));
   channel = sb.channel("club-" + cid)
@@ -606,7 +608,7 @@ function subscribeClub(cid){
     })
     .subscribe();
 }
-const ALL_KEYS = ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","reactions","meetings","teamCoaches","requests","interest","shortlist","college","pro","owner","scouts","sessions"];
+const ALL_KEYS = ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","reactions","opps","meetings","teamCoaches","requests","interest","shortlist","college","pro","owner","scouts","sessions"];
 function refreshAll(){ ALL_KEYS.forEach(schedule); }
 function fixView(){
   const staffViews = ["roster","player","sessions","chat","messages","drills","recruit","plans","club"], famViews = ["home","chat","messages","drills","recruit","plans","account"];
@@ -624,10 +626,10 @@ const brandSvg = "";
 /* the signed-in menu: plain links and dropdown groups ({g, l, items}) */
 const curSec = () => SECTION_KEYS.includes(S.rsec) ? S.rsec : isStaff() ? "youth" : "college";
 function navItems(){
-  if(isScout()) return [{v:"scout", l:"Find players"}, {v:"shortlist", l:"Shortlist"}, {v:"account", l:"Account"}];
+  if(isScout()) return [{v:"scout", l:"Find players"}, {v:"shortlist", l:"Shortlist"}].concat(S.me && S.me.role === "college" ? [{v:"opps", l:"Opportunities"}] : []).concat([{v:"account", l:"Account"}]);
   const un = totalUnread(), pmu = totalPmUnread() + totalMeetingRequests();
   const inbox = {g:"inbox", l:"Inbox", n:un + pmu, items:[{v:"chat", l:"Team Chat", n:un}, {v:"messages", l:"Messages", n:pmu}]};
-  const recruit = {g:"recruit", l:"Recruiting", n:newInterest().length, items:[["pro","Pro"],["college","College"],["youth","Youth"]].map(([k,l]) => ({v:"recruit", sec:k, l, n:newInterest(k).length}))};
+  const recruit = {g:"recruit", l:"Recruiting", n:newInterest().length, items:[["pro","Pro"],["college","College"],["youth","Youth"]].map(([k,l]) => ({v:"recruit", sec:k, l, n:newInterest(k).length})).concat([{v:"opps", l:"Opportunities"}])};
   if(isStaff()){
     const all = S.teams.slice().sort((a,b) => String(a.name).localeCompare(String(b.name)));
     const coached = myCoachTeamIds(), mine = all.filter(t => coached.includes(t.id));
@@ -718,6 +720,7 @@ function viewBody(){
       case "plans": return plansView();
       case "club": return clubView();
       case "recruit": return staffRecruit();
+      case "opps": return oppsView();
       case "chat": return chatView();
       case "messages": return messagesView();
       default: return rosterView();
@@ -728,6 +731,7 @@ function viewBody(){
     case "plans": return plansView();
     case "account": return accountView();
     case "recruit": return recruitView();
+    case "opps": return oppsView();
     case "chat": return chatView();
     case "messages": return messagesView();
     default: return familyHome();
@@ -1104,6 +1108,10 @@ function playerView(){
   ${S.ptab === "profile" ? profileHtml(p, {staff:!S.preview}) : S.ptab === "recruit" ? recruitHtml(p, {staff:!S.preview, section:S.recSec || undefined}) : playerDetail(p, S.preview ? "preview" : "staff")}`;
 }
 
+/* families: pick which of their players they're looking at */
+function playerSelect(kids, p, withAdd){
+  return `<label class="f player-select" for="sel-player">Select Player<select id="sel-player" data-change="childSel">${kids.map(k => `<option value="${esc(k.id)}" ${k.id === p.id ? "selected" : ""}>${esc(k.name)}</option>`).join("")}${withAdd ? `<option value="__add">+ Add another player</option>` : ""}</select></label>`;
+}
 function familyHome(){
   const ids = (S.me.playerIds || []);
   const kids = S.players.filter(p => ids.includes(p.id));
@@ -1114,7 +1122,7 @@ function familyHome(){
   const line = [main ? positionLabel(main) : "", p.clubId ? teamName(p.teamId) : "", clubNameOf(p) || outsideClub(profileFor(p.id))].filter(Boolean).join(" · ");
   return `<div class="card"><div class="row between">
     <div class="phead"><div class="avatar">${esc(initials(p.name))}</div><div class="stack" style="gap:2px"><h1>${esc(p.name)}</h1><p class="muted">${esc(line || "Not on a team yet")}</p></div></div>
-    ${kids.length>1 ? `<div class="filters" role="group" aria-label="Choose player">${kids.map(k=>`<button data-act="child" data-id="${esc(k.id)}" aria-pressed="${k.id===p.id}">${esc(k.name)}</button>`).join("")}</div>` : ""}
+    ${playerSelect(kids, p, true)}
   </div></div>
   ${teamStatusHtml(p)}
   ${subtabs()}
@@ -1493,6 +1501,7 @@ function scoutBody(){
   }
   if(S.view === "shortlist") return shortlistHtml();
   if(S.view === "account") return collegeAccount();
+  if(S.view === "opps") return oppsView();
   return scoutView();
 }
 function proMissing(){ return `<div class="card stack"><h2>Your scout details can't be found</h2><p class="muted">Sign out and back in. If that doesn't help, contact us.</p><div><button class="btn" data-act="signOut">Sign out</button></div></div>`; }
@@ -1728,7 +1737,7 @@ function recruitView(){
         <span class="small">“${esc(i.message)}”</span>
         <span class="small">✉️ <a href="mailto:${esc(i.coachEmail)}?subject=${encodeURIComponent("Re: " + i.playerName + " – " + APP_NAME)}">${esc(i.coachEmail)}</a></span></div>
       <div class="row">${i.status === "new" ? `<button class="btn sm" data-act="markInterest" data-id="${esc(i.id)}" data-status="seen">Mark as read</button>` : ""}<button class="btn ghost sm" data-act="markInterest" data-id="${esc(i.id)}" data-status="archived">Archive</button></div></div>`).join("")}</div></div>` : "";
-  return `<div class="row between">${intro}${kids.length > 1 ? `<div class="filters" role="group" aria-label="Choose player">${kids.map(k => `<button data-act="child" data-id="${esc(k.id)}" aria-pressed="${k.id===p.id}">${esc(k.name)}</button>`).join("")}</div>` : ""}</div>
+  return `<div class="row between">${intro}${kids.length > 1 ? playerSelect(kids, p, false) : ""}</div>
   ${tabs}
   ${intCard}
   ${recruitHtml(p, {editable:canEditProfile(p), section:sec})}`;
@@ -1777,6 +1786,61 @@ function dayLabel(ts){
   const y = new Date(); y.setDate(y.getDate()-1);
   if(d === y.toLocaleDateString("en-CA")) return "Yesterday";
   return new Date(ts).toLocaleDateString(LOC,{weekday:"short",month:"short",day:"numeric"});
+}
+/* ---------- Recruiting: opportunities listed by club and college coaches ---------- */
+const OPP_KINDS = [["tryout","Tryout"],["combine","Combine"],["showcase","Showcase"],["id_camp","ID camp"],["camp","Camp"],["other","Other"]];
+const oppKindLabel = k => (OPP_KINDS.find(x => x[0] === k) || ["", "Other"])[1];
+const canListOpps = () => isStaff() || (S.me && S.me.role === "college");
+const oppDay = iso => new Date(iso + "T12:00:00");
+function oppWhen(o){
+  const f = {weekday:"short", month:"short", day:"numeric", year:"numeric"};
+  const a = oppDay(o.startsOn).toLocaleDateString(LOC, f);
+  const b = o.endsOn && o.endsOn !== o.startsOn ? oppDay(o.endsOn).toLocaleDateString(LOC, f) : "";
+  return b ? `${a} – ${b}` : a;
+}
+function oppsView(){
+  const today = new Date().toLocaleDateString("en-CA"), can = canListOpps();
+  const q = S.oppQ.trim().toLowerCase();
+  const all = S.opps.filter(o => (o.endsOn || o.startsOn) >= today);
+  const list = all.filter(o => (!S.oppKind || o.kind === S.oppKind)
+      && (!S.oppGender || o.gender === S.oppGender || o.gender === "Any")
+      && (!q || [o.title, o.host, o.location, o.ages, o.details].join(" ").toLowerCase().includes(q)))
+    .sort((a, b) => a.startsOn.localeCompare(b.startsOn) || a.title.localeCompare(b.title));
+  const head = `<div class="row between" style="align-items:flex-end"><div class="stack" style="gap:6px"><h1>Opportunities</h1>
+      <p class="lead">Tryouts, combines, showcases and ID camps listed by club and college coaches.</p></div>
+      ${can && !S.oppsMissing ? `<button class="btn primary" data-act="modal" data-m="opp">List an opportunity</button>` : ""}</div>`;
+  if(S.oppsMissing) return head + `<div class="card stack"><h2>Opportunities aren't switched on yet</h2><p class="muted">Your club admin needs to run the latest database update. Then listings show up here.</p></div>`;
+  const tools = `<div class="lib-tools opp-tools">
+      <label class="f small" for="opp-kind">Type<select id="opp-kind" data-change="oppKind"><option value="">All types</option>${OPP_KINDS.map(([k,l]) => `<option value="${k}" ${S.oppKind === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      <label class="f small" for="opp-gender">Players<select id="opp-gender" data-change="oppGender"><option value="">Boys and girls</option><option value="Boys" ${S.oppGender === "Boys" ? "selected" : ""}>Boys</option><option value="Girls" ${S.oppGender === "Girls" ? "selected" : ""}>Girls</option></select></label>
+      <form class="opp-search" data-form="oppSearch" role="search"><label class="f small" for="opp-q">Search<input type="search" id="opp-q" name="q" value="${esc(S.oppQ)}" placeholder="Place, club, school or age"></label><button class="btn" type="submit">Search</button></form>
+    </div>
+    <p class="small muted" aria-live="polite">${list.length} upcoming${list.length !== all.length ? ` of ${all.length}` : ""}</p>`;
+  const card = o => {
+    const mine = o.createdBy === S.uid, canDel = mine || (isAdmin() && o.clubId && o.clubId === S.me.clubId), d = oppDay(o.startsOn);
+    const facts = [o.ages, o.gender === "Any" ? "Boys and girls" : o.gender, o.cost].filter(Boolean).join(" · ");
+    return `<article class="card opp">
+      <div class="opp-date" aria-hidden="true"><span class="od-m">${esc(d.toLocaleDateString(LOC, {month:"short"}))}</span><span class="od-d">${d.getDate()}</span></div>
+      <div class="stack opp-body">
+        <div class="row" style="gap:8px"><span class="pill opp-kind k-${esc(o.kind)}">${oppKindLabel(o.kind)}</span><span class="small muted">${esc(o.host)}</span></div>
+        <h2 class="h3">${esc(o.title)}</h2>
+        <p class="small"><b>${esc(oppWhen(o))}</b>${o.timeNote ? ` · ${esc(o.timeNote)}` : ""}</p>
+        <p class="small">${esc(o.location)}</p>
+        ${facts ? `<p class="small muted">${esc(facts)}</p>` : ""}
+        ${o.details ? `<p class="small opp-details">${esc(o.details)}</p>` : ""}
+        <div class="row" style="gap:8px">
+          ${o.link ? `<a class="btn sm primary" href="${esc(o.link)}" target="_blank" rel="noopener noreferrer">More info and sign-up<span class="sr-only"> for ${esc(o.title)} (opens in a new tab)</span></a>` : ""}
+          ${o.contact ? `<span class="small">Contact: ${esc(o.contact)}</span>` : ""}
+          ${mine ? `<button class="btn sm" data-act="modal" data-m="opp" data-id="${esc(o.id)}">Edit<span class="sr-only"> ${esc(o.title)}</span></button>` : ""}
+          ${canDel ? `<button class="btn sm ghost" data-act="delOpp" data-id="${esc(o.id)}">Delete<span class="sr-only"> ${esc(o.title)}</span></button>` : ""}
+        </div>
+      </div></article>`;
+  };
+  const empty = all.length
+    ? `<div class="card stack"><h2>Nothing matches</h2><p class="muted">Try another type or clear the search.</p><div><button class="btn" data-act="oppClear">Show all</button></div></div>`
+    : `<div class="card stack"><h2>No upcoming opportunities yet</h2><p class="muted">${can ? (S.me.role === "college" ? "List your program's ID camps and showcases so families can find them." : "List your club's tryouts, combines, showcases or ID camps so families can find them.") : "When club and college coaches list tryouts, combines, showcases or ID camps, they show up here."}</p>${can ? `<div><button class="btn primary" data-act="modal" data-m="opp">List an opportunity</button></div>` : ""}</div>`;
+  return head + tools + (list.length ? `<div class="opp-list">${list.map(card).join("")}</div>` : empty)
+    + `<p class="small muted">Listings come from coaches on ${APP_NAME}. Check the details with the host before you sign up or pay.</p>`;
 }
 /* emoji reactions on chat messages: one per person per message */
 const REACTS = [["👍","Thumbs up"],["👎","Thumbs down"],["❗","Important"],["❓","Question"],["😂","Laughing"]];
@@ -2159,6 +2223,28 @@ const MODALS = {
       <label class="f" for="em-foot">Stronger foot<select id="em-foot" name="foot">${["","Right","Left","Both"].map(f => `<option value="${f}" ${(pr.foot||"")===f?"selected":""}>${f||"Not set"}</option>`).join("")}</select></label></div>
     <p class="small muted">More about ${esc(fn || "your player")}, like strengths, a bio and highlights, is under Player profile.</p>
     <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`; },
+  opp: ds => {
+    const o = ds.id ? S.opps.find(x => x.id === ds.id) || {} : {}, today = new Date().toLocaleDateString("en-CA");
+    return `<h2>${o.id ? "Edit opportunity" : "List an opportunity"}</h2><form data-form="opp" data-id="${esc(o.id || "")}" class="stack">
+    <div class="grid2" style="gap:14px">
+      <label class="f" for="op-kind">Type<select id="op-kind" name="kind" required><option value="">Choose…</option>${OPP_KINDS.map(([k,l]) => `<option value="${k}" ${o.kind === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      <label class="f" for="op-gender">Players<select id="op-gender" name="gender">${[["Any","Boys and girls"],["Boys","Boys"],["Girls","Girls"]].map(([v,l]) => `<option value="${v}" ${(o.gender || "Any") === v ? "selected" : ""}>${l}</option>`).join("")}</select></label></div>
+    <label class="f" for="op-title">Title<input type="text" id="op-title" name="title" required maxlength="100" value="${esc(o.title || "")}" placeholder="e.g. U15 and U16 Boys tryouts"></label>
+    <div class="grid2" style="gap:14px">
+      <label class="f" for="op-start">Date<input type="date" id="op-start" name="start" required min="${o.id ? "" : today}" value="${esc(o.startsOn || "")}"></label>
+      <label class="f" for="op-end">Last day (if more than one)<input type="date" id="op-end" name="end" value="${esc(o.endsOn || "")}"></label></div>
+    <div class="grid2" style="gap:14px">
+      <label class="f" for="op-time">Time<input type="text" id="op-time" name="time" maxlength="60" value="${esc(o.timeNote || "")}" placeholder="e.g. 9am to 12pm"></label>
+      <label class="f" for="op-ages">Ages<input type="text" id="op-ages" name="ages" maxlength="60" value="${esc(o.ages || "")}" placeholder="e.g. U14 to U17, or born 2010 to 2012"></label></div>
+    <label class="f" for="op-loc">Location<input type="text" id="op-loc" name="location" required maxlength="160" value="${esc(o.location || "")}" placeholder="Field or venue, city"></label>
+    <div class="grid2" style="gap:14px">
+      <label class="f" for="op-cost">Cost<input type="text" id="op-cost" name="cost" maxlength="40" value="${esc(o.cost || "")}" placeholder="e.g. Free, or $40"></label>
+      <label class="f" for="op-contact">Contact<input type="text" id="op-contact" name="contact" maxlength="120" value="${esc(o.contact || "")}" placeholder="Email or phone for questions"></label></div>
+    <label class="f" for="op-link">Sign-up or info link<input type="url" id="op-link" name="link" maxlength="300" value="${esc(o.link || "")}" placeholder="https://"></label>
+    <label class="f" for="op-details">Details<textarea id="op-details" name="details" maxlength="1500" rows="4" placeholder="What to bring, how players are picked, how to register.">${esc(o.details || "")}</textarea></label>
+    <p class="small muted">Every signed-in family, player and coach on ${APP_NAME} can see this. It's listed under ${esc(S.me.role === "college" ? ((S.college || {}).school || "your school") : (S.club || {}).name || "your club")}.</p>
+    <div class="row"><button class="btn primary" type="submit">${o.id ? "Save changes" : "List it"}</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`;
+  },
   findTeam: () => findTeamModal(),
   leaveTeam: ds => { const p = S.players.find(x => x.id === ds.player); if(!p) return "<p>Player not found.</p>"; const club = clubNameOf(p) || "the club";
     return `<h2>Leave ${esc(teamName(p.teamId))}?</h2><p>${esc(p.name)} will come off the team at ${esc(club)}. You keep the profile, past reviews, references, home drills and messages. ${esc(club)}'s coaches won't see ${esc(p.name)} any more, and team chat closes.</p><p class="small muted">You can ask to join a team again any time.</p>
@@ -2690,6 +2776,7 @@ const CONFIRM = {
   unassign: ["Remove this drill from the player's week?", "Their progress on it this week is cleared.", "Remove drill"],
   delMsg: ["Delete this message?", "It's removed from the team chat for everyone.", "Delete message"],
   delPm: ["Delete this message?", "It's removed from the conversation for everyone.", "Delete message"],
+  delOpp: ["Delete this opportunity?", "Families won't see it under Recruiting any more.", "Delete"],
   delPhoto: ["Remove the profile photo?", "You can add a new one at any time.", "Remove photo"],
   delVideo: ["Remove this video?", "It's removed from the profile. Uploaded files are deleted.", "Remove video"],
   delHistory: ["Remove this club from the history?", "", "Remove"],
@@ -2746,6 +2833,8 @@ document.addEventListener("keydown", ev => {
 });
 
 ACTS.openRec = ds => { S.playerId = ds.id; S.view = "player"; S.preview = false; S.ptab = "recruit"; S.recSec = ds.sec; window.scrollTo(0,0); render(); };
+ACTS.delOpp = async ds => { const ok = await save(() => S.db.doc("opps/" + ds.id).delete(), "Opportunity deleted"); if(ok) schedule("opps"); };
+ACTS.oppClear = () => { S.oppKind = ""; S.oppGender = ""; S.oppQ = ""; render(); };
 ACTS.reactOpen = ds => openReact(ds.k, ds.id);
 ACTS.react = async ds => {
   const id = ds.id + ":" + S.uid, cur = S.reactions.find(r => r.id === id), off = cur && cur.emoji === ds.e;
@@ -2867,6 +2956,10 @@ document.addEventListener("change", ev => {
   if(ev.target.dataset && ev.target.dataset.change === "skillFilter"){ S.skillFilter = ev.target.value || null; render(); const el = document.getElementById("skill-filter"); if(el) el.focus(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "pmPlayer"){ S.pmPlayer = ev.target.value; S.meetingId = null; render(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "invTeam"){ S.invTeam = ev.target.value; render(); const el = document.querySelector(".inv-team"); if(el) el.focus(); return; }
+  if(ev.target.dataset && ev.target.dataset.change === "childSel"){
+    if(ev.target.value === "__add"){ ev.target.value = S.childId || ev.target.options[0].value; openModal(MODALS.addChild({})); return; }
+    S.childId = ev.target.value; render(); const el = document.getElementById("sel-player"); if(el) el.focus(); return; }
+  if(ev.target.dataset && (ev.target.dataset.change === "oppKind" || ev.target.dataset.change === "oppGender")){ S[ev.target.dataset.change] = ev.target.value; render(); const el = document.getElementById(ev.target.id); if(el) el.focus(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "chatTeam"){ S.chatTeam = ev.target.value; render(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "chartSkill"){ S.chartSkill = ev.target.value; render(); const s = document.getElementById("chart-skill"); if(s) s.focus(); }
 });
@@ -3764,6 +3857,19 @@ FORMS.proEdit = async fd => {
   const ok = await save(() => rpc("update_pro", proArgs(fd)), "Saved");
   if(ok){ schedule("pro"); loadMe(); }
 };
+FORMS.opp = async (fd, form) => {
+  const g = k => String(fd.get(k) || "").trim();
+  const start = g("start"), end = g("end"), link = g("link");
+  if(end && end < start){ toast("The last day can't be before the first day.", true); return; }
+  if(link && !/^https?:\/\/\S+$/i.test(link)){ toast("Use a full link that starts with https://", true); return; }
+  const id = form.dataset.id || crypto.randomUUID(), editing = !!form.dataset.id;
+  const row = {kind:g("kind"), gender:g("gender") || "Any", title:g("title"), startsOn:start, endsOn:end || null, timeNote:g("time"), ages:g("ages"),
+    location:g("location"), cost:g("cost"), contact:g("contact"), link, details:g("details")};
+  closeModal();
+  const ok = await save(() => editing ? S.db.doc("opps/" + id).update(row) : S.db.collection("opps").doc(id).set({...row, createdBy:S.uid}), editing ? "Changes saved" : "Listed. Families can see it under Recruiting → Opportunities.");
+  if(ok) schedule("opps");
+};
+FORMS.oppSearch = async fd => { S.oppQ = String(fd.get("q") || ""); render(); const el = document.getElementById("opp-q"); if(el) el.focus(); };
 FORMS.myDetails = async (fd, form) => {
   const names = form.dataset.names === "1";
   const first = String(fd.get("first") || "").trim(), last = String(fd.get("last") || "").trim();
