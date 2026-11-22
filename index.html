@@ -1057,9 +1057,9 @@ main > p.small, main > p.muted{background:var(--surface);border:1px solid var(--
    ===================================================================== */
 :root{
   --headline:"Big Shoulders","Inter Display","Arial Narrow",system-ui,sans-serif;
-  --paper:#f3f5f8; --line:#d9e0ea; --chip:#ebf0f7;
+  --paper:#e7ecf3; --line:#d3dbe6; --chip:#ebf0f7;   /* slate page: cool blue-grey that sits with the navy header */
   --turf:#1a4d31; --turf-2:#1d5537; --turf-ink:#ffffff; --turf-soft:#d5e8db; --turf-kick:#ffc9a8;
-  --shadow:0 1px 2px rgba(19,32,58,.05);
+  --shadow:0 1px 2px rgba(19,32,58,.06),0 2px 6px rgba(19,32,58,.04);
   --shadow-lift:0 2px 4px rgba(19,32,58,.06),0 12px 28px rgba(19,32,58,.10);
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --paper:#0f1522; --line:#26324a; --turf:#11331f; --turf-2:#133a24; --turf-soft:#c9e0d1; --turf-kick:#ffb98f; --shadow:0 1px 2px rgba(0,0,0,.35); --shadow-lift:0 12px 30px rgba(0,0,0,.45); } }
@@ -1081,7 +1081,7 @@ h2.h3{font-family:var(--body)}
 .portal .ptitle{font-size:2rem;letter-spacing:.004em}
 .lead{font-size:1.125rem;line-height:1.6;max-width:60ch}
 /* labels above headings: quiet sentence case, not tracked capitals */
-.eyebrow{font-family:var(--body);font-size:.9rem;font-weight:600;letter-spacing:0;text-transform:none;color:var(--accent);border:0;padding:0}
+.eyebrow{font-family:var(--body);font-size:.9rem;font-weight:600;letter-spacing:0;text-transform:none;color:#ad3c14;border:0;padding:0}
 /* big figures read like a scoreboard */
 .tile .big,.overall .big,.plan .price,.home-facts b,.score,.step-n{font-family:var(--headline);font-weight:700;letter-spacing:0;font-variant-numeric:lining-nums tabular-nums}
 .overall .big{font-size:3.4rem;line-height:.95}
