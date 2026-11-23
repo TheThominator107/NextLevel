@@ -347,7 +347,7 @@ function recommendCard(p, opts = {}){
   const R = recommendFor(p.id);
   const head = `<div class="row between"><h2>${opts.title || "Recommended home drills"}</h2><span class="pill good">Based on the coach's review</span></div>`;
   if(!R) return `<div class="card stack rec-card">${head}<p class="muted">Recommendations appear after the coach's first review.</p></div>`;
-  if(opts.locked) return `<div class="locked">${head}<p>${R.picks.length} drills picked for ${esc(p.name)} from the latest review, focusing on ${R.focus.map(f => esc(f.label)).join(", ")}.</p><button class="btn primary" data-act="buyHome">See Home Drills access</button></div>`;
+  if(opts.locked) return `<div class="locked">${head}<p>${R.picks.length} drills picked for ${esc(p.name)} from the latest review, focusing on ${R.focus.map(f => esc(f.label)).join(", ")}.</p><button class="btn primary" data-act="buyHome">See Full Access</button></div>`;
   return `<div class="card stack rec-card">${head}
     <p class="small muted">From ${esc(R.last.coachName || "the coach")}'s review on ${fmtDate(R.last.date)}.${R.focus.length ? " Focus areas:" : ""}</p>
     ${R.focus.length ? `<div class="chips">${R.focus.map(f => `<span class="chip imp" title="${esc(f.why.join(", "))}">${esc(f.label)} · ${esc(f.why[0])}</span>`).join("")}</div>` : ""}
@@ -359,8 +359,9 @@ const teamName = id => (S.teams.find(t => t.id === id) || {}).name || "No team";
 const assignmentsFor = pid => S.assignments.filter(a => a.playerId === pid && a.active !== false);
 const doneThisWeek = a => (Array.isArray(a.done) ? a.done : []).filter(x => x >= weekStart()).length;
 function familyHasHome(){
-  if(isStaff()) return !!S.club && S.club.familyAccess !== "subscribe";
-  return !!(S.me && S.me.familyPlan) || (S.clubs || []).some(c => c.familyAccess !== "subscribe");
+  /* every club plan includes Home Drills and Recruiting; players without a club get them with Full Access */
+  if(isStaff()) return !!S.club;
+  return !!(S.me && S.me.familyPlan) || (S.clubs || []).length > 0;
 }
 /* the club a player is on right now (families can have players at different clubs) */
 const clubOf = p => !p || !p.clubId ? null : isStaff() ? (S.club && S.club.id === p.clubId ? S.club : null) : (S.clubs || []).find(c => c.id === p.clubId) || null;
@@ -990,8 +991,8 @@ function chartHtml(rs){
 function stepsLocked(){ return !S.uid || (!isStaff() && !familyHasHome()); }
 /* drill videos are part of Home Training: a slim locked bar instead of the animation */
 function animLockedHtml(){
-  const go = S.uid ? `<button type="button" class="btn sm" data-act="buyHome">See Home Training</button>` : `<a class="btn sm" href="#pricing">See Home Training</a>`;
-  return `<div class="anim-locked"><span class="al-play" aria-hidden="true">▶</span><span class="al-txt">🔒 The animated demo comes with Home Training</span>${go}</div>`;
+  const go = S.uid ? `<button type="button" class="btn sm" data-act="buyHome">See Full Access</button>` : `<a class="btn sm" href="#pricing">See Full Access</a>`;
+  return `<div class="anim-locked"><span class="al-play" aria-hidden="true">▶</span><span class="al-txt">🔒 The animated demo comes with your club or Full Access</span>${go}</div>`;
 }
 /* full instructions: inline for free samples and club drills, otherwise from drill_steps (Home Training) */
 function drillInfo(d){
@@ -1013,7 +1014,7 @@ function drillStepsHtml(d, opts){
   if(S.uid && !S.stepsLoaded) return `<p class="small muted">Loading instructions…</p>`;
   const target = S.uid ? `data-act="buyHome"` : `href="#pricing"`;
   const tag = S.uid ? "button" : "a";
-  return `<div class="paywall-line"><span>🔒 Step-by-step instructions are part of Home Training</span><${tag} class="btn sm" ${target}>Unlock</${tag}></div>`;
+  return `<div class="paywall-line"><span>🔒 Step-by-step instructions come with your club or Full Access</span><${tag} class="btn sm" ${target}>Unlock</${tag}></div>`;
 }
 const byFamily = a => !!a.assignedBy && S.members.some(m => m.id === a.assignedBy && m.role === "family") || (a.assignedBy === S.uid && S.me && S.me.role === "family");
 function drillCard(d, opts={}){
@@ -1077,11 +1078,11 @@ function playerDetail(p, mode){
         : `<p class="muted">${fam?"No drills assigned yet. Browse the library under Home Drills.":"No drills assigned yet. Pick one for home practice, or use the suggestions below."}</p>`}
     </div>`;
   } else {
-    drillsCard = `<div class="locked"><h2>Home Training</h2><p>Get the drills your coach picks for you, the full drill library and progress charts over time.</p><button class="btn primary" data-act="buyHome">See Home Drills access</button></div>`;
+    drillsCard = `<div class="locked"><h2>Full Access</h2><p>Get the drills your coach picks for you, the full drill library and progress charts over time.</p><button class="btn primary" data-act="buyHome">See Full Access</button></div>`;
   }
 
   const progressCard = home ? `<div class="card stack"><h2>Progress over time</h2>${progressSummary(rs)}${chartHtml(rs)}</div>`
-    : rs.length > 1 ? `<div class="locked"><h2>Progress over time</h2><p>See a chart of every skill over time and what improved most since the first review with Home Training.</p><button class="btn primary" data-act="buyHome">See Home Drills access</button></div>` : "";
+    : rs.length > 1 ? `<div class="locked"><h2>Progress over time</h2><p>See a chart of every skill over time and what improved most since the first review with Full Access.</p><button class="btn primary" data-act="buyHome">See Full Access</button></div>` : "";
   const historyCard = "";
 
   return `<div class="grid2">
@@ -1107,7 +1108,7 @@ function playerView(){
     </div>
   </div></div>
   ${subtabs()}
-  ${S.preview ? `<div class="banner">Family preview: this is what ${esc(p.name)}'s family sees.${S.club.familyAccess==="subscribe" && S.ptab==="dev"?" Home drills show as locked until the family starts Home Training.":""}</div>` : ""}
+  ${S.preview ? `<div class="banner">Family preview: this is what ${esc(p.name)}'s family sees.</div>` : ""}
   ${S.ptab === "profile" ? profileHtml(p, {staff:!S.preview}) : S.ptab === "recruit" ? recruitHtml(p, {staff:!S.preview, section:S.recSec || undefined}) : playerDetail(p, S.preview ? "preview" : "staff")}`;
 }
 
@@ -1733,6 +1734,9 @@ function recruitView(){
   const head = p => `<div class="row between"><div class="stack" style="gap:4px"><h1>Recruiting</h1><p class="muted small">Get seen by college coaches, pro scouts and youth clubs, and find tryouts, camps and showcases.</p></div>${p && kids.length > 1 ? playerSelect(kids, p, false) : ""}</div>`;
   if(!kids.length) return head(null) + `<div class="card stack"><h2>Add your player first</h2><div><button class="btn primary" data-act="modal" data-m="addChild">Add player</button></div></div>`;
   const p = kids.find(k => k.id === S.childId) || kids[0];
+  if(!familyHasHome()) return head(p) + `<div class="locked stack"><h2>Recruiting comes with your club or Full Access</h2>
+    <p>Players on a club's team get Recruiting through the club. Without a club, Full Access (${PRICES.family} a month) adds a Recruitment Profile for college coaches, pro scouts and youth clubs, plus tryouts, camps and showcases from coaches.</p>
+    <div><button class="btn primary" data-act="buyHome">See Full Access</button></div></div>`;
   /* 1. the filter */
   const look = `<section class="card stack rec-look" aria-labelledby="look-h"><h2 id="look-h" class="h3">What are you looking for?</h2>
     <div class="fchips" role="radiogroup" aria-label="Recruiting path">${SECTION_KEYS.map(k => `<button type="button" class="fchip" role="radio" data-act="recSec" data-id="${k}" aria-checked="${k === sec}">${SECTIONS[k].label}${newInterest(k).length ? ` <span class="badge" aria-label="${newInterest(k).length} new">${newInterest(k).length}</span>` : ""}</button>`).join("")}</div>
@@ -1997,11 +2001,11 @@ function readHash(){
 function buyHomeCard(){
   const free = BUILTIN_DRILLS.filter(d => d.free).length;
   return `<section class="card stack buy-home" id="buy-home" tabindex="-1" aria-labelledby="buy-home-h">
-    <div class="row between"><h2 id="buy-home-h">Get full access to Home Drills</h2><span class="pill good">${free} free sample drills</span></div>
+    <div class="row between"><h2 id="buy-home-h">Get Full Access: Home Drills and Recruiting</h2><span class="pill good">${free} free sample drills</span></div>
     <div><span class="price">${PRICES.family}</span> <span class="muted">${PRICES.familyPer}</span></div>
-    <ul class="ticks"><li>Drills your coach assigns, with step-by-step instructions</li><li>Full home drill library</li><li>Progress charts for every skill</li><li>Weekly drill tracking your coach can see</li></ul>
-    <div><button class="btn primary" data-act="startPlan">Get Home Drills for ${PRICES.family} a month</button></div>
-    <p class="small muted">Some clubs include it for free, so ask your coach first. Payments aren't connected in this version: this unlocks Home Drills without charging anything.</p>
+    <ul class="ticks">${FULL_ACCESS_LI}</ul>
+    <div><button class="btn primary" data-act="startPlan">Get Full Access for ${PRICES.family} a month</button></div>
+    <p class="small muted">Free when your player is on a club's team on ${APP_NAME}. Payments aren't connected in this version: this turns on Full Access without charging anything.</p>
   </section>`;
 }
 function drillsView(){
@@ -2013,8 +2017,8 @@ function drillsView(){
     const kids = S.players.filter(p => (S.me.playerIds||[]).includes(p.id));
     recs = kids.map(k => recommendCard(k, {family:true, title: kids.length > 1 ? "Recommended for " + k.name : "Recommended for you"})).join("");
   }
-  const own = !staff && S.me.familyPlan && !(S.clubs || []).some(c => c.familyAccess !== "subscribe");
-  if(own) recs = `<div class="card row between buy-on"><span><b>Home Drills access is on</b> <span class="muted">· ${PRICES.family} ${PRICES.familyPer}</span></span><button class="btn ghost sm" data-act="cancelPlan">Cancel</button></div>` + recs;
+  const own = !staff && S.me.familyPlan && !(S.clubs || []).length;
+  if(own) recs = `<div class="card row between buy-on"><span><b>Full Access is on</b> <span class="muted">· ${PRICES.family} ${PRICES.familyPer}</span></span><button class="btn ghost sm" data-act="cancelPlan">Cancel</button></div>` + recs;
   return `<div class="row between"><div class="stack" style="gap:4px"><h1>Home Drills</h1><p class="muted small">${staff?"Solo drills for home practice, plus any your club adds. For team practices, see Training → Team Drills.":"Drills you can do at home with a ball and a little space."}</p></div>
     ${staff?`<button class="btn primary" data-act="modal" data-m="drill">Add club drill</button>`:""}</div>
   ${recs}
@@ -2024,28 +2028,19 @@ function drillsView(){
 
 function plansView(){
   const staff = isStaff();
-  const included = staff ? S.club.familyAccess !== "subscribe" : (S.clubs || []).some(c => c.familyAccess !== "subscribe");
-  const fp = S.me.familyPlan;
-  let status;
-  if(staff) status = included ? "Your club includes Home Training for every family." : "Families in your club subscribe to Home Training on their own.";
-  else if(included) status = "Your club includes Home Training, so you already have it.";
-  else status = fp ? "You're on a Home Training trial." : (S.clubs || []).length ? "Your club doesn't include Home Training. You can add it for " + PRICES.family + " " + PRICES.familyPer + "." : "You can add Home Training for " + PRICES.family + " " + PRICES.familyPer + ". Some clubs include it once you join their team.";
-  return `<div class="stack" style="gap:4px"><h1>Pricing</h1><p class="muted">${status}</p></div>
+  return `<div class="stack" style="gap:4px"><h1>Pricing</h1><p class="muted">${staff ? "Every family on your teams gets Home Drills and Recruiting with your plan." : "Full Access is free when your player is on a club's team."}</p></div>
   ${staff ? planSummary() : ""}
   <div class="grid3 plans3">
     ${clubPlanCard("team", staff)}
     ${clubPlanCard("unlimited", staff)}
     <div class="card plan">
-      <span class="pill good" style="align-self:flex-start">For players & parents</span>
-      <h2>Home Training</h2>
+      <span class="pill good" style="align-self:flex-start">For players without a club</span>
+      <h2>Full Access</h2>
       <div><span class="price">${PRICES.family}</span> <span class="muted">${PRICES.familyPer}</span></div>
-      <p class="small muted">For players whose club doesn't include it.</p>
-      <ul><li>Drills your coach assigns, with step-by-step instructions</li><li>Full home drill library</li><li>Progress charts for every skill</li><li>Weekly drill tracking your coach can see</li></ul>
-      <p class="small muted">Free with every club: the coach's latest review and skill ratings.</p>
-      ${!staff && !included ? (fp ? `<div class="row"><span class="pill good">Trial active</span><button class="btn ghost sm" data-act="cancelPlan">Cancel trial</button></div>` : `<div><button class="btn primary" data-act="startPlan">Start 14-day free trial</button></div>`) : ""}
+      <p class="small muted">Included free for every family on a club's team.</p>
+      <ul>${FULL_ACCESS_LI}</ul>
     </div>
-  </div>
-  <p class="small muted">Payments aren't connected in this version: starting a trial unlocks Home Training without charging anything.</p>`;
+  </div>`;
 }
 
 function clubPlanCard(k, staff){
@@ -2074,7 +2069,7 @@ function clubView(){
     <div class="card stack">
       <div class="row between"><h2>${esc(S.club.name)}</h2>${admin?`<button class="btn sm" data-act="modal" data-m="clubSettings">Edit</button>`:""}</div>
       <p>Coach join code: <span class="code">${esc(S.club.code)}</span> <button class="btn ghost sm" data-act="copy" data-text="${esc(S.club.code)}">Copy code</button> <button class="btn ghost sm" data-act="copy" data-text="${esc(coachInviteUrl())}" data-label="Coach invite link">Copy invite link</button></p>
-      <p>Home Training for families: <b>${S.club.familyAccess==="subscribe"?"families subscribe themselves":"included by the club"}</b></p>
+      <p>Home Drills and Recruiting: <b>included for every family on your teams</b></p>
       ${(() => { const pi = planInfo(); return `<p>Plan: <b>${planName(pi.plan)}</b> · ${pi.plan === "unlimited" ? money(PRICE_NUM.unlimited) + " a month, unlimited teams" : money(pi.perTeam) + " a month for " + pi.n + " team" + (pi.n===1?"":"s")}</p>${pi.plan === "team" && pi.save > 0 ? `<p class="small"><b>Tip:</b> Club Unlimited would save you ${money(pi.save)} a month. <button class="btn ghost sm" data-act="go" data-view="plans">Compare plans</button></p>` : ""}`; })()}
       <p class="muted small">${fams.length} famil${fams.length===1?"y":"ies"} connected.</p>
     </div>
@@ -2247,10 +2242,7 @@ const MODALS = {
       <label class="choice" for="pl-team"><input type="radio" id="pl-team" name="plan" value="team" ${pi.plan==="team"?"checked":""}><span><b>Club (per team): ${PRICES.club} a month per team</b><br><span class="small muted">With your ${pi.n} team${pi.n===1?"":"s"}: ${money(pi.perTeam)} a month.</span></span></label>
       <label class="choice" for="pl-unl"><input type="radio" id="pl-unl" name="plan" value="unlimited" ${pi.plan==="unlimited"?"checked":""}><span><b>Club Unlimited: ${PRICES.unlimited} a month</b><br><span class="small muted">Unlimited teams, players and coaches.${pi.save > 0 ? " Saves you " + money(pi.save) + " a month." : " Worth it from 10 teams."}</span></span></label>
     </fieldset>
-    <fieldset class="stack" style="border:0;padding:0;margin:0"><legend style="font-weight:600;margin-bottom:8px">Home Training for families</legend>
-      <label class="choice" for="fa-inc"><input type="radio" id="fa-inc" name="familyAccess" value="included" ${S.club.familyAccess!=="subscribe"?"checked":""}><span><b>Included by the club</b><br><span class="small muted">Every connected family gets home drills and progress charts. Your club plan covers it.</span></span></label>
-      <label class="choice" for="fa-sub"><input type="radio" id="fa-sub" name="familyAccess" value="subscribe" ${S.club.familyAccess==="subscribe"?"checked":""}><span><b>Families subscribe themselves</b><br><span class="small muted">Families see the latest review free and can add Home Training on their own.</span></span></label>
-    </fieldset>
+
     <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`; },
   addChild: () => `<h2>Add a player</h2><form data-form="addChild">
     ${playerSetupFields("ac")}
@@ -2510,8 +2502,8 @@ const ACTS = {
     const ok = await save(() => rpc("decide_request", {rid:ds.id, approve:false, tid:null}), "Request declined");
     if(ok) refreshAll();
   },
-  startPlan: async () => { await save(() => S.db.doc("members/" + S.uid).update({familyPlan:"trial", planStarted:today()}), isStaff() ? "Home Training trial started" : "Home Drills unlocked"); },
-  cancelPlan: async () => { await save(() => S.db.doc("members/" + S.uid).update({familyPlan:null}), isStaff() ? "Trial cancelled" : "Home Drills access cancelled"); },
+  startPlan: async () => { await save(() => S.db.doc("members/" + S.uid).update({familyPlan:"full", planStarted:today()}), "Full Access is on"); },
+  cancelPlan: async () => { await save(() => S.db.doc("members/" + S.uid).update({familyPlan:null}), "Full Access cancelled"); },
   buyHome: () => {   /* coaches (family preview) see Pricing; families go to the purchase option on Home Drills */
     ACTS.go({view: isStaff() ? "plans" : "drills"});
     const c = document.getElementById("buy-home"); if(c){ c.scrollIntoView({block:"start"}); c.focus({preventScroll:true}); }
@@ -2809,7 +2801,7 @@ const FORMS = {
     await save(() => S.db.collection("comments").doc().set({clubId:S.me.clubId, playerId:form.dataset.id, kind:fd.get("kind")==="comment"?"comment":"reference", text:String(fd.get("text")).trim(), authorId:S.uid, authorName:S.me.name||"", authorTitle:String(fd.get("title")||"").trim(), date:today(), createdAt:Date.now()}), "Posted");
   },
   clubSettings: async fd => { closeModal(); const plan = fd.get("plan") === "unlimited" ? "unlimited" : "team";
-    const ch = {name:fd.get("name").trim(), familyAccess:fd.get("familyAccess"), plan};
+    const ch = {name:fd.get("name").trim(), familyAccess:"included", plan};
     const ok = await save(() => S.db.doc("clubs/" + S.club.id).update(ch), "Club updated");
     if(ok){ S.club = {...S.club, ...ch}; render(); schedule("club"); } }
 };
@@ -3036,7 +3028,8 @@ function planInfo(){
   return {plan, n, perTeam, cost: plan === "unlimited" ? PRICE_NUM.unlimited : perTeam, save: Math.round((perTeam - PRICE_NUM.unlimited) * 100) / 100};
 }
 const planName = k => k === "unlimited" ? "Club Unlimited" : "Club (per team)";
-const CLUB_FEATURES = `<li>Player and keeper reviews</li><li>Progress timelines</li><li>Drill library and session planner</li><li>Team chat</li><li>Optional Home Training for all</li>`;
+const CLUB_FEATURES = `<li>Player and keeper reviews</li><li>Progress timelines</li><li>Drill library and session planner</li><li>Team chat</li><li>Home Drills and Recruiting for every family</li>`;
+const FULL_ACCESS_LI = `<li>Full home drill library with step-by-step instructions</li><li>Animated drill demos</li><li>Recruiting: a profile for college coaches, pro scouts and youth clubs</li><li>Tryouts, camps and showcases from coaches</li><li>Progress charts for every skill</li>`;
 const FEATURE_PAGES = ["drills","team-drills","clubs","recruiting"];
 const PUBLIC_PAGES = [
   ["how-it-works","How it works"], ["drills","Home Drills"], ["team-drills","Team Drills"], ["clubs","Clubs & Teams"], ["recruiting","Recruiting"],
@@ -3130,9 +3123,9 @@ function pageHow(){
 function paywallBanner(){
   const n = BUILTIN_DRILLS.length, free = BUILTIN_DRILLS.filter(d => d.free).length;
   return `<div class="card paywall stack">
-    <div class="row between"><h2>🔒 Full instructions come with Home Training</h2><span class="pill good">${free} free sample drills</span></div>
-    <p>Try the free samples. Full steps for every drill come with <b>Home Training</b>, or free when your club includes it.</p>
-    <div class="row">${S.uid ? `<button class="btn primary" data-act="buyHome">See Home Training</button>` : `<button class="btn primary" data-act="pickPortal" data-id="family">Sign up as a family</button><a class="btn" href="#pricing">See pricing</a>`}</div>
+    <div class="row between"><h2>🔒 Full instructions come with your club or Full Access</h2><span class="pill good">${free} free sample drills</span></div>
+    <p>Try the free samples. Every drill is free when your player is on a club's team on ${APP_NAME}. Without a club, <b>Full Access</b> is ${PRICES.family} a month.</p>
+    <div class="row">${S.uid ? `<button class="btn primary" data-act="buyHome">See Full Access</button>` : `<button class="btn primary" data-act="pickPortal" data-id="family">Sign up as a family</button><a class="btn" href="#pricing">See pricing</a>`}</div>
   </div>`;
 }
 function pageDrills(){
@@ -3463,7 +3456,7 @@ function pageRecruiting(){
 function pagePricing(){
   return `<section class="page-hero stack"><span class="eyebrow">Pricing</span>
     <h1>Simple plans for clubs and families</h1>
-    <p class="lead">Pay per team, or one price for the whole club. Families can add Home Training.</p></section>
+    <p class="lead">Pay per team, or one price for the whole club. Every club plan includes Home Drills and Recruiting for its families. Players without a club can get Full Access.</p></section>
   <div class="grid3 plans3">
     <div class="card plan">
       <span class="pill plain" style="align-self:flex-start">For clubs & coaches</span>
@@ -3482,11 +3475,11 @@ function pagePricing(){
       <button type="button" class="btn primary" data-act="pickPortal" data-id="coach" style="align-self:flex-start;margin-top:auto">Start your club</button>
     </div>
     <div class="card plan">
-      <span class="pill good" style="align-self:flex-start">For parents & players</span>
-      <h2>Home Training</h2>
+      <span class="pill good" style="align-self:flex-start">For players without a club</span>
+      <h2>Full Access</h2>
       <div><span class="price">${PRICES.family}</span> <span class="muted">${PRICES.familyPer}</span></div>
-      <p class="small muted">For players whose club doesn't include it.</p>
-      <ul><li>Drills picked from the review</li><li>Full drill library</li><li>Progress charts for every skill</li><li>Weekly drill tracking</li></ul>
+      <p class="small muted">Included free for every family on a club's team.</p>
+      <ul>${FULL_ACCESS_LI}</ul>
       <p class="small muted">Always free: latest review, ratings, profile and team chat.</p>
       <button type="button" class="btn" data-act="pickPortal" data-id="family" style="align-self:flex-start;margin-top:auto">Sign up as a family</button>
     </div>
@@ -3501,7 +3494,7 @@ function pagePricing(){
     ${[["Do college coaches or scouts pay?", "No. Both are free. Scouts are approved by hand first."],
        ["How is the Club plan charged?", `${PRICES.club} a month per team, with unlimited players and coaches.`],
        ["When is Club Unlimited worth it?", `From 10 teams. Ten teams per-team cost $199.90; Unlimited is ${PRICES.unlimited}.`],
-       ["Is Home Training free if my club includes it?", "Yes, for every player on the club's teams."],
+       ["Is Full Access free if my club uses NextPass?", "Yes. Every club plan includes Home Drills and Recruiting for every player on the club's teams."],
        ["We have two children. Do we pay twice?", `${PRICES.family} a month for each player whose club doesn't include it.`],
        ["What happens if we change clubs?", "You keep the profile and every review. The old club loses access."],
        ["Something else?", `<a href="#contact">Contact us</a> and we'll get back to you.`]].map(([q, a]) => `<details class="faq-d"><summary>${q}</summary><p class="muted">${a}</p></details>`).join("")}
