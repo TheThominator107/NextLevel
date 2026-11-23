@@ -2788,6 +2788,8 @@ const CONFIRM = {
 let confirmed = null;
 /* dropdowns: one open at a time; click outside or Escape closes */
 ACTS.setLang = ds => setLang(ds.id);
+ACTS.ptdPhase = ds => { S.ptdPhase = ds.id; render(); const b = document.querySelector(`[data-act="ptdPhase"][data-id="${CSS.escape(ds.id)}"]`); if(b) b.focus(); };
+ACTS.ptdLevel = ds => { S.ptdLevel = ds.id; render(); const b = document.querySelector(`[data-act="ptdLevel"][data-id="${CSS.escape(ds.id)}"]`); if(b) b.focus(); };
 ACTS.navDd = ds => { S.navOpen = S.navOpen === ds.g ? null : ds.g; render(); const b = document.querySelector(`.nav-dd-btn[data-g="${ds.g}"]`); if(b) b.focus(); };
 document.addEventListener("click", ev => {
   if(S.navOpen && !ev.target.closest(".nav-dd")){ S.navOpen = null; render(); }
@@ -2978,9 +2980,9 @@ function planInfo(){
 }
 const planName = k => k === "unlimited" ? "Club Unlimited" : "Club (per team)";
 const CLUB_FEATURES = `<li>Player and keeper reviews</li><li>Progress timelines</li><li>Drill library and session planner</li><li>Team chat</li><li>Optional Home Training for all</li>`;
-const FEATURE_PAGES = ["drills","clubs","recruiting"];
+const FEATURE_PAGES = ["drills","team-drills","clubs","recruiting"];
 const PUBLIC_PAGES = [
-  ["how-it-works","How it works"], ["drills","Drills"], ["clubs","Clubs & Teams"], ["recruiting","Recruiting"],
+  ["how-it-works","How it works"], ["drills","Home Drills"], ["team-drills","Team Drills"], ["clubs","Clubs & Teams"], ["recruiting","Recruiting"],
   ["pricing","Pricing"], ["contact","Contact Us"]
 ];
 const FOOTER_PAGES = [["safety","Safety"],["privacy","Privacy"],["terms","Terms"],["accessibility","Accessibility"]];
@@ -2989,12 +2991,13 @@ const PAGE_IDS = PUBLIC_PAGES.concat(FOOTER_PAGES, [["for-parents"]]).map(p => p
 function publicNav(){
   const cur = S.publicPage === "for-parents" ? "how-it-works" : S.publicPage;   /* the parents section lives on How it works */
   const link = ([id,label]) => `<a href="#${id}" class="navlink" ${cur===id?'aria-current="page"':""}>${label}</a>`;
-  /* Drills, Clubs & Teams and Recruiting sit under one "Features" menu at the start of the row */
+  /* Home Drills, Team Drills, Clubs & Teams and Recruiting sit under one "Features" menu, after How it works */
   const feat = PUBLIC_PAGES.filter(([id]) => FEATURE_PAGES.includes(id)), open = S.navOpen === "features";
   const features = `<div class="nav-dd${open ? " open" : ""}">
       <button type="button" class="nav-dd-btn navlink${feat.some(([id]) => id === cur) ? " cur" : ""}" data-act="navDd" data-g="features" aria-expanded="${open}" aria-controls="dd-features">Features<span class="dd-chev" aria-hidden="true"></span></button>
       <div class="nav-dd-menu" id="dd-features" ${open ? "" : "hidden"}>${feat.map(link).join("")}</div></div>`;
-  const links = features + PUBLIC_PAGES.filter(([id]) => !FEATURE_PAGES.includes(id)).map(link).join("");
+  const rest = PUBLIC_PAGES.filter(([id]) => !FEATURE_PAGES.includes(id));
+  const links = link(rest[0]) + features + rest.slice(1).map(link).join("");   /* How it works, Features, Pricing, Contact */
   return `<button type="button" class="menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="site-nav">${S.menuOpen ? "Close" : "Menu"}</button>
     <nav id="site-nav" class="site-nav${S.menuOpen ? " open" : ""}${S.navQuiet ? " dd-quiet" : ""}" aria-label="Site">${links}${langToggle("navlink")}<a href="#signin" class="btn primary sm nav-signin">Sign in</a></nav>`;
 }
@@ -3004,7 +3007,7 @@ function siteFooter(){
     <div class="fbrand stack" style="gap:8px"><span class="brand small-brand" aria-label="${APP_NAME}">${logoHtml()}</span>
       <p class="small muted">Coach reviews, at-home training and recruiting for youth soccer.</p></div>
     <nav class="fcols" aria-label="Footer">
-      ${col("Product", [["#how-it-works","How it works"],["#drills","Drills"],["#recruiting","Recruiting"],["#pricing","Pricing"]])}
+      ${col("Product", [["#how-it-works","How it works"],["#drills","Home drills"],["#team-drills","Team drills"],["#recruiting","Recruiting"],["#pricing","Pricing"]])}
       ${col("Who it's for", [["#clubs","Clubs, leagues & trainers"],["#for-parents","Parents & players"],["#college","College coaches"],["#pro","Pro scouts"]])}
       ${col("Company", [["#contact","Contact us"],["#safety","Safety"],["#accessibility","Accessibility"],["#privacy","Privacy Policy"],["#terms","Terms of Use"]])}
     </nav>
@@ -3019,6 +3022,7 @@ function publicPage(){
   switch(S.publicPage){
     case "how-it-works": return pageHow();
     case "drills": return pageDrills();
+    case "team-drills": return pageTeamDrills();
     case "clubs": return pageClubs();
     case "recruiting": return pageRecruiting();
     case "for-parents": return pageHow();
@@ -3076,7 +3080,7 @@ function paywallBanner(){
 }
 function pageDrills(){
   const list = BUILTIN_DRILLS;
-  return `<section class="page-hero stack"><span class="eyebrow">Drills</span>
+  return `<section class="page-hero stack"><span class="eyebrow">Home Drills</span>
     <h1>${BUILTIN_DRILLS.length} solo drills for ages 10 to 18</h1>
     <p class="lead">All you need is a ball, a few cones and a wall. Every drill has clear steps, from Beginner to Advanced.</p></section>
   ${paywallBanner()}
@@ -3084,6 +3088,40 @@ function pageDrills(){
   <div class="card stack callout"><h2>Get drills picked for you</h2><p>When your coach reviews you, we suggest drills for exactly what they flagged.</p>${cta("Start as a coach","Sign up as a parent or player")}</div>`;
 }
 
+/* public Team Drills page: the whole library with diagrams; full instructions for a few samples,
+   all of them for coaches (they come with a club or team plan) */
+const TD_SAMPLE_IDS = (() => { const ids = []; for(const ph of ["Warm-up","Possession","Game"]){ const d0 = TEAM_DRILLS.find(d => d.phase === ph && d.level === "Beginner") || TEAM_DRILLS.find(d => d.phase === ph); if(d0) ids.push(d0.id); } return ids; })();
+function pageTeamDrills(){
+  const open = isStaff(), ph = S.ptdPhase || "All", lv = S.ptdLevel || "All";
+  const list = TEAM_DRILLS.filter(dr => (ph === "All" || dr.phase === ph) && (lv === "All" || dr.level === lv))
+    .sort((a, b) => TD_LEVELS.indexOf(a.level) - TD_LEVELS.indexOf(b.level) || PHASES.indexOf(a.phase) - PHASES.indexOf(b.phase));
+  const card = dr => {
+    const sample = TD_SAMPLE_IDS.includes(dr.id), m = METHODS[dr.method] || {};
+    return `<article class="drill tdrill">
+      <div class="row between top-al"><h3>${esc(dr.title)}</h3><span class="row td-pills">${sample && !open ? `<span class="pill good">Free sample</span>` : ""}${lvlPill(dr)}<span class="pill plain">${esc(dr.phase)}</span></span></div>
+      <div class="tdiag-w">${diagramSvg(dr)}</div>
+      <div class="dmeta"><span>${esc(dr.minutes)} min</span><span>· ${esc(playersText(dr))}</span><span>· ${esc(dr.area)}</span><span>· Ages ${esc(dr.minAge)}+</span></div>
+      <p class="dgoal">${esc(dr.summary)}</p>
+      <div class="trains small"><span class="muted">Works on:</span> ${(dr.skills || []).map(k => esc(SKILL_LABEL[k] || k)).join(" · ")}</div>
+      ${open || sample ? teamDrillDetails(dr) : `<p class="small muted td-lock">🔒 Set-up, steps and coaching points come with a club or team plan.${m.name ? ` Based on ${esc(m.name)}.` : ""}</p>`}
+    </article>`;
+  };
+  return `<section class="page-hero stack"><span class="eyebrow">Team Drills</span>
+    <h1>${TEAM_DRILLS.length} team drills for practice</h1>
+    <p class="lead">Academy-style practices for coaches, from warm-ups and rondos to finishing and small-sided games. Each one shows the set-up on a diagram.</p></section>
+  ${open ? "" : `<div class="card paywall stack">
+    <div class="row between"><h2>🔒 Full instructions come with a club or team plan</h2><span class="pill good">${TD_SAMPLE_IDS.length} free sample drills</span></div>
+    <p>Coaches get every drill with set-up, steps and coaching points, plus a session planner that suggests drills from your players' reviews.</p>
+    <div class="row"><button class="btn primary" data-act="pickPortal" data-id="coach" data-mode="signup">Start as a coach</button><a class="btn" href="#pricing">See pricing</a></div></div>`}
+  <div class="lib-tools stack">
+    <div class="fchips" role="group" aria-label="Part of the session">${["All", ...PHASES].map(p => `<button type="button" class="fchip" data-act="ptdPhase" data-id="${esc(p)}" aria-pressed="${p === ph}">${esc(p === "All" ? "All parts" : p)}</button>`).join("")}</div>
+    <div class="fchips" role="group" aria-label="Level">${["All", ...TD_LEVELS].map(l => `<button type="button" class="fchip" data-act="ptdLevel" data-id="${esc(l)}" aria-pressed="${l === lv}">${esc(l === "All" ? "All levels" : l)}</button>`).join("")}</div>
+  </div>
+  ${DIAGRAM_KEY}
+  <p class="small muted" aria-live="polite">${list.length} drill${list.length === 1 ? "" : "s"}</p>
+  <div class="dgrid tdgrid">${list.map(card).join("")}</div>
+  <div class="card stack callout"><h2>Plan a practice in minutes</h2><p>Pick a team and the session planner suggests drills for what your players' reviews flagged.</p>${cta("Start as a coach","Sign up as a parent or player")}</div>`;
+}
 /* ---------- the public site: home, audiences, safety and legal ---------- */
 const AUD_ICONS = {select:`<path d="M8 21h8M12 16v5M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 4M17 6h2.5a2.5 2.5 0 0 1-2.6 4"/>`,rec:`<circle cx="12" cy="12" r="9"/><path d="M12 7.5l3.8 2.8-1.4 4.4H9.6l-1.4-4.4z"/><path d="M12 3v4.5M20.6 9.3l-4.8 1M17.3 19.4l-2.9-4.7M6.7 19.4l2.9-4.7M3.4 9.3l4.8 1"/>`,trainers:`<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>`,coaches:`<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/>`,parents:`<circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9.5" r="2.3"/><path d="M15.5 14.4A4.5 4.5 0 0 1 21 19"/>`,players:`<circle cx="12" cy="7.5" r="3.5"/><path d="M5 21a7 7 0 0 1 14 0"/>`,college:`<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3.5 2.3 8.5 2.3 12 0v-5M22 9v6"/>`,scouts:`<circle cx="10.5" cy="10.5" r="6.5"/><path d="M20.5 20.5l-5.4-5.4"/>`};
 const audIcon = id => `<span class="aud-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${AUD_ICONS[id] || ""}</svg></span>`;
@@ -3305,7 +3343,7 @@ function legalPage(kind){
   <article class="card legal">${body.join("")}</article>`;
 }
 /* the browser tab title follows the page */
-const PAGE_TITLES = {"how-it-works":"How it works", drills:"Solo soccer drills for ages 10 to 18", clubs:"For clubs, leagues and trainers", recruiting:"Recruiting: college, pro and youth clubs",
+const PAGE_TITLES = {"how-it-works":"How it works", drills:"Solo soccer drills for ages 10 to 18", "team-drills":"Team soccer drills for practice", clubs:"For clubs, leagues and trainers", recruiting:"Recruiting: college, pro and youth clubs",
   "for-parents":"For parents and players", pricing:"Pricing", contact:"Contact us", safety:"How we keep players safe", privacy:"Privacy Policy", terms:"Terms of Use", accessibility:"Accessibility"};
 function setTitle(){
   const t = S.publicPage ? PAGE_TITLES[S.publicPage] : S.publicSlug ? (S.pub && S.pub.player ? S.pub.player.name + " · Recruitment Profile" : "Recruitment Profile")

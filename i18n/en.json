@@ -958,7 +958,6 @@
 "962": "Drill not found",
 "963": "Drill removed",
 "964": "Drill:",
-"965": "Drills",
 "966": "Drills and physical activity",
 "967": "Drills from the review, and who did them this week.",
 "969": "Drills involve physical activity. Players should warm up, use a safe space and stop if something hurts. Parents decide which drills suit their child. Drills aren't medical or professional advice.",
@@ -4512,5 +4511,16 @@
 "4544": "your school",
 "4545": "{0} upcoming{1}",
 "4546": "Features",
-"4547": "features"
+"4547": "features",
+"4548": "Academy-style practices for coaches, from warm-ups and rondos to finishing and small-sided games. Each one shows the set-up on a diagram.",
+"4549": "All levels",
+"4550": "Based on {0}.",
+"4551": "Coaches get every drill with set-up, steps and coaching points, plus a session planner that suggests drills from your players' reviews.",
+"4552": "Pick a team and the session planner suggests drills for what your players' reviews flagged.",
+"4553": "Plan a practice in minutes",
+"4554": "Team drills",
+"4555": "Team soccer drills for practice",
+"4556": "{0} team drills for practice",
+"4557": "🔒 Full instructions come with a club or team plan",
+"4558": "🔒 Set-up, steps and coaching points come with a club or team plan.{0}"
 }
