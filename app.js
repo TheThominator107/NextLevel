@@ -66,7 +66,11 @@ const GK_SKILLS = [
   {k:"gk_decision_making",label:"Decision Making",group:"Mindset"},
   {k:"gk_communication",label:"Communication",group:"Mindset"}
 ];
-const SCALE = {1:"Needs a lot of work", 2:"Developing", 3:"Solid for their level", 4:"Strong", 5:"Excellent"};
+/* ratings are stored 1-5; people see words. Encouraging on purpose: every level says where a player is, not what's wrong */
+const SCALE = {1:"Getting started", 2:"Developing", 3:"Solid", 4:"Strong", 5:"Standout"};
+const SCALE_LINE = "Getting started → Developing → Solid → Strong → Standout";
+const levelWord = v => v == null || isNaN(v) || !v ? "–" : SCALE[Math.min(5, Math.max(1, Math.round(v)))];
+const lvlHtml = (v, cls = "") => `<span class="lvl lvl-${v ? Math.min(5, Math.max(1, Math.round(v))) : 0}${cls ? " " + cls : ""}">${levelWord(v)}</span>`;
 const reviewForm = r => (r && r.ratings && Object.keys(r.ratings).some(k => k.startsWith("gk_"))) ? "gk" : "field";
 const skillsFor = form => form === "gk" ? GK_SKILLS : FIELD_SKILLS;
 const formLabel = form => form === "gk" ? "Goalkeeper review" : "Field player review";
@@ -76,7 +80,7 @@ function changesBetween(prev, cur){
   return skillsFor(reviewForm(cur)).map(s => ({label:s.label, from:validRating(prev.ratings[s.k]), to:validRating(cur.ratings[s.k])}))
     .filter(c => c.from != null && c.to != null && c.from !== c.to);
 }
-const changeChip = c => `<span class="chip ${c.to>c.from?"up":"down"}">${esc(c.label)} ${c.from} → ${c.to} ${c.to>c.from?"▲":"▼"}</span>`;
+const changeChip = c => `<span class="chip ${c.to>c.from?"up":"down"}"><span>${esc(c.label)}</span>: <span>${SCALE[c.from] || c.from}</span> → <span>${SCALE[c.to] || c.to}</span> ${c.to>c.from?"▲":"▼"}</span>`;
 function progressSummary(rs){
   if(rs.length < 2) return "";
   const first = rs[0], last = rs[rs.length-1];
@@ -87,7 +91,7 @@ function progressSummary(rs){
   const span = days === 0 ? "on the same day" : days >= 60 ? "over " + Math.round(days/30) + " months" : "over " + days + (days === 1 ? " day" : " days");
   return `<div class="progress-sum stack" style="gap:8px">
     <div class="row between"><b>Since the first review</b><span class="small muted">${rs.length} reviews ${span}</span></div>
-    ${o1!=null&&o2!=null ? `<div class="overall"><span class="score num" style="font-size:1.6rem">${fix1(o1)} → ${fix1(o2)}</span><span class="muted">overall</span>${deltaHtml(o2-o1)}</div>` : ""}
+    ${o1!=null&&o2!=null ? `<div class="overall"><span class="score-word" style="font-size:1.4rem">${levelWord(o1)} → ${levelWord(o2)}</span><span class="muted">overall</span>${deltaHtml(o2-o1)}</div>` : ""}
     ${gains.length ? `<div class="stack" style="gap:4px"><span class="small muted">Biggest improvements</span><div class="chips">${gains.map(changeChip).join("")}</div></div>` : ""}
     ${drops.length ? `<div class="stack" style="gap:4px"><span class="small muted">Dipped since the first review</span><div class="chips">${drops.map(changeChip).join("")}</div></div>` : ""}
     ${reviewForm(first) !== reviewForm(last) ? `<p class="small muted">The first and latest reviews use different forms (field player and goalkeeper), so only the overall score is compared.</p>` : ""}
@@ -111,7 +115,7 @@ function timelineHtml(rs, opts={}){
     const str = r.strengths || [], imp = r.improve || [];
     return `<div class="tl-item">
       <div class="row between"><div><b>${fmtDate(r.date)}</b> <span class="small muted">${esc(r.coachName||"Coach")}${i === 0 ? " · first review" : ""}${reviewForm(r)==="gk"?" · goalkeeper":""}</span></div>
-        <div class="row"><span class="score num">${o!=null?fix1(o):"–"}</span>${o!=null&&po!=null?deltaHtml(o-po):""}</div></div>
+        <div class="row">${lvlHtml(o, "score-word")}${o!=null&&po!=null?deltaHtml(o-po):""}</div></div>
       ${r.summary ? `<p class="tl-sum">“${esc(r.summary)}”</p>` : ""}
       ${ch.length ? `<div class="chips">${ch.map(changeChip).join("")}</div>` : (prev && reviewForm(prev)===reviewForm(r) ? `<span class="small muted">No rating changes</span>` : "")}
       ${str.length || imp.length ? `<div class="chips">${str.map(t=>`<span class="chip str">${esc(t)}</span>`).join("")}${imp.map(t=>`<span class="chip imp">Work on: ${esc(t)}</span>`).join("")}</div>` : ""}
@@ -320,9 +324,9 @@ function recommendFor(pid, n = 3){
   const need = {}, why = {};
   for(const sk of skills){
     const v = validRating(last.ratings[sk.k]); if(v == null) continue;
-    need[sk.k] = (5 - v) * 2; why[sk.k] = [`rated ${v}/5`];
+    need[sk.k] = (5 - v) * 2; why[sk.k] = [`rated ${SCALE[v]}`];
     const pv = prev && reviewForm(prev) === form ? validRating(prev.ratings[sk.k]) : null;
-    if(pv != null && v < pv){ need[sk.k] += 2; why[sk.k].push(`down from ${pv}`); }
+    if(pv != null && v < pv){ need[sk.k] += 2; why[sk.k].push(`down from ${SCALE[pv]}`); }
   }
   for(const t of improve) for(const k of (TAG_SKILLS[t] || [])) if(k in need){ need[k] += 3; if(!why[k].some(w => w.startsWith("coach"))) why[k].push(`coach's work-on: ${t}`); }
   const focus = Object.keys(need).filter(k => need[k] > 0).sort((a,b) => need[b] - need[a]).slice(0, 3)
@@ -916,7 +920,7 @@ function rosterView(){
     return `<tr data-act="open" data-id="${esc(p.id)}" tabindex="0">
       <td><div class="pname">${esc(p.name)}</div><div class="small muted">${esc(posText(p))}</div></td>
       <td>${esc(teamName(p.teamId))}</td>
-      <td class="num"><span class="score">${o!=null?fix1(o):"–"}</span> ${d!=null?deltaHtml(d):""}</td>
+      <td>${lvlHtml(o, "score-word")} ${d!=null?deltaHtml(d):""}</td>
       <td>${last ? relDays(last.date) : '<span class="muted">Never</span>'}</td>
       <td class="num">${wt ? `${wk} of ${wt}` : '<span class="muted">None set</span>'}</td>
       <td><span class="pill ${st.cls}">${st.txt}</span></td>
@@ -945,7 +949,7 @@ function rosterView(){
 
 function deltaHtml(d){
   if(Math.abs(d) < 0.05) return "";
-  return d > 0 ? `<span class="delta up" aria-label="up ${fix1(d)}">▲ ${fix1(d)}</span>` : `<span class="delta down" aria-label="down ${fix1(-d)}">▼ ${fix1(-d)}</span>`;
+  return d > 0 ? `<span class="delta up" title="Improved since the last review">▲ Improved</span>` : `<span class="delta down" title="Dipped since the last review">▼ Dipped</span>`;
 }
 
 function ratingsHtml(last, prev, p){
@@ -956,9 +960,9 @@ function ratingsHtml(last, prev, p){
     if(s.group !== g){ g = s.group; html += `<div class="rgroup">${g}</div>`; }
     const v = Number(last.ratings[s.k]) || 0, pvRaw = prev && prev.ratings ? Number(prev.ratings[s.k]) : NaN;
     const pv = pvRaw >= 1 && pvRaw <= 5 ? pvRaw : null;
-    html += `<div class="rate${v ? "" : " unrated"}"><span>${s.label}</span><div class="bar" role="img" aria-label="${v ? v + " out of 5, " + esc(SCALE[v]) : "not rated in this review"}"><i style="width:${v*20}%"></i></div><span class="num" title="${esc(SCALE[v]||"")}"><span class="score">${v||"–"}</span>${pv!=null && v && v!==pv ? " "+deltaHtml(v-pv) : ""}</span></div>`;
+    html += `<div class="rate${v ? "" : " unrated"}"><span>${s.label}</span><div class="bar" role="img" aria-label="${v ? esc(SCALE[v]) : "not rated in this review"}"><i style="width:${v*20}%"></i></div><span class="num rlevel">${lvlHtml(v, "score-word")}${pv!=null && v && v!==pv ? deltaHtml(v-pv) : ""}</span></div>`;
   }
-  html += `<p class="small muted" style="margin-top:6px">1 Needs a lot of work · 2 Developing · 3 Solid for their level · 4 Strong · 5 Excellent</p>`;
+  html += `<p class="small muted" style="margin-top:6px">Levels: ${SCALE_LINE}</p>`;
   return `<div class="stack" style="gap:8px">${html}</div>`;
 }
 
@@ -970,21 +974,21 @@ function chartHtml(rs){
   const k2 = validKey ? key : "overall";
   const pts = rs.map(r => ({d:r.date, v: k2==="overall" ? overall(r) : Number(r.ratings[k2])})).filter(p => p.v >= 1 && p.v <= 5);
   if(pts.length < 2) return `<p class="muted small">Not enough reviews with this rating yet to draw a chart.</p>`;
-  const W=560,H=224,L=34,R=24,T=30,B=30, iw=W-L-R, ih=H-T-B;
+  const W=600,H=224,L=112,R=24,T=30,B=30, iw=W-L-R, ih=H-T-B;
   const x = i => L + (pts.length===1 ? iw/2 : i*iw/(pts.length-1));
-  const y = v => T + ih - (v/5)*ih;
-  const grid = [0,1,2,3,4,5].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}</text>`).join("");
+  const y = v => T + ih - ((v-1)/4)*ih;   /* Getting started at the bottom, Standout at the top */
+  const grid = [1,2,3,4,5].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${SCALE[v]}</text>`).join("");
   const line = pts.map((p,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
-  const area = `${line} L${x(pts.length-1).toFixed(1)},${y(0)} L${x(0).toFixed(1)},${y(0)} Z`;
+  const area = `${line} L${x(pts.length-1).toFixed(1)},${y(1)} L${x(0).toFixed(1)},${y(1)} Z`;
   const last = pts[pts.length-1];
   const labels = pts.map((p,i)=> (i===0 || i===pts.length-1 || pts.length<=6) ? `<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(shortDate(p.d))}</text>` : "").join("");
-  const dots = pts.map((p,i)=>`<circle cx="${x(i)}" cy="${y(p.v)}" r="${i===pts.length-1?5.5:3.5}" fill="${i===pts.length-1?"var(--accent)":"var(--pitch)"}" stroke="var(--surface)" stroke-width="2"><title>${esc(fmtDate(p.d))}: ${fix1(p.v)}</title></circle>`).join("");
+  const dots = pts.map((p,i)=>`<circle cx="${x(i)}" cy="${y(p.v)}" r="${i===pts.length-1?5.5:3.5}" fill="${i===pts.length-1?"var(--accent)":"var(--pitch)"}" stroke="var(--surface)" stroke-width="2"><title>${esc(fmtDate(p.d))}: ${levelWord(p.v)}</title></circle>`).join("");
   const opts = [["overall","Overall"]].concat(skillsFor(latestForm).map(s=>[s.k,s.label]));
   return `<div class="stack" style="gap:8px">
     <label class="f small" for="chart-skill" style="max-width:260px">Show<select id="chart-skill" data-change="chartSkill">${opts.map(([k,l])=>`<option value="${k}" ${k===k2?"selected":""}>${l}</option>`).join("")}</select></label>
-    <div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Progress over ${pts.length} reviews, latest ${fix1(last.v)} out of 5">
+    <div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Progress over ${pts.length} reviews, latest level ${levelWord(last.v)}">
       ${grid}<path d="${area}" fill="var(--pitch)" opacity=".12"/><path d="${line}" fill="none" stroke="var(--pitch)" stroke-width="2.5" stroke-linejoin="round"/>${dots}${labels}
-      <text x="${x(pts.length-1)}" y="${y(last.v)-12}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">${fix1(last.v)}</text>
+      <text x="${x(pts.length-1)}" y="${y(last.v)-12}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">${levelWord(last.v)}</text>
     </svg></div></div>`;
 }
 
@@ -1057,7 +1061,7 @@ function playerDetail(p, mode){
 
   const reviewCard = `<div class="card stack">
     <div class="row between"><h2>${fam?"Coach's latest review":"Latest review"}</h2>${last?`<span class="muted small">${fmtDate(last.date)}${last.coachName?" · "+esc(last.coachName):""}</span>`:""}</div>
-    ${last ? `<div class="overall"><span class="big num">${o!=null?fix1(o):"–"}</span><span class="muted">/ 5 overall</span>${o!=null&&po!=null?deltaHtml(o-po):""}</div>
+    ${last ? `<div class="overall">${lvlHtml(o, "big")}<span class="muted">overall</span>${o!=null&&po!=null?deltaHtml(o-po):""}</div>
       ${last.summary ? `<p class="tl-sum">“${esc(last.summary)}”</p>` : ""}
       ${changesBetween(prev, last).length ? `<div class="chips">${changesBetween(prev, last).map(changeChip).join("")}</div>` : ""}
       <div class="stack" style="gap:6px"><h3>Strengths</h3><div class="chips">${strengths.length?strengths.map(t=>`<span class="chip str">${esc(t)}</span>`).join(""):'<span class="muted small">None noted</span>'}</div></div>
@@ -1328,7 +1332,7 @@ function profileHtml(p, opts){
     privCard = `<div class="card stack private-card">
       <div class="row between"><h2>Coach review</h2><span class="pill plain" title="Never shown on a public profile">🔒 Private</span></div>
       <p class="small muted">Only ${esc(p.name)}, their family and the club's coaches can see this. It never appears on the Recruitment Profile.</p>
-      ${last ? `<div class="row between"><div class="overall"><span class="big num">${o!=null?fix1(o):"–"}</span><span class="muted">/ 5 overall</span>${o!=null&&po!=null?deltaHtml(o-po):""}</div><span class="small muted">${fmtDate(last.date)}${last.coachName?" · "+esc(last.coachName):""}</span></div>
+      ${last ? `<div class="row between"><div class="overall">${lvlHtml(o, "big")}<span class="muted">overall</span>${o!=null&&po!=null?deltaHtml(o-po):""}</div><span class="small muted">${fmtDate(last.date)}${last.coachName?" · "+esc(last.coachName):""}</span></div>
         ${last.summary ? `<p class="tl-sum">“${esc(last.summary)}”</p>` : ""}
         ${(last.strengths||[]).length?`<div class="chips">${last.strengths.map(t=>`<span class="chip str">${esc(t)}</span>`).join("")}</div>`:""}
         ${(last.improve||[]).length?`<div class="chips">${last.improve.map(t=>`<span class="chip imp">Work on: ${esc(t)}</span>`).join("")}</div>`:""}
@@ -2206,11 +2210,11 @@ const MODALS = {
         if(s.group!==g){ g=s.group; out += `<div class="rgroup">${g}</div>`; }
         const lv = last && lastForm === f ? Number(last.ratings[s.k]) : NaN;
         const v = lv >= 1 && lv <= 5 ? lv : 3;
-        out += `<div class="slider"><label for="r-${s.k}">${s.label}</label><input type="range" min="1" max="5" step="1" id="r-${s.k}" name="r-${s.k}" value="${v}" data-out="o-${s.k}" data-scale="1" ${f!==form?"disabled":""}><output id="o-${s.k}" title="${esc(SCALE[v])}">${v}</output></div>`;
+        out += `<div class="slider"><label for="r-${s.k}">${s.label}</label><input type="range" min="1" max="5" step="1" id="r-${s.k}" name="r-${s.k}" value="${v}" data-out="o-${s.k}" data-scale="1" aria-valuetext="${esc(SCALE[v])}" ${f!==form?"disabled":""}><output id="o-${s.k}">${SCALE[v]}</output></div>`;
       }
       return out; };
     return `<h2>${last ? "Update review" : "First review"}: ${esc(p.name)}</h2>
-    <p class="small muted">${last?`Sliders start at the last review's ratings (${fmtDate(last.date)}). Move only what has changed. The previous review stays in the review history.`:"This first review sets the baseline that future progress is measured from."} 1 Needs a lot of work · 2 Developing · 3 Solid for their level · 4 Strong · 5 Excellent</p>
+    <p class="small muted">${last?`Sliders start at the last review's ratings (${fmtDate(last.date)}). Move only what has changed. The previous review stays in the review history.`:"This first review sets the baseline that future progress is measured from."} Levels: ${SCALE_LINE}.</p>
     <form data-form="review" data-id="${esc(p.id)}" data-last="${last ? esc(JSON.stringify({form:lastForm, ratings:last.ratings})) : ""}">
       <label class="f" for="r-date" style="max-width:200px">Date<input type="date" id="r-date" name="date" value="${today()}" required></label>
       <fieldset class="rtype" style="border:0;padding:0;margin:0;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><legend class="small" style="font-weight:600;margin-bottom:6px;color:var(--blue-deep)">Review type</legend>
@@ -2220,7 +2224,7 @@ const MODALS = {
       ${(() => { const u = uGroupOf(p), lastB = last && baselineOf(last) ? last.baseline : "";
         const opts = BASELINES.filter(b => !b.minU || (u != null && u >= b.minU) || lastB === b.k);
         return `<fieldset class="bl-pick"><legend>Rate against <span class="small muted">(required)</span></legend>
-        <p class="small muted" style="margin:0 0 6px">What should a 3 (“solid for their level”) mean in this review?${u != null && u < 16 ? " Higher level is available from U16." : ""}</p>
+        <p class="small muted" style="margin:0 0 6px">What should “Solid” mean in this review?${u != null && u < 16 ? " Higher level is available from U16." : ""}</p>
         <div class="chips">${opts.map(b => `<label class="chipbox" for="bl-${b.k}" title="${esc(b.help)}"><input type="radio" id="bl-${b.k}" name="baseline" value="${b.k}" required ${lastB === b.k ? "checked" : ""}><span>${esc(b.label)}</span></label>`).join("")}</div>
         <p class="small muted bl-help" id="bl-help" data-last="${esc(lastB)}">${lastB ? esc(baselineOf(last).help) + ". Same as the last review." : "Pick one so families know what the ratings are compared with."}</p></fieldset>`; })()}
       <div class="stack rset" data-set="field" style="gap:8px" ${form==="field"?"":"hidden"}>${sliderSet("field")}</div>
@@ -2957,7 +2961,7 @@ document.addEventListener("submit", async ev => {
 });
 document.addEventListener("input", ev => {
   const o = ev.target.dataset && ev.target.dataset.out;
-  if(o){ const out = document.getElementById(o); if(out){ out.textContent = ev.target.value; if(ev.target.dataset.scale) out.title = SCALE[ev.target.value] || ""; } }
+  if(o){ const out = document.getElementById(o); if(out){ if(ev.target.dataset.scale){ out.textContent = SCALE[ev.target.value] || ev.target.value; ev.target.setAttribute("aria-valuetext", SCALE[ev.target.value] || ""); } else out.textContent = ev.target.value; } }
   if(ev.target.dataset && ev.target.dataset.scale) updateChangeHint(ev.target.form);
 });
 document.addEventListener("input", ev => {
@@ -3763,7 +3767,7 @@ function reviewMini(r){
   const rs = reviewsFor(r.playerId), i = rs.findIndex(x => x.id === r.id), prev = i > 0 ? rs[i-1] : null;
   const o = overall(r), po = overall(prev), ch = changesBetween(prev, r);
   return `<div class="review-mini stack" style="gap:6px">
-    <div class="row between"><b>Review from ${fmtDate(r.date)}</b><span class="row"><span class="score num">${o!=null?fix1(o):"–"}</span>${o!=null&&po!=null?deltaHtml(o-po):""}</span></div>
+    <div class="row between"><b>Review from ${fmtDate(r.date)}</b><span class="row">${lvlHtml(o, "score-word")}${o!=null&&po!=null?deltaHtml(o-po):""}</span></div>
     ${r.summary ? `<p class="tl-sum">“${esc(r.summary)}”</p>` : ""}
     ${ch.length ? `<div class="chips">${ch.map(changeChip).join("")}</div>` : ""}
     ${(r.improve||[]).length ? `<div class="chips">${r.improve.map(t=>`<span class="chip imp">Work on: ${esc(t)}</span>`).join("")}</div>` : ""}
@@ -4213,7 +4217,7 @@ function scoreTeamDrill(dr, F, focus, age){
 function whyDrill(dr, F, focus){
   const fs = Object.fromEntries(F.skills.map(s => [s.k, s]));
   const ks = (dr.skills || []).filter(k => focus.includes(k) || (fs[k] && fs[k].need > 1)).sort((a, b) => (focus.includes(b) - focus.includes(a)) || ((fs[b] || {}).need || 0) - ((fs[a] || {}).need || 0)).slice(0, 2);
-  return ks.map(k => fs[k] ? `${SKILL_LABEL[k]} (team average ${fix1(fs[k].avg)}/5)` : `${SKILL_LABEL[k]} (your focus)`);
+  return ks.map(k => fs[k] ? `${SKILL_LABEL[k]} (team average: ${levelWord(fs[k].avg)})` : `${SKILL_LABEL[k]} (your focus)`);
 }
 function recommendTeamDrills(F, focus, age, n = 5){
   const used = new Set((S.draft ? S.draft.blocks : []).map(b => b.drillId));
@@ -4288,7 +4292,7 @@ function sessionPlanHtml(){
   const team = teams.find(t => t.id === d.teamId), age = ageOfTeam(team);
   const F = teamFocus(d.teamId || "all");
   const focus = d.focus || [];
-  const chip = s => `<button type="button" class="fchip" data-act="sessFocus" data-id="${esc(s.k)}" aria-pressed="${focus.includes(s.k)}">${esc(s.label)}${s.n ? `<span class="fc-avg num">${fix1(s.avg)}</span>` : ""}</button>`;
+  const chip = s => `<button type="button" class="fchip" data-act="sessFocus" data-id="${esc(s.k)}" aria-pressed="${focus.includes(s.k)}">${esc(s.label)}${s.n ? `<span class="fc-avg">${levelWord(s.avg)}</span>` : ""}</button>`;
   const ranked = F.field.slice(0, 6);
   const others = TD_SKILLS.filter(s => !ranked.some(r => r.k === s.k)).map(s => ({k:s.k, label:s.label, n:0}));
   const watch = F.field.filter(s => focus.includes(s.k) && s.low.length);
@@ -4297,10 +4301,10 @@ function sessionPlanHtml(){
       <label class="f small inline-f" for="sess-team">Team<select id="sess-team" data-sd="teamId">
         ${teams.map(t => `<option value="${esc(t.id)}" ${t.id === d.teamId ? "selected" : ""}>${esc(t.name)}</option>`).join("")}
         <option value="all" ${d.teamId === "all" ? "selected" : ""}>All players in the club</option></select></label></div>
-    ${F.reviewed ? `<p class="small muted">From the latest reviews of ${F.reviewed} of ${F.players.length} player${F.players.length === 1 ? "" : "s"}. Lowest team averages first; the number is the team average out of 5. Pick up to 4 to focus on.</p>
+    ${F.reviewed ? `<p class="small muted">From the latest reviews of ${F.reviewed} of ${F.players.length} player${F.players.length === 1 ? "" : "s"}. Lowest team averages first; the word is the team's average level. Pick up to 4 to focus on.</p>
       <div class="fchips" role="group" aria-label="Focus skills, lowest team average first">${ranked.map(chip).join("")}</div>
       <details class="small"><summary>Other skills</summary><div class="fchips" style="margin-top:8px">${others.map(chip).join("")}</div></details>
-      ${F.gk.length ? `<p class="small"><b>Keepers:</b> ${F.gk.slice(0, 2).map(s => `${esc(s.label)} ${fix1(s.avg)}/5`).join(" · ")}</p>` : ""}
+      ${F.gk.length ? `<p class="small"><b>Keepers:</b> ${F.gk.slice(0, 2).map(s => `${esc(s.label)}: ${levelWord(s.avg)}`).join(" · ")}</p>` : ""}
       ${watch.length ? `<div class="small watch"><b>Players to watch</b>${watch.map(s => `<p>${esc(s.label)}: ${s.low.map(p => esc(p.name)).join(", ")} (rated 1 or 2)</p>`).join("")}</div>` : ""}`
     : `<p class="small">${F.players.length ? "No reviews yet for this team." : "No players on this team yet."} Review players under My Teams and recommendations will follow. For now, pick what you want to work on:</p>
       <div class="fchips" role="group" aria-label="Focus skills">${TD_SKILLS.map(s => chip({k:s.k, label:s.label, n:0})).join("")}</div>`}
@@ -4634,7 +4638,7 @@ function exampleProfile(){
       <div class="stack" style="gap:20px">
         <div class="card stack">
           <div class="row between"><h3>Coach's latest review</h3><span class="small muted">${fmtDate(last.date)} · ${esc(last.coachName)}</span></div>
-          <div class="overall"><span class="big num">${fix1(o)}</span><span class="muted">/ 5 overall</span>${deltaHtml(o-po)}</div>
+          <div class="overall">${lvlHtml(o, "big")}<span class="muted">overall</span>${deltaHtml(o-po)}</div>
           <p class="tl-sum">“${esc(last.summary)}”</p>
           <div class="stack" style="gap:6px"><b class="small">Strengths</b><div class="chips">${last.strengths.map(t=>`<span class="chip str">${esc(t)}</span>`).join("")}</div></div>
           <div class="stack" style="gap:6px"><b class="small">Work on</b><div class="chips">${last.improve.map(t=>`<span class="chip imp">${esc(t)}</span>`).join("")}</div></div>

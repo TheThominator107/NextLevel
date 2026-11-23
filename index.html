@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-i18nv="14">
+<html lang="en" data-i18nv="15">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1171,6 +1171,22 @@ main > .home-hero.card{padding:56px 0 52px}
   .home-facts > *:nth-child(odd){border-left:0;padding-left:0}
 }
 @media (prefers-reduced-motion: reduce){ .btn{transition:none} }
+
+/* ratings shown as words (Getting started → Developing → Solid → Strong → Standout) */
+.rate{grid-template-columns:minmax(110px,1fr) minmax(80px,1.3fr) minmax(150px,auto)}
+.rate .rlevel{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;white-space:nowrap}
+.score-word{font-family:var(--body);font-weight:700;font-size:.95rem;color:var(--ink);letter-spacing:-.005em;white-space:nowrap}
+.overall .lvl.big{font-family:var(--headline);font-weight:700;font-size:2.6rem;line-height:1;letter-spacing:.004em;color:var(--ink);white-space:nowrap}
+.slider{grid-template-columns:1fr minmax(110px,150px) 8.5rem}
+.slider output{font-family:var(--body);font-weight:700;font-size:.95rem;letter-spacing:0;text-align:left;white-space:nowrap}
+.delta{white-space:nowrap}
+@media (max-width:600px){
+  .rate{grid-template-columns:1fr auto;row-gap:4px}
+  .rate .bar{grid-column:1 / -1;grid-row:2}
+  .slider{grid-template-columns:1fr 7.5rem}
+  .slider input[type=range]{grid-column:1 / -1;grid-row:2}
+  .overall .lvl.big{font-size:2.1rem}
+}
 
 /* Pricing: four club plans in a row, then what every plan includes */
 .plans4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
