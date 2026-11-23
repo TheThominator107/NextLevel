@@ -641,7 +641,8 @@ function navItems(){
       .concat(list.map(t => ({v:"roster", team:t.id, l:t.name, sub:true})))};
     return [club, {g:"training", l:"Training", items:[{v:"sessions", l:"Team Drills"}, {v:"drills", l:"Home Drills"}]}, inbox, recruit, {v:"plans", l:"Pricing"}];
   }
-  return [{v:"home", l:"My player"}, {v:"drills", l:"Home Drills"}, inbox, recruit, {v:"plans", l:"Pricing"}, {v:"account", l:"Account", n:pendingScouts().length}];
+  /* families: Recruiting is one page, with a "what are you looking for" filter on it */
+  return [{v:"home", l:"My player"}, {v:"drills", l:"Home Drills"}, inbox, {v:"recruit", l:"Recruiting", n:newInterest().length}, {v:"plans", l:"Pricing"}, {v:"account", l:"Account", n:pendingScouts().length}];
 }
 function navCurrent(it){
   if(S.publicPage) return false;
@@ -1721,13 +1722,38 @@ const SECTION_BLURB = {
   college:`For players aged ${RECRUIT_AGE} and over aiming for college soccer. Verified college coaches with a school .edu email can find the profile if you turn that on.`,
   pro:`For players aged ${RECRUIT_AGE} and over aiming for professional clubs and academies. Only scouts that ${APP_NAME} has approved one by one can find the profile, and only if you turn that on.`,
   youth:`For players of any age looking for a new club, tryouts or guest playing. Only coaches of clubs on ${APP_NAME} can find the profile, and only if you turn that on. Under-16s never get a public link.`};
+/* what each recruiting path usually looks for; families can change the ticks */
+const OPP_PLURAL = {tryout:"Tryouts", combine:"Combines", showcase:"Showcases", id_camp:"ID camps", camp:"Camps", other:"Other events"};
+const PATH_KINDS = {college:["id_camp","showcase","combine"], pro:["tryout","combine","showcase"], youth:["tryout","camp"]};
+const recKinds = sec => (S.recKinds && S.recKinds[sec]) || PATH_KINDS[sec];
 function recruitView(){
   const kids = S.players.filter(p => (S.me.playerIds || []).includes(p.id));
-  const sec = curSec();
-  const intro = `<div class="stack" style="gap:4px"><h1>${sec === "youth" ? "Youth" : SECTIONS[sec].label} recruiting</h1><p class="muted small">${SECTION_BLURB[sec]}</p></div>`;
-  if(!kids.length) return intro + `<div class="card stack"><h2>Add your player first</h2><div><button class="btn primary" data-act="modal" data-m="addChild">Add player</button></div></div>`;
+  const sec = curSec(), kinds = recKinds(sec);
+  const head = p => `<div class="row between"><div class="stack" style="gap:4px"><h1>Recruiting</h1><p class="muted small">Get seen by college coaches, pro scouts and youth clubs, and find tryouts, camps and showcases.</p></div>${p && kids.length > 1 ? playerSelect(kids, p, false) : ""}</div>`;
+  if(!kids.length) return head(null) + `<div class="card stack"><h2>Add your player first</h2><div><button class="btn primary" data-act="modal" data-m="addChild">Add player</button></div></div>`;
   const p = kids.find(k => k.id === S.childId) || kids[0];
-  const tabs = "";
+  /* 1. the filter */
+  const look = `<section class="card stack rec-look" aria-labelledby="look-h"><h2 id="look-h" class="h3">What are you looking for?</h2>
+    <div class="fchips" role="radiogroup" aria-label="Recruiting path">${SECTION_KEYS.map(k => `<button type="button" class="fchip" role="radio" data-act="recSec" data-id="${k}" aria-checked="${k === sec}">${SECTIONS[k].label}${newInterest(k).length ? ` <span class="badge" aria-label="${newInterest(k).length} new">${newInterest(k).length}</span>` : ""}</button>`).join("")}</div>
+    <p class="small muted">${SECTION_BLURB[sec]}</p>
+    <div class="stack" style="gap:6px"><span class="small"><b>Events</b></span>
+    <div class="fchips" role="group" aria-label="Events to show">${OPP_KINDS.map(([k]) => `<button type="button" class="fchip" data-act="recKind" data-id="${k}" aria-pressed="${kinds.includes(k)}">${OPP_PLURAL[k]}</button>`).join("")}</div></div>
+  </section>`;
+  /* 2. opportunities that match */
+  const today = new Date().toLocaleDateString("en-CA"), q = (S.recQ || "").trim().toLowerCase();
+  const list = S.opps.filter(o => (o.endsOn || o.startsOn) >= today && kinds.includes(o.kind)
+      && (!q || [o.title, o.host, o.location, o.ages, o.details].join(" ").toLowerCase().includes(q)))
+    .sort((a, b) => a.startsOn.localeCompare(b.startsOn) || a.title.localeCompare(b.title));
+  const shown = S.recAll ? list : list.slice(0, 5);
+  const opps = S.oppsMissing ? "" : `<section class="stack" aria-labelledby="ropp-h">
+    <div class="row between" style="align-items:flex-end"><h2 id="ropp-h">Upcoming opportunities</h2>
+      <form class="opp-search" data-form="recSearch" role="search"><label class="f small" for="rec-q">Search<input type="search" id="rec-q" name="q" value="${esc(S.recQ || "")}" placeholder="Place, club, school or age"></label><button class="btn" type="submit">Search</button></form></div>
+    <p class="small muted" aria-live="polite">${list.length ? `${list.length} upcoming` : ""}</p>
+    ${list.length ? `<div class="opp-list">${shown.map(oppCardHtml).join("")}</div>${list.length > shown.length ? `<div><button class="btn" data-act="recAll">Show all ${list.length}</button></div>` : ""}`
+      : `<div class="card stack"><p class="muted">${kinds.length ? "Nothing coming up for these events yet. Tick more events above, or check back: coaches add new ones all the time." : "Tick at least one event above to see what's coming up."}</p>${q ? `<div><button class="btn" data-act="recClearQ">Clear the search</button></div>` : ""}</div>`}
+    <p class="small muted">Listings come from coaches on ${APP_NAME}. Check the details with the host before you sign up or pay.</p>
+  </section>`;
+  /* 3. interest and the recruitment profile for that path */
   const msgs = (S.interest || []).filter(i => i.status !== "archived" && secOf(i) === sec);
   const from = sec === "college" ? "colleges" : sec === "pro" ? "pro scouts" : "youth clubs";
   const intCard = msgs.length ? `<div class="card stack invites"><h2>Interest from ${from}${newInterest(sec).length ? ` <span class="badge">${newInterest(sec).length} new</span>` : ""}</h2>
@@ -1738,8 +1764,10 @@ function recruitView(){
         <span class="small">“${esc(i.message)}”</span>
         <span class="small">✉️ <a href="mailto:${esc(i.coachEmail)}?subject=${encodeURIComponent("Re: " + i.playerName + " – " + APP_NAME)}">${esc(i.coachEmail)}</a></span></div>
       <div class="row">${i.status === "new" ? `<button class="btn sm" data-act="markInterest" data-id="${esc(i.id)}" data-status="seen">Mark as read</button>` : ""}<button class="btn ghost sm" data-act="markInterest" data-id="${esc(i.id)}" data-status="archived">Archive</button></div></div>`).join("")}</div></div>` : "";
-  return `<div class="row between">${intro}${kids.length > 1 ? playerSelect(kids, p, false) : ""}</div>
-  ${tabs}
+  return `${head(p)}
+  ${look}
+  ${opps}
+  <h2 class="rec-path-h">${SECTIONS[sec].label} recruiting${kids.length > 1 ? ` · ${esc(p.name)}` : ""}</h2>
   ${intCard}
   ${recruitHtml(p, {editable:canEditProfile(p), section:sec})}`;
 }
@@ -1799,25 +1827,7 @@ function oppWhen(o){
   const b = o.endsOn && o.endsOn !== o.startsOn ? oppDay(o.endsOn).toLocaleDateString(LOC, f) : "";
   return b ? `${a} – ${b}` : a;
 }
-function oppsView(){
-  const today = new Date().toLocaleDateString("en-CA"), can = canListOpps();
-  const q = S.oppQ.trim().toLowerCase();
-  const all = S.opps.filter(o => (o.endsOn || o.startsOn) >= today);
-  const list = all.filter(o => (!S.oppKind || o.kind === S.oppKind)
-      && (!S.oppGender || o.gender === S.oppGender || o.gender === "Any")
-      && (!q || [o.title, o.host, o.location, o.ages, o.details].join(" ").toLowerCase().includes(q)))
-    .sort((a, b) => a.startsOn.localeCompare(b.startsOn) || a.title.localeCompare(b.title));
-  const head = `<div class="row between" style="align-items:flex-end"><div class="stack" style="gap:6px"><h1>Opportunities</h1>
-      <p class="lead">Tryouts, combines, showcases and ID camps listed by club and college coaches.</p></div>
-      ${can && !S.oppsMissing ? `<button class="btn primary" data-act="modal" data-m="opp">List an opportunity</button>` : ""}</div>`;
-  if(S.oppsMissing) return head + `<div class="card stack"><h2>Opportunities aren't switched on yet</h2><p class="muted">Your club admin needs to run the latest database update. Then listings show up here.</p></div>`;
-  const tools = `<div class="lib-tools opp-tools">
-      <label class="f small" for="opp-kind">Type<select id="opp-kind" data-change="oppKind"><option value="">All types</option>${OPP_KINDS.map(([k,l]) => `<option value="${k}" ${S.oppKind === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
-      <label class="f small" for="opp-gender">Players<select id="opp-gender" data-change="oppGender"><option value="">Boys and girls</option><option value="Boys" ${S.oppGender === "Boys" ? "selected" : ""}>Boys</option><option value="Girls" ${S.oppGender === "Girls" ? "selected" : ""}>Girls</option></select></label>
-      <form class="opp-search" data-form="oppSearch" role="search"><label class="f small" for="opp-q">Search<input type="search" id="opp-q" name="q" value="${esc(S.oppQ)}" placeholder="Place, club, school or age"></label><button class="btn" type="submit">Search</button></form>
-    </div>
-    <p class="small muted" aria-live="polite">${list.length} upcoming${list.length !== all.length ? ` of ${all.length}` : ""}</p>`;
-  const card = o => {
+function oppCardHtml(o){
     const mine = o.createdBy === S.uid, canDel = mine || (isAdmin() && o.clubId && o.clubId === S.me.clubId), d = oppDay(o.startsOn);
     const facts = [o.ages, o.gender === "Any" ? "Boys and girls" : o.gender, o.cost].filter(Boolean).join(" · ");
     return `<article class="card opp">
@@ -1836,7 +1846,26 @@ function oppsView(){
           ${canDel ? `<button class="btn sm ghost" data-act="delOpp" data-id="${esc(o.id)}">Delete<span class="sr-only"> ${esc(o.title)}</span></button>` : ""}
         </div>
       </div></article>`;
-  };
+  }
+function oppsView(){
+  const today = new Date().toLocaleDateString("en-CA"), can = canListOpps();
+  const q = S.oppQ.trim().toLowerCase();
+  const all = S.opps.filter(o => (o.endsOn || o.startsOn) >= today);
+  const list = all.filter(o => (!S.oppKind || o.kind === S.oppKind)
+      && (!S.oppGender || o.gender === S.oppGender || o.gender === "Any")
+      && (!q || [o.title, o.host, o.location, o.ages, o.details].join(" ").toLowerCase().includes(q)))
+    .sort((a, b) => a.startsOn.localeCompare(b.startsOn) || a.title.localeCompare(b.title));
+  const head = `<div class="row between" style="align-items:flex-end"><div class="stack" style="gap:6px"><h1>Opportunities</h1>
+      <p class="lead">Tryouts, combines, showcases and ID camps listed by club and college coaches.</p></div>
+      ${can && !S.oppsMissing ? `<button class="btn primary" data-act="modal" data-m="opp">List an opportunity</button>` : ""}</div>`;
+  if(S.oppsMissing) return head + `<div class="card stack"><h2>Opportunities aren't switched on yet</h2><p class="muted">Your club admin needs to run the latest database update. Then listings show up here.</p></div>`;
+  const tools = `<div class="lib-tools opp-tools">
+      <label class="f small" for="opp-kind">Type<select id="opp-kind" data-change="oppKind"><option value="">All types</option>${OPP_KINDS.map(([k,l]) => `<option value="${k}" ${S.oppKind === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      <label class="f small" for="opp-gender">Players<select id="opp-gender" data-change="oppGender"><option value="">Boys and girls</option><option value="Boys" ${S.oppGender === "Boys" ? "selected" : ""}>Boys</option><option value="Girls" ${S.oppGender === "Girls" ? "selected" : ""}>Girls</option></select></label>
+      <form class="opp-search" data-form="oppSearch" role="search"><label class="f small" for="opp-q">Search<input type="search" id="opp-q" name="q" value="${esc(S.oppQ)}" placeholder="Place, club, school or age"></label><button class="btn" type="submit">Search</button></form>
+    </div>
+    <p class="small muted" aria-live="polite">${list.length} upcoming${list.length !== all.length ? ` of ${all.length}` : ""}</p>`;
+  const card = oppCardHtml;
   const empty = all.length
     ? `<div class="card stack"><h2>Nothing matches</h2><p class="muted">Try another type or clear the search.</p><div><button class="btn" data-act="oppClear">Show all</button></div></div>`
     : `<div class="card stack"><h2>No upcoming opportunities yet</h2><p class="muted">${can ? (S.me.role === "college" ? "List your program's ID camps and showcases so families can find them." : "List your club's tryouts, combines, showcases or ID camps so families can find them.") : "When club and college coaches list tryouts, combines, showcases or ID camps, they show up here."}</p>${can ? `<div><button class="btn primary" data-act="modal" data-m="opp">List an opportunity</button></div>` : ""}</div>`;
@@ -2788,6 +2817,16 @@ const CONFIRM = {
 let confirmed = null;
 /* dropdowns: one open at a time; click outside or Escape closes */
 ACTS.setLang = ds => setLang(ds.id);
+ACTS.recSec = ds => { S.rsec = ds.id; S.recAll = false; render(); const b = document.querySelector(`[data-act="recSec"][data-id="${ds.id}"]`); if(b) b.focus(); };
+ACTS.recKind = ds => {
+  const sec = curSec(), cur = recKinds(sec).slice(), i = cur.indexOf(ds.id);
+  if(i >= 0) cur.splice(i, 1); else cur.push(ds.id);
+  S.recKinds = {...(S.recKinds || {}), [sec]: cur}; render();
+  const b = document.querySelector(`[data-act="recKind"][data-id="${ds.id}"]`); if(b) b.focus();
+};
+ACTS.recAll = () => { S.recAll = true; render(); };
+ACTS.recClearQ = () => { S.recQ = ""; render(); const el = document.getElementById("rec-q"); if(el) el.focus(); };
+FORMS.recSearch = async fd => { S.recQ = String(fd.get("q") || ""); S.recAll = false; render(); const el = document.getElementById("rec-q"); if(el) el.focus(); };
 ACTS.ptdPhase = ds => { S.ptdPhase = ds.id; render(); const b = document.querySelector(`[data-act="ptdPhase"][data-id="${CSS.escape(ds.id)}"]`); if(b) b.focus(); };
 ACTS.ptdLevel = ds => { S.ptdLevel = ds.id; render(); const b = document.querySelector(`[data-act="ptdLevel"][data-id="${CSS.escape(ds.id)}"]`); if(b) b.focus(); };
 ACTS.navDd = ds => { S.navOpen = S.navOpen === ds.g ? null : ds.g; render(); const b = document.querySelector(`.nav-dd-btn[data-g="${ds.g}"]`); if(b) b.focus(); };
@@ -3912,7 +3951,7 @@ FORMS.opp = async (fd, form) => {
   const row = {kind:g("kind"), gender:g("gender") || "Any", title:g("title"), startsOn:start, endsOn:end || null, timeNote:g("time"), ages:g("ages"),
     location:g("location"), cost:g("cost"), contact:g("contact"), link, details:g("details")};
   closeModal();
-  const ok = await save(() => editing ? S.db.doc("opps/" + id).update(row) : S.db.collection("opps").doc(id).set({...row, createdBy:S.uid}), editing ? "Changes saved" : "Listed. Families can see it under Recruiting → Opportunities.");
+  const ok = await save(() => editing ? S.db.doc("opps/" + id).update(row) : S.db.collection("opps").doc(id).set({...row, createdBy:S.uid}), editing ? "Changes saved" : "Listed. Families see it on their Recruiting page.");
   if(ok) schedule("opps");
 };
 FORMS.oppSearch = async fd => { S.oppQ = String(fd.get("q") || ""); render(); const el = document.getElementById("opp-q"); if(el) el.focus(); };
