@@ -347,7 +347,7 @@ function recommendCard(p, opts = {}){
   const R = recommendFor(p.id);
   const head = `<div class="row between"><h2>${opts.title || "Recommended home drills"}</h2><span class="pill good">Based on the coach's review</span></div>`;
   if(!R) return `<div class="card stack rec-card">${head}<p class="muted">Recommendations appear after the coach's first review.</p></div>`;
-  if(opts.locked) return `<div class="locked">${head}<p>${R.picks.length} drills picked for ${esc(p.name)} from the latest review, focusing on ${R.focus.map(f => esc(f.label)).join(", ")}.</p><button class="btn primary" data-act="go" data-view="plans">Unlock with Home Training</button></div>`;
+  if(opts.locked) return `<div class="locked">${head}<p>${R.picks.length} drills picked for ${esc(p.name)} from the latest review, focusing on ${R.focus.map(f => esc(f.label)).join(", ")}.</p><button class="btn primary" data-act="buyHome">See Home Drills access</button></div>`;
   return `<div class="card stack rec-card">${head}
     <p class="small muted">From ${esc(R.last.coachName || "the coach")}'s review on ${fmtDate(R.last.date)}.${R.focus.length ? " Focus areas:" : ""}</p>
     ${R.focus.length ? `<div class="chips">${R.focus.map(f => `<span class="chip imp" title="${esc(f.why.join(", "))}">${esc(f.label)} · ${esc(f.why[0])}</span>`).join("")}</div>` : ""}
@@ -642,7 +642,7 @@ function navItems(){
     return [club, {g:"training", l:"Training", items:[{v:"sessions", l:"Team Drills"}, {v:"drills", l:"Home Drills"}]}, inbox, recruit, {v:"plans", l:"Pricing"}];
   }
   /* families: Recruiting is one page, with a "what are you looking for" filter on it */
-  return [{v:"home", l:"My player"}, {v:"drills", l:"Home Drills"}, inbox, {v:"recruit", l:"Recruiting", n:newInterest().length}, {v:"plans", l:"Pricing"}, {v:"account", l:"Account", n:pendingScouts().length}];
+  return [{v:"home", l:"My player"}, {v:"drills", l:"Home Drills"}, inbox, {v:"recruit", l:"Recruiting", n:newInterest().length}, {v:"account", l:"Account", n:pendingScouts().length}];
 }
 function navCurrent(it){
   if(S.publicPage) return false;
@@ -736,6 +736,7 @@ function viewBody(){
     case "account": return accountView();
     case "recruit": return recruitView();
     case "opps": return oppsView();
+    case "plans": return drillsView();   /* families buy Home Drills access on the Home Drills tab */
     case "chat": return chatView();
     case "messages": return messagesView();
     default: return familyHome();
@@ -989,7 +990,7 @@ function chartHtml(rs){
 function stepsLocked(){ return !S.uid || (!isStaff() && !familyHasHome()); }
 /* drill videos are part of Home Training: a slim locked bar instead of the animation */
 function animLockedHtml(){
-  const go = S.uid ? `<button type="button" class="btn sm" data-act="go" data-view="plans">See Home Training</button>` : `<a class="btn sm" href="#pricing">See Home Training</a>`;
+  const go = S.uid ? `<button type="button" class="btn sm" data-act="buyHome">See Home Training</button>` : `<a class="btn sm" href="#pricing">See Home Training</a>`;
   return `<div class="anim-locked"><span class="al-play" aria-hidden="true">▶</span><span class="al-txt">🔒 The animated demo comes with Home Training</span>${go}</div>`;
 }
 /* full instructions: inline for free samples and club drills, otherwise from drill_steps (Home Training) */
@@ -1010,7 +1011,7 @@ function drillStepsHtml(d, opts){
   </details>`;
   if(S.uid && isStaff() && S.stepsError) return `<p class="small muted">Instructions couldn't load. Ask your club admin to run database update 005.</p>`;
   if(S.uid && !S.stepsLoaded) return `<p class="small muted">Loading instructions…</p>`;
-  const target = S.uid ? `data-act="go" data-view="plans"` : `href="#pricing"`;
+  const target = S.uid ? `data-act="buyHome"` : `href="#pricing"`;
   const tag = S.uid ? "button" : "a";
   return `<div class="paywall-line"><span>🔒 Step-by-step instructions are part of Home Training</span><${tag} class="btn sm" ${target}>Unlock</${tag}></div>`;
 }
@@ -1076,11 +1077,11 @@ function playerDetail(p, mode){
         : `<p class="muted">${fam?"No drills assigned yet. Browse the library under Home Drills.":"No drills assigned yet. Pick one for home practice, or use the suggestions below."}</p>`}
     </div>`;
   } else {
-    drillsCard = `<div class="locked"><h2>Home Training</h2><p>Get the drills your coach picks for you, the full drill library and progress charts over time.</p><button class="btn primary" data-act="go" data-view="plans">See Home Training plan</button></div>`;
+    drillsCard = `<div class="locked"><h2>Home Training</h2><p>Get the drills your coach picks for you, the full drill library and progress charts over time.</p><button class="btn primary" data-act="buyHome">See Home Drills access</button></div>`;
   }
 
   const progressCard = home ? `<div class="card stack"><h2>Progress over time</h2>${progressSummary(rs)}${chartHtml(rs)}</div>`
-    : rs.length > 1 ? `<div class="locked"><h2>Progress over time</h2><p>See a chart of every skill over time and what improved most since the first review with Home Training.</p><button class="btn primary" data-act="go" data-view="plans">See Home Training plan</button></div>` : "";
+    : rs.length > 1 ? `<div class="locked"><h2>Progress over time</h2><p>See a chart of every skill over time and what improved most since the first review with Home Training.</p><button class="btn primary" data-act="buyHome">See Home Drills access</button></div>` : "";
   const historyCard = "";
 
   return `<div class="grid2">
@@ -1992,15 +1993,28 @@ function readHash(){
   if(slug !== S.publicSlug){ S.publicSlug = slug; S.pub = null; if(slug && S.authChecked) loadPublic(slug); else render(); }
 }
 
+/* families buy Home Drills access here, on the Home Drills tab (not on a pricing page) */
+function buyHomeCard(){
+  const free = BUILTIN_DRILLS.filter(d => d.free).length;
+  return `<section class="card stack buy-home" id="buy-home" tabindex="-1" aria-labelledby="buy-home-h">
+    <div class="row between"><h2 id="buy-home-h">Get full access to Home Drills</h2><span class="pill good">${free} free sample drills</span></div>
+    <div><span class="price">${PRICES.family}</span> <span class="muted">${PRICES.familyPer}</span></div>
+    <ul class="ticks"><li>Drills your coach assigns, with step-by-step instructions</li><li>Full home drill library</li><li>Progress charts for every skill</li><li>Weekly drill tracking your coach can see</li></ul>
+    <div><button class="btn primary" data-act="startPlan">Get Home Drills for ${PRICES.family} a month</button></div>
+    <p class="small muted">Some clubs include it for free, so ask your coach first. Payments aren't connected in this version: this unlocks Home Drills without charging anything.</p>
+  </section>`;
+}
 function drillsView(){
   const staff = isStaff();
   const locked = !staff && !familyHasHome();
   const list = allDrills();
-  let recs = locked ? paywallBanner() : "";
+  let recs = locked ? buyHomeCard() : "";
   if(!staff && !locked){
     const kids = S.players.filter(p => (S.me.playerIds||[]).includes(p.id));
     recs = kids.map(k => recommendCard(k, {family:true, title: kids.length > 1 ? "Recommended for " + k.name : "Recommended for you"})).join("");
   }
+  const own = !staff && S.me.familyPlan && !(S.clubs || []).some(c => c.familyAccess !== "subscribe");
+  if(own) recs = `<div class="card row between buy-on"><span><b>Home Drills access is on</b> <span class="muted">· ${PRICES.family} ${PRICES.familyPer}</span></span><button class="btn ghost sm" data-act="cancelPlan">Cancel</button></div>` + recs;
   return `<div class="row between"><div class="stack" style="gap:4px"><h1>Home Drills</h1><p class="muted small">${staff?"Solo drills for home practice, plus any your club adds. For team practices, see Training → Team Drills.":"Drills you can do at home with a ball and a little space."}</p></div>
     ${staff?`<button class="btn primary" data-act="modal" data-m="drill">Add club drill</button>`:""}</div>
   ${recs}
@@ -2496,8 +2510,12 @@ const ACTS = {
     const ok = await save(() => rpc("decide_request", {rid:ds.id, approve:false, tid:null}), "Request declined");
     if(ok) refreshAll();
   },
-  startPlan: async () => { await save(() => S.db.doc("members/" + S.uid).update({familyPlan:"trial", planStarted:today()}), "Home Training trial started"); },
-  cancelPlan: async () => { await save(() => S.db.doc("members/" + S.uid).update({familyPlan:null}), "Trial cancelled"); },
+  startPlan: async () => { await save(() => S.db.doc("members/" + S.uid).update({familyPlan:"trial", planStarted:today()}), isStaff() ? "Home Training trial started" : "Home Drills unlocked"); },
+  cancelPlan: async () => { await save(() => S.db.doc("members/" + S.uid).update({familyPlan:null}), isStaff() ? "Trial cancelled" : "Home Drills access cancelled"); },
+  buyHome: () => {   /* coaches (family preview) see Pricing; families go to the purchase option on Home Drills */
+    ACTS.go({view: isStaff() ? "plans" : "drills"});
+    const c = document.getElementById("buy-home"); if(c){ c.scrollIntoView({block:"start"}); c.focus({preventScroll:true}); }
+  },
   ptab: ds => { S.ptab = ds.id; render(); },
   selfAssign: async ds => {
     const d = drillById(ds.drill); if(!d) return;
@@ -3114,7 +3132,7 @@ function paywallBanner(){
   return `<div class="card paywall stack">
     <div class="row between"><h2>🔒 Full instructions come with Home Training</h2><span class="pill good">${free} free sample drills</span></div>
     <p>Try the free samples. Full steps for every drill come with <b>Home Training</b>, or free when your club includes it.</p>
-    <div class="row">${S.uid ? `<button class="btn primary" data-act="go" data-view="plans">See Home Training</button>` : `<button class="btn primary" data-act="pickPortal" data-id="family">Sign up as a family</button><a class="btn" href="#pricing">See pricing</a>`}</div>
+    <div class="row">${S.uid ? `<button class="btn primary" data-act="buyHome">See Home Training</button>` : `<button class="btn primary" data-act="pickPortal" data-id="family">Sign up as a family</button><a class="btn" href="#pricing">See pricing</a>`}</div>
   </div>`;
 }
 function pageDrills(){

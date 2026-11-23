@@ -1798,7 +1798,6 @@
 "1819": "Season-long",
 "1820": "Security",
 "1821": "See Home Training",
-"1822": "See Home Training plan",
 "1823": "See a chart of every skill over time and what improved most since the first review with Home Training.",
 "1824": "See each review and tick off the drills picked for you.",
 "1825": "See home drills, recruiting and progress",
@@ -2092,7 +2091,6 @@
 "2118": "Unlimited teams",
 "2119": "Unlimited teams, players and coaches.{0}",
 "2120": "Unlock",
-"2121": "Unlock with Home Training",
 "2122": "Unmarked",
 "2123": "Until then you can't search for players or message families. This page updates by itself once you're approved.",
 "2124": "Up to date",
@@ -4539,5 +4537,12 @@
 "4573": "Upcoming opportunities",
 "4574": "What are you looking for?",
 "4575": "{0} recruiting{1}",
-"4576": "{0} upcoming"
+"4576": "{0} upcoming",
+"4577": "Get Home Drills for {0} a month",
+"4578": "Get full access to Home Drills",
+"4579": "Home Drills access cancelled",
+"4580": "Home Drills access is on",
+"4581": "Home Drills unlocked",
+"4582": "See Home Drills access",
+"4583": "Some clubs include it for free, so ask your coach first. Payments aren't connected in this version: this unlocks Home Drills without charging anything."
 }
