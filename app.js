@@ -578,7 +578,8 @@ async function loadKey(key){
     if(key === "opps"){ S.oppsMissing = true; render(); return; } /* not there until database update 024 is run */
     S.notice = "Some data couldn't load. Reload the page to try again."; render(); return; }
   if(key === "club" && fam){ const before = JSON.stringify(S.clubs); S.clubs = (Array.isArray(data) ? data : []).map(camel); S.club = null; S.clubLoaded = true; if(before !== JSON.stringify(S.clubs)) loadSteps(); }
-  else if(key === "club"){ const before = S.club && S.club.familyAccess; S.club = data ? camel(data) : null; S.clubLoaded = true; if(S.club && before !== undefined && before !== S.club.familyAccess) loadSteps(); }
+  else if(key === "club"){ const before = S.club && S.club.familyAccess, wasWaiting = clubWaiting(); S.club = data ? camel(data) : null; S.clubLoaded = true; if(S.club && before !== undefined && before !== S.club.familyAccess) loadSteps();
+    if(wasWaiting && S.club && !clubWaiting()){ toast("Your club is approved"); setTimeout(loadMe, 0); } }
   else if(key === "messages" || key === "pmessages") S[key] = data.map(camel).reverse();
   else if(key === "links") S.links = data;
   else if(key === "shortlist") S.shortlist = (Array.isArray(data) ? data : []).map(camel);
@@ -635,6 +636,7 @@ function navItems(){
   const un = totalUnread(), pmu = totalPmUnread() + totalMeetingRequests();
   const inbox = {g:"inbox", l:"Inbox", n:un + pmu, items:[{v:"chat", l:"Team Chat", n:un}, {v:"messages", l:"Messages", n:pmu}]};
   const recruit = {g:"recruit", l:"Recruiting", n:newInterest().length, items:[["pro","Pro"],["college","College"],["youth","Youth"]].map(([k,l]) => ({v:"recruit", sec:k, l, n:newInterest(k).length})).concat([{v:"opps", l:"Opportunities"}])};
+  if(isStaff() && clubWaiting()) return [];
   if(isStaff()){
     const all = S.teams.slice().sort((a,b) => String(a.name).localeCompare(String(b.name)));
     const coached = myCoachTeamIds(), mine = all.filter(t => coached.includes(t.id));
@@ -694,6 +696,7 @@ function render(){
   else if(S.me === null) body = onboarding();
   else if(S.me && isScout()) body = scoutBody();
   else if(S.me && isStaff() && !S.club) body = S.clubLoaded ? clubMissing() : `<div class="card"><p>Loading your club…</p></div>`;
+  else if(S.me && isStaff() && clubWaiting()) body = clubPending();
   else body = viewBody();
   const banners = (S.notice && !S.loading ? `<div class="banner">${esc(S.notice)}</div>` : "");
   const ci = document.getElementById("chat-input");
@@ -756,6 +759,20 @@ function noAccess(){
   </div>`;
 }
 
+/* new clubs wait for NextPass staff (update 027); clubs from before then have no status or "approved" */
+const clubWaiting = () => !!(S.club && S.club.status && S.club.status !== "approved");
+function clubPending(){
+  const c = S.club, dec = c.status === "declined", first = ((S.me && S.me.name) || "").split(" ")[0];
+  return `<div class="card stack" style="max-width:640px">
+    <span class="pill ${dec ? "bad" : "warn"}" style="align-self:flex-start">${dec ? "Not approved" : "Waiting for approval"}</span>
+    <h1>${dec ? `<span translate="no">${esc(c.name)}</span> wasn't approved` : `Thanks${first ? ", " + esc(first) : ""}. We're checking your club`}</h1>
+    <p>${dec ? `${APP_NAME} staff couldn't confirm this club. If you think that's a mistake, contact us and we'll take another look.`
+      : `${APP_NAME} staff check every new club before it opens, because families and players' profiles are shared with club coaches. We'll look at <b translate="no">${esc(c.name)}</b> and may email you if we have questions.`}</p>
+    <p class="small muted">${dec ? "You can also leave this club and set up your account again." : `Until then you can't add teams or players, search for players or list opportunities. Coaches who join with your club code wait with you. This page updates by itself once you're approved.`}</p>
+    ${dec ? "" : `<p class="small">Your club code: <b translate="no">${esc(c.code || "")}</b></p>`}
+    <div class="row"><a class="btn" href="#contact">Contact us</a>${dec ? `<button class="btn ghost" data-act="leave">Set up again</button>` : `<button class="btn ghost" data-act="clubRecheck">Check again</button>`}</div>
+  </div>`;
+}
 function clubMissing(){
   return `<div class="card stack" style="max-width:640px">
     <h2>Your club can't be found</h2>
@@ -813,13 +830,13 @@ function onboarding(){
     <div class="stack">
       <span class="pill warn" style="align-self:flex-start">Coach</span>
       <h1>Set up your coaching account</h1>
-      <p style="max-width:52ch">Starting fresh? Create your club and you become its admin. Joining an existing club? Ask your club admin for the 6-letter club code.</p>
+      <p style="max-width:52ch">Starting fresh? Create your club and you become its admin. ${APP_NAME} staff check every new club before it opens. Joining an existing club? Ask your club admin for the 6-letter club code.</p>
     </div>
     <div class="stack">
       ${S.invite && S.invite.kind === "coach" ? inviteBanner() + joinCoachForm() : ""}
       <form class="card stack" data-form="createClub">
         <h2>Start a club</h2>
-        <p class="small muted">For club directors setting up ${APP_NAME} for the first time.</p>
+        <p class="small muted">For club directors setting up ${APP_NAME} for the first time. We check every new club before families can join.</p>
         <label class="f" for="cc-name">Your name<input type="text" id="cc-name" name="name" required maxlength="60" autocomplete="name"></label>
         <label class="f" for="cc-club">Club or team name<input type="text" id="cc-club" name="club" required maxlength="80"></label>
         <div><button class="btn primary" type="submit">Create club</button></div>
@@ -1726,14 +1743,14 @@ function staffRecruit(){
 function scoutApprovals(){
   if(!S.owner) return "";
   const all = S.scouts || [], pend = all.filter(x => x.status === "pending"), rest = all.filter(x => x.status !== "pending");
-  const row = x => `<div class="req"><div class="stack" style="gap:4px"><span><span class="pill plain">${x.kind === "college" ? "College coach" : "Pro scout"}</span> <b>${esc(x.name)}</b>${x.title ? ", " + esc(x.title) : ""} <span class="pill ${x.status === "approved" ? "good" : x.status === "declined" ? "bad" : "warn"}">${x.status === "approved" ? "Approved" : x.status === "declined" ? "Declined" : "Waiting"}</span></span>
+  const row = x => `<div class="req"><div class="stack" style="gap:4px"><span><span class="pill plain">${x.kind === "club" ? "New club" : x.kind === "college" ? "College coach" : "Pro scout"}</span> <b>${esc(x.name)}</b>${x.title ? ", " + esc(x.title) : ""} <span class="pill ${x.status === "approved" ? "good" : x.status === "declined" ? "bad" : "warn"}">${x.status === "approved" ? "Approved" : x.status === "declined" ? "Declined" : "Waiting"}</span></span>
       <span class="small"><b>${esc(x.org)}</b>${x.orgType ? " · " + esc(x.orgType) : ""}${x.region ? " · " + esc(x.region) : ""}</span>
       <span class="small">✉️ <a href="mailto:${esc(x.email)}">${esc(x.email)}</a> <span class="muted">· asked ${esc(relDays(new Date(x.createdAt).toLocaleDateString("en-CA")).toLowerCase())}</span></span>
       ${x.about ? `<span class="small muted">“${esc(x.about)}”</span>` : ""}</div>
-    <div class="row">${x.status !== "approved" ? `<button class="btn primary sm" data-act="decideScout" data-id="${esc(x.id)}" data-ok="1">Approve</button>` : ""}${x.status !== "declined" ? `<button class="btn ghost sm" data-act="decideScout" data-id="${esc(x.id)}" data-ok="">${x.status === "approved" ? "Remove access" : "Decline"}</button>` : ""}</div></div>`;
+    <div class="row">${x.status !== "approved" ? `<button class="btn primary sm" data-act="decideScout" data-id="${esc(x.id)}" data-kind="${x.kind}" data-ok="1">Approve</button>` : ""}${x.status !== "declined" ? `<button class="btn ghost sm" data-act="decideScout" data-id="${esc(x.id)}" data-kind="${x.kind}" data-ok="">${x.status === "approved" ? "Remove access" : "Decline"}</button>` : ""}</div></div>`;
   return `<div class="card stack scout-approvals" style="grid-column:1/-1">
-    <div class="row between"><h2>College coach and pro scout approvals${pend.length ? ` <span class="badge">${pend.length}</span>` : ""}</h2><span class="pill plain">${APP_NAME} staff</span></div>
-    <p class="small muted">College coaches and pro scouts can't see any players until you approve them here. Check that the person really works for the school, club or agency they name before you approve.</p>
+    <div class="row between"><h2>Approvals${pend.length ? ` <span class="badge">${pend.length}</span>` : ""}</h2><span class="pill plain">${APP_NAME} staff</span></div>
+    <p class="small muted">New clubs, college coaches and pro scouts can't see any players until you approve them here. Check that the club is real, and that each person really works for the club, school or agency they name, before you approve.</p>
     ${pend.length ? `<div class="list">${pend.map(row).join("")}</div>` : `<p class="muted">Nobody is waiting.</p>`}
     ${rest.length ? `<details><summary class="small">Already decided (${rest.length})</summary><div class="list" style="margin-top:8px">${rest.map(row).join("")}</div></details>` : ""}
   </div>`;
@@ -2559,7 +2576,7 @@ const ACTS = {
     catch(e){ console.error(e); toast((e && e.message) || "This profile can't be opened right now."); }
   },
   decideScout: async ds => {
-    const ok = await save(() => rpc("decide_scout", {sid:ds.id, approve:!!ds.ok}), ds.ok ? "Approved. They can search now." : "Done. They can't search for players.");
+    const ok = await save(() => rpc("decide_scout", {sid:ds.id, approve:!!ds.ok}), ds.kind === "club" ? (ds.ok ? "Club approved. They can set up now." : "Done. The club stays closed.") : ds.ok ? "Approved. They can search now." : "Done. They can't search for players.");
     if(ok) schedule("scouts");
   },
   shortlistAdd: async ds => {
@@ -2647,7 +2664,7 @@ async function rpc(name, args){
 
 const FORMS = {
   createClub: async fd => {
-    const ok = await save(() => rpc("create_club", {club_name:fd.get("club").trim(), my_name:fd.get("name").trim()}), "Club created");
+    const ok = await save(() => rpc("create_club", {club_name:fd.get("club").trim(), my_name:fd.get("name").trim()}), "Club created. We'll check it shortly.");
     if(ok) await loadMe();
   },
   joinCoach: async fd => {
@@ -2916,6 +2933,7 @@ document.addEventListener("keydown", ev => {
 ACTS.openRec = ds => { S.playerId = ds.id; S.view = "player"; S.preview = false; S.ptab = "recruit"; S.recSec = ds.sec; window.scrollTo(0,0); render(); };
 ACTS.delOpp = async ds => { const ok = await save(() => S.db.doc("opps/" + ds.id).delete(), "Opportunity deleted"); if(ok) schedule("opps"); };
 ACTS.oppClear = () => { S.oppKind = ""; S.oppGender = ""; S.oppQ = ""; render(); };
+ACTS.clubRecheck = async () => { await loadMe(); if(!clubWaiting()) toast("Your club is approved"); else toast("Still waiting. We'll update this page when it's approved."); };
 ACTS.reactOpen = ds => openReact(ds.k, ds.id);
 ACTS.react = async ds => {
   const id = ds.id + ":" + S.uid, cur = S.reactions.find(r => r.id === id), off = cur && cur.emoji === ds.e;
@@ -3130,7 +3148,7 @@ function pageHow(){
     <p class="lead">What the coach sees at training becomes what the player works on at home.</p></section>
   <div class="grid2">
     <div class="card stack"><h2>For coaches and clubs</h2>
-      ${step(1,"Create your club","Sign up and share your club code with your coaches.")}
+      ${step(1,"Create your club","Sign up, and once we've approved your club, share your club code with your coaches.")}
       ${step(2,"Add your teams","Families ask to join. You approve.")}
       ${step(3,"Review and assign","Rate each player, add a note, assign drills.")}
     </div>
@@ -3280,7 +3298,7 @@ function homeView(){
 
   <section class="final-cta card stack">
     <h2>Ready when you are</h2>
-    <p class="lead" style="margin:0 auto">Set up your club in five minutes, or join your team.</p>
+    <p class="lead" style="margin:0 auto">Start your club, or join your team.</p>
     ${cta("Start your club", "I'm a parent or player")}
     <p class="small muted" style="text-align:center">Want a walkthrough first? <a href="#contact">Talk to us</a></p>
   </section>`;
@@ -3326,8 +3344,8 @@ function pageClubs(){
       <div class="stack" style="gap:6px"><h3>Recruit for tryouts</h3><p class="muted">Find players whose parents say they're looking.</p></div>
     </div>
   </div>
-  <div class="card stack callout"><h2>Set up your club in 5 minutes</h2>
-    <ol class="numbered"><li>Sign up and choose <b>Start a club</b>.</li><li>Share your club code with your coaches.</li><li>Add teams. Families ask to join; you approve.</li></ol>
+  <div class="card stack callout"><h2>Getting your club started</h2>
+    <ol class="numbered"><li>Sign up and choose <b>Start a club</b>.</li><li>${APP_NAME} staff check and approve your club.</li><li>Share your club code with your coaches.</li><li>Add teams. Families ask to join; you approve.</li></ol>
     <div class="row cta-row"><button type="button" class="btn primary" data-act="pickPortal" data-id="coach">Start your club</button><a class="btn" href="#contact">Book a walkthrough</a></div></div>`;
 }
 ACTS.progJump = (ds, el, ev) => { if(ev) ev.preventDefault(); const t = document.getElementById("prog-" + ds.id); if(t){ t.scrollIntoView({behavior:"smooth", block:"start"}); t.classList.add("flash"); setTimeout(() => t.classList.remove("flash"), 1200); } };

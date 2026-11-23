@@ -36,7 +36,9 @@ Anything marked `translate="no"` (like the NextPass logo) is never translated.
 
 **Updates 021 to 026**: meeting notifications (021), emoji reactions in chats (022), email changes kept in sync for college coaches and scouts (023), recruiting opportunities listed by coaches (024), Home Drills and Recruiting included in every club plan with Full Access for families without a club (025), the per-team, Club 20, Club 50 and Club Unlimited plans with their team limits and college coach approval (026).
 
-**Not sure which database updates you've run?** Run `supabase/all_updates.sql` once in the SQL Editor. It contains every update (002 to 026), is safe whatever state your database is in, and can be run again any time. If Supabase warns about a "destructive operation", click "Run this query": it only removes old, unused parts.
+**New clubs need approval** (update 027): a club created after this update waits until a NextPass owner approves it under Club → Approvals (next to college coaches and pro scouts). Until then its coaches only see a waiting page and families can't find it. Clubs that existed before the update stay approved, and clubs created by a NextPass owner are approved straight away.
+
+**Not sure which database updates you've run?** Run `supabase/all_updates.sql` once in the SQL Editor. It contains every update (002 to 027), is safe whatever state your database is in, and can be run again any time. If Supabase warns about a "destructive operation", click "Run this query": it only removes old, unused parts.
 Existing database: run any migration you haven't run yet. They're all safe to run more than once.
 
 ## Paywall
