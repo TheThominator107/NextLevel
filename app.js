@@ -1953,7 +1953,7 @@ function readHash(){
     try { history.replaceState(null, "", location.pathname + location.search); } catch(_){}
     loadInviteInfo(); render(); window.scrollTo(0,0); return;
   }
-  if(PAGE_IDS.includes(h)){ S.publicPage = h; S.menuOpen = false; S.publicSlug = null; S.pub = null; if(h !== "contact") S.contactSent = null; render(); window.scrollTo(0,0);
+  if(PAGE_IDS.includes(h)){ S.publicPage = h; S.menuOpen = false; S.navQuiet = S.navOpen === "features" || !!(document.activeElement && document.activeElement.closest && document.activeElement.closest(".nav-dd")); S.navOpen = null; S.publicSlug = null; S.pub = null; if(h !== "contact") S.contactSent = null; render(); window.scrollTo(0,0);
     if(h === "for-parents"){ const sec = document.getElementById("for-parents-sec"); if(sec){ sec.scrollIntoView({block:"start"}); sec.focus({preventScroll:true}); } }
     return; }
   if(h === "signin" || h === ""){ S.wantSignin = h === "signin"; S.publicPage = null; S.menuOpen = false; if(S.publicSlug){ S.publicSlug = null; S.pub = null; } render(); window.scrollTo(0,0); return; }
@@ -2825,7 +2825,7 @@ function openReact(kind, id){
 }
 /* after picking from a hover menu, keep it shut until the mouse leaves it */
 document.addEventListener("mouseover", ev => {
-  if(S.navQuiet && !ev.target.closest(".nav-dd")){ S.navQuiet = false; const n = document.getElementById("app-nav"); if(n) n.classList.remove("dd-quiet"); }
+  if(S.navQuiet && !ev.target.closest(".nav-dd")){ S.navQuiet = false; document.querySelectorAll("#app-nav, #site-nav").forEach(n => n.classList.remove("dd-quiet")); }
 });
 document.addEventListener("keydown", ev => {
   if(ev.key === "Escape" && S.notifOpen){ S.notifOpen = false; render(); const b = document.querySelector(".bell-btn"); if(b) b.focus(); return; }
@@ -2978,6 +2978,7 @@ function planInfo(){
 }
 const planName = k => k === "unlimited" ? "Club Unlimited" : "Club (per team)";
 const CLUB_FEATURES = `<li>Player and keeper reviews</li><li>Progress timelines</li><li>Drill library and session planner</li><li>Team chat</li><li>Optional Home Training for all</li>`;
+const FEATURE_PAGES = ["drills","clubs","recruiting"];
 const PUBLIC_PAGES = [
   ["how-it-works","How it works"], ["drills","Drills"], ["clubs","Clubs & Teams"], ["recruiting","Recruiting"],
   ["pricing","Pricing"], ["contact","Contact Us"]
@@ -2987,9 +2988,15 @@ const PAGE_IDS = PUBLIC_PAGES.concat(FOOTER_PAGES, [["for-parents"]]).map(p => p
 
 function publicNav(){
   const cur = S.publicPage === "for-parents" ? "how-it-works" : S.publicPage;   /* the parents section lives on How it works */
-  const links = PUBLIC_PAGES.map(([id,label]) => `<a href="#${id}" class="navlink" ${cur===id?'aria-current="page"':""}>${label}</a>`).join("");
+  const link = ([id,label]) => `<a href="#${id}" class="navlink" ${cur===id?'aria-current="page"':""}>${label}</a>`;
+  /* Drills, Clubs & Teams and Recruiting sit under one "Features" menu at the start of the row */
+  const feat = PUBLIC_PAGES.filter(([id]) => FEATURE_PAGES.includes(id)), open = S.navOpen === "features";
+  const features = `<div class="nav-dd${open ? " open" : ""}">
+      <button type="button" class="nav-dd-btn navlink${feat.some(([id]) => id === cur) ? " cur" : ""}" data-act="navDd" data-g="features" aria-expanded="${open}" aria-controls="dd-features">Features<span class="dd-chev" aria-hidden="true"></span></button>
+      <div class="nav-dd-menu" id="dd-features" ${open ? "" : "hidden"}>${feat.map(link).join("")}</div></div>`;
+  const links = features + PUBLIC_PAGES.filter(([id]) => !FEATURE_PAGES.includes(id)).map(link).join("");
   return `<button type="button" class="menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="site-nav">${S.menuOpen ? "Close" : "Menu"}</button>
-    <nav id="site-nav" class="site-nav${S.menuOpen ? " open" : ""}" aria-label="Site">${links}${langToggle("navlink")}<a href="#signin" class="btn primary sm nav-signin">Sign in</a></nav>`;
+    <nav id="site-nav" class="site-nav${S.menuOpen ? " open" : ""}${S.navQuiet ? " dd-quiet" : ""}" aria-label="Site">${links}${langToggle("navlink")}<a href="#signin" class="btn primary sm nav-signin">Sign in</a></nav>`;
 }
 function siteFooter(){
   const col = (h, links) => `<div class="fcol"><h2 class="fh">${h}</h2>${links.map(([href, label]) => `<a href="${href}">${label}</a>`).join("")}</div>`;

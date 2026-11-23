@@ -462,7 +462,6 @@
 "461": "(required, shown in the review history)",
 "462": "(to do)",
 "463": "({0} of {1})",
-"464": ") filled in.",
 "465": ") in Supabase so sessions can be saved. You can still plan and print.",
 "466": ") would be cheaper.",
 "467": ", not the full name.",
@@ -864,7 +863,6 @@
 "865": "Cookies and storage",
 "866": "Copied",
 "867": "Copied into a new plan. Save it when you're ready.",
-"868": "Copy coach invite link",
 "869": "Copy code",
 "870": "Copy didn't work here. Select it and copy:",
 "871": "Copy invite link",
@@ -1207,7 +1205,6 @@
 "1215": "Introduce yourself, your club and team, and the next step you're offering, such as a tryout date, a training session to join or a guest spot.",
 "1216": "Invalid login credentials",
 "1217": "Invite people",
-"1218": "Invite your other coaches",
 "1219": "Is Home Training free if my club includes it?",
 "1220": "Is it safe for young players?",
 "1221": "It disappears from the player's review history for the family and every coach. This can't be undone.",
@@ -1825,7 +1822,6 @@
 "1843": "Send message",
 "1844": "Send request",
 "1845": "Send reset link",
-"1846": "Send them your coach invite link. It opens sign-up with your club code (",
 "1847": "Separation Speed",
 "1848": "Session built: {0} blocks, {1} minutes. Change anything you like.",
 "1849": "Session deleted",
@@ -4514,5 +4510,7 @@
 "4542": "time",
 "4543": "tryout",
 "4544": "your school",
-"4545": "{0} upcoming{1}"
+"4545": "{0} upcoming{1}",
+"4546": "Features",
+"4547": "features"
 }
