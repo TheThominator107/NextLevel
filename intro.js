@@ -28,6 +28,7 @@ export const INTRO_DURATION = acc;
 
 /* ---------- markup ---------- */
 const kick = (k, h, p) => `<div class="iv-side"><span class="iv-kick" data-in=".15">${k}</span><h3 class="iv-h" data-in=".3">${h}</h3><p class="iv-p" data-in=".5">${p}</p></div>`;
+const LEVELS = {1:"Getting started", 2:"Developing", 3:"Solid", 4:"Strong", 5:"Standout"};
 const pips = (n, at) => `<span class="iv-pips">${[1,2,3,4,5].map(i => `<i data-on="${(at + i * .09).toFixed(2)}"${i <= n ? ' class="fill"' : ""}></i>`).join("")}</span>`;
 
 function sceneHtml(s){
@@ -40,10 +41,10 @@ function sceneHtml(s){
     </div>`;
   case "review": {
     const rows = [["First touch", 3], ["Passing", 4], ["Dribbling", 5], ["Decision making", 3], ["Defending", 4]];
-    return `${kick("For coaches", "Review every player", "Quick ratings on the skills that matter, plus a note on what to work on next.")}
+    return `${kick("For coaches", "Review every player", "A level for each skill that matters, in plain words, plus a note on what to work on next.")}
     <div class="iv-card iv-review" data-in=".35" data-fx="left">
       <div class="iv-who"><span class="iv-av" style="background:#1f5fc9">MR</span><div><b>Maya R.</b><small>U12 Girls · Midfielder</small></div><span class="iv-date">Nov 14</span></div>
-      ${rows.map(([l, n], i) => `<div class="iv-row"><span>${l}</span>${pips(n, .9 + i * .38)}</div>`).join("")}
+      ${rows.map(([l, n], i) => `<div class="iv-row"><span>${l}</span><span class="iv-rv">${pips(n, .9 + i * .38)}<b class="iv-lvl" data-in="${(1.45 + i * .38).toFixed(2)}" data-fx="pop">${LEVELS[n]}</b></span></div>`).join("")}
       <div class="iv-tags"><span class="good" data-in="3.2" data-fx="pop">Strength: Dribbling</span><span class="work" data-in="3.45" data-fx="pop">Work on: First touch</span></div>
       <p class="iv-note"><span data-type="3.9" data-text="Great energy this week. Keep that first touch out of your feet."></span><i class="iv-caret" data-blink="3.9"></i></p>
     </div>`; }
@@ -56,7 +57,7 @@ function sceneHtml(s){
     <span class="iv-badge" data-in="5.2" data-fx="pop">3 of 3 done this week</span>`;
   case "parents": return `${kick("For parents", "Follow every step", "See each review, the drills done at home, and message the coach in one place.")}
     <div class="iv-card iv-chart" data-in=".35" data-fx="left">
-      <div class="iv-who"><span class="iv-av" style="background:#1f5fc9">MR</span><div><b>Maya's progress</b><small>Overall rating</small></div><span class="iv-up" data-in="2.3" data-fx="pop">+0.9</span></div>
+      <div class="iv-who"><span class="iv-av" style="background:#1f5fc9">MR</span><div><b>Maya's overall level</b><small>Developing → Solid</small></div><span class="iv-up" data-in="2.3" data-fx="pop">▲ Improved</span></div>
       <svg viewBox="0 0 300 96" aria-hidden="true"><g stroke="#e3e8f0" stroke-width="1"><line x1="10" y1="16" x2="290" y2="16"/><line x1="10" y1="48" x2="290" y2="48"/><line x1="10" y1="80" x2="290" y2="80"/></g>
         <path d="M20 72 L110 56 L200 40 L280 22" fill="none" stroke="#c4471c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" data-draw=".8,1.6"/>
         ${[[20,72,.8],[110,56,1.25],[200,40,1.75],[280,22,2.3]].map(([x, y, a]) => `<circle cx="${x}" cy="${y}" r="5.5" fill="#fff" stroke="#c4471c" stroke-width="3" data-in="${a}" data-fx="dot"/>`).join("")}

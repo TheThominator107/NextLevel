@@ -134,7 +134,7 @@ const POSITIONS = ["Goalkeeper","Defender","Midfielder","Forward","Not set"];
 const CATS = ["Ball mastery","First touch","Passing","Dribbling","Finishing","Speed & agility","Defending","Fitness","Goalkeeping"];
 
 /* skills: review attributes a drill trains (used for recommendations); tags: matching "Work on" tags; gk: goalkeeper drill.
-   Step-by-step instructions live in Supabase (drill_steps) behind Home Training; only the free samples carry steps here. */
+   Step-by-step instructions live in Supabase (drill_steps) behind Full Access (or a club plan); only the free samples carry steps here. */
 const BUILTIN_DRILLS = [
   /* Solo drills for ages 10 to 18: a ball, a few cones and a wall. Built from tools/drills.py; edit that file, not this list. */
   {free:true,id:"b-toe-taps",title:"Toe taps",category:"Ball mastery",minutes:6,equipment:"Ball",level:"Beginner",skills:["first_touch", "handling_speed"],tags:["Confidence on the ball"],goal:"Quick, light feet and a feel for the ball with the sole: the base for every other touch.",setup:"A ball and 2 yards of flat space.",steps:["Stand behind the ball with your knees soft and weight on the balls of your feet.", "Tap the top of the ball with the sole of your right foot, then your left, in a steady rhythm.", "Only the front of the foot touches the ball. Don't push it away.", "Keep your arms relaxed and your eyes up between touches."],reps:"4 × 30 seconds, 30 seconds rest. Count your touches each round.",points:["Light touches: the ball shouldn't move.", "Stay on your toes; your heels never touch the ground.", "Eyes up: glance at the ball, then look ahead."],easier:"Go slower and look down. Hold onto a wall with one hand for balance.",harder:"Move around the ball in a full circle while tapping, then change direction."},
@@ -509,7 +509,7 @@ const ASSETS = {
   async delete(id){ await sb.storage.from("media").remove([id]); }
 };
 
-/* drill instructions (Home Training) */
+/* drill instructions (club plan or Full Access) */
 async function loadSteps(){
   if(!sb || !S.uid){ S.drillSteps = {}; S.stepsLoaded = false; return; }
   /* update 017 adds setup, reps, coaching points and easier / harder; older databases only have the steps */
@@ -888,7 +888,7 @@ function setupCard(){
   const steps = [
     [S.teams.length > 0, "Add your teams", "One for each team, training group or camp.", `<button class="btn sm" data-act="modal" data-m="team">Add a team</button>`],
     [S.players.length > 0, "Get families to join", `Send each team's family invite link. Families sign up with the team already picked, and you approve them here.`, setupFamBtn()],
-    [S.reviews.length > 0, "Write your first review", "Open a player, rate each skill from 1 to 5 and add a short note.", ""],
+    [S.reviews.length > 0, "Write your first review", "Open a player, choose a level for each skill and add a short note.", ""],
     [S.assignments.length > 0, "Assign a home drill", "Pick from the drill library, or use the drills suggested after a review.", `<button class="btn sm" data-act="go" data-view="drills">Open the drill library</button>`]];
   const done = steps.filter(x => x[0]).length;
   if(done === steps.length) return "";
@@ -993,12 +993,12 @@ function chartHtml(rs){
 }
 
 function stepsLocked(){ return !S.uid || (!isStaff() && !familyHasHome()); }
-/* drill videos are part of Home Training: a slim locked bar instead of the animation */
+/* drill videos come with a club plan or Full Access: a slim locked bar instead of the animation */
 function animLockedHtml(){
   const go = S.uid ? `<button type="button" class="btn sm" data-act="buyHome">See Full Access</button>` : `<a class="btn sm" href="#pricing">See Full Access</a>`;
   return `<div class="anim-locked"><span class="al-play" aria-hidden="true">▶</span><span class="al-txt">🔒 The animated demo comes with your club or Full Access</span>${go}</div>`;
 }
-/* full instructions: inline for free samples and club drills, otherwise from drill_steps (Home Training) */
+/* full instructions: inline for free samples and club drills, otherwise from drill_steps (club plan or Full Access) */
 function drillInfo(d){
   if(d.steps && d.steps.length) return {steps:d.steps, setup:d.setup || "", reps:d.reps || "", points:d.points || [], easier:d.easier || "", harder:d.harder || ""};
   const r = (S.drillSteps || {})[d.id];
@@ -3094,9 +3094,9 @@ function siteFooter(){
     <div class="fbrand stack" style="gap:8px"><span class="brand small-brand" aria-label="${APP_NAME}">${logoHtml()}</span>
       <p class="small muted">Coach reviews, at-home training and recruiting for youth soccer.</p></div>
     <nav class="fcols" aria-label="Footer">
-      ${col("Product", [["#how-it-works","How it works"],["#drills","Home drills"],["#team-drills","Team drills"],["#recruiting","Recruiting"],["#pricing","Pricing"]])}
+      ${col("Product", [["#how-it-works","How it works"],["#drills","Home Drills"],["#team-drills","Team Drills"],["#clubs","Clubs & Teams"],["#recruiting","Recruiting"],["#pricing","Pricing"]])}
       ${col("Who it's for", [["#clubs","Clubs, leagues & trainers"],["#for-parents","Parents & players"],["#college","College coaches"],["#pro","Pro scouts"]])}
-      ${col("Company", [["#contact","Contact us"],["#safety","Safety"],["#accessibility","Accessibility"],["#privacy","Privacy Policy"],["#terms","Terms of Use"]])}
+      ${col("Company", [["#contact","Contact Us"],["#safety","Safety"],["#accessibility","Accessibility"],["#privacy","Privacy Policy"],["#terms","Terms of Use"]])}
     </nav>
   </div><div class="foot-base"><span class="small muted">© ${new Date().getFullYear()} ${APP_NAME}. All rights reserved.</span><a class="small" href="#signin">Sign in</a></div></footer>`;
 }
@@ -3289,7 +3289,7 @@ function homeView(){
 /* ---------- clubs: one page, four kinds of program ---------- */
 const PROGRAMS = [
   {id:"select", title:"Select, travel & academy clubs", pill:"Most popular", lead:"One development standard across every age group.",
-   points:["The same skills and 1–5 scale for every coach", "Progress timelines for families and your board", `Recruitment Profiles and references for players ${RECRUIT_AGE}+`],
+   points:["The same skills and five levels for every coach", "Progress timelines for families and your board", `Recruitment Profiles and references for players ${RECRUIT_AGE}+`],
    plan:`Club Unlimited is usually cheapest from 10 teams.`},
   {id:"rec", title:"Recreational leagues", pill:"Volunteer friendly", lead:"Simple enough for a volunteer coach.",
    points:["A review takes about five minutes on a phone", "Home drills for every child", "Team chat instead of long email chains"],
@@ -4169,7 +4169,7 @@ function sessTeamId(){
   if(S.sessTeam === "all" || ts.some(t => t.id === S.sessTeam)) return S.sessTeam;
   return ts.length ? ts[0].id : "all";
 }
-/* team picture from each player's latest review: lowest team averages, players rated 1 or 2, and the coach's "Work on" tags */
+/* team picture from each player's latest review: lowest team averages, players at Getting started or Developing, and the coach's "Work on" tags */
 function teamFocus(teamId){
   const players = S.players.filter(p => teamId === "all" || p.teamId === teamId);
   const vals = {}, low = {}, tagged = {};
@@ -4305,7 +4305,7 @@ function sessionPlanHtml(){
       <div class="fchips" role="group" aria-label="Focus skills, lowest team average first">${ranked.map(chip).join("")}</div>
       <details class="small"><summary>Other skills</summary><div class="fchips" style="margin-top:8px">${others.map(chip).join("")}</div></details>
       ${F.gk.length ? `<p class="small"><b>Keepers:</b> ${F.gk.slice(0, 2).map(s => `${esc(s.label)}: ${levelWord(s.avg)}`).join(" · ")}</p>` : ""}
-      ${watch.length ? `<div class="small watch"><b>Players to watch</b>${watch.map(s => `<p>${esc(s.label)}: ${s.low.map(p => esc(p.name)).join(", ")} (rated 1 or 2)</p>`).join("")}</div>` : ""}`
+      ${watch.length ? `<div class="small watch"><b>Players to watch</b>${watch.map(s => `<p>${esc(s.label)}: ${s.low.map(p => esc(p.name)).join(", ")} (Getting started or Developing)</p>`).join("")}</div>` : ""}`
     : `<p class="small">${F.players.length ? "No reviews yet for this team." : "No players on this team yet."} Review players under My Teams and recommendations will follow. For now, pick what you want to work on:</p>
       <div class="fchips" role="group" aria-label="Focus skills">${TD_SKILLS.map(s => chip({k:s.k, label:s.label, n:0})).join("")}</div>`}
     <div class="row"><button class="btn primary" data-act="${d.blocks.length ? "sessAutoReplace" : "sessAuto"}">Build a ${esc(d.minutes || 75)}-minute session for me</button></div>

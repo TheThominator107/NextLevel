@@ -61,8 +61,7 @@ Matched to your focus: {0}	Según tu enfoque: {0}
 The family and their club. Public only if the family chooses, from {0}.	La familia y su club. Público solo si la familia lo elige, desde los {0}.
 First review: {0}	Primera evaluación: {0}
 Update review: {0}	Actualizar evaluación: {0}
-{0} (rated {1}/5)	{0} (calificado {1}/5)
-{0} (rated 1 or 2)	{0} (calificado con 1 o 2)
+{0} (Getting started or Developing)	{0} (Empezando o En desarrollo)
 Families and coaches on that team. Monitored by the club and {0} for safety.	Las familias y los entrenadores de ese equipo. Supervisado por el club y {0} por seguridad.
 The family, their coaches and the club admin. Monitored by the club and {0} for safety.	La familia, sus entrenadores y el administrador del club. Supervisado por el club y {0} por seguridad.
 Calendar file ready. Open it to add the meeting and its reminders.	Archivo de calendario listo. Ábrelo para añadir la reunión y sus recordatorios.
@@ -331,3 +330,8 @@ down from {0}	bajó desde {0}
 From the latest reviews of {0} of {1} players. Lowest team averages first; the word is the team's average level. Pick up to 4 to focus on.	A partir de las últimas evaluaciones de {0} de {1} jugadores. Primero los promedios más bajos del equipo; la palabra es el nivel promedio del equipo. Elige hasta 4 para enfocarte.
 From the latest reviews of {0} of {1} player. Lowest team averages first; the word is the team's average level. Pick up to 4 to focus on.	A partir de las últimas evaluaciones de {0} de {1} jugador. Primero los promedios más bajos del equipo; la palabra es el nivel promedio del equipo. Elige hasta 4 para enfocarte.
 This first review sets the baseline that future progress is measured from. Levels: Getting started → Developing → Solid → Strong → Standout.	Esta primera evaluación fija la base desde la que se mide el progreso. Niveles: Empezando → En desarrollo → Sólido → Fuerte → Destacado.
+Open a player, choose a level for each skill and add a short note.	Abre un jugador, elige un nivel para cada habilidad y agrega una nota corta.
+The same skills and five levels for every coach	Las mismas habilidades y los mismos cinco niveles para cada entrenador
+Maya's overall level	Nivel general de Maya
+Developing → Solid	En desarrollo → Sólido
+A level for each skill that matters, in plain words, plus a note on what to work on next.	Un nivel para cada habilidad importante, en palabras sencillas, y una nota sobre qué trabajar después.
