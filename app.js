@@ -378,7 +378,7 @@ const isScout = () => isCollege() || isPro();                 // accounts that o
 /* the recruiting section someone searches in: college coaches, pro scouts, or club coaches (youth) */
 const mySection = () => isCollege() ? "college" : isPro() ? "pro" : isStaff() ? "youth" : null;
 const SECTIONS = {
-  college:{label:"College", age:"16 and over", who:"college coaches", search:"College coach search", by:"Verified college coaches (school .edu email)"},
+  college:{label:"College", age:"16 and over", who:"college coaches", search:"College coach search", by:"College coaches with a school .edu email, each approved by " + APP_NAME + " staff"},
   pro:{label:"Pro", age:"16 and over", who:"pro scouts", search:"Pro scout search", by:"Pro scouts and academy staff that " + APP_NAME + " has approved one by one"},
   youth:{label:"Youth clubs", age:"All ages", who:"club coaches", search:"Youth club search", by:"Coaches and admins of clubs on " + APP_NAME}};
 const SECTION_KEYS = ["college","pro","youth"];
@@ -780,10 +780,10 @@ function onboarding(){
     <div class="stack">
       <span class="pill plain" style="align-self:flex-start">College coach</span>
       <h1>Set up your program</h1>
-      <p style="max-width:52ch">Tell families who you are. They'll see this with every message you send. College recruiting on ${APP_NAME} is free.</p>
+      <p style="max-width:52ch">Tell families who you are. They'll see this with every message you send. College recruiting on ${APP_NAME} is free; our staff approve every college coach before they can search for players.</p>
       <button type="button" class="btn ghost sm" data-act="setPortal" data-id="" style="align-self:flex-start">I'm not a college coach</button>
     </div>
-    <div class="stack">${edu ? `<form class="card stack auth-coach" data-form="collegeStart"><h2>Your program</h2>${collegeFields()}<div><button class="btn primary" type="submit">Start recruiting</button></div></form>`
+    <div class="stack">${edu ? `<form class="card stack auth-coach" data-form="collegeStart"><h2>Your program</h2>${collegeFields()}<div><button class="btn primary" type="submit">Ask for access</button></div></form>`
       : `<div class="card stack"><h2>Use your school email</h2><p>College coach accounts need an email address ending in <b>.edu</b>. You're signed in as <b>${esc(S.email || "")}</b>.</p><p class="small muted">Sign out and create a new account with your school email.</p><div><button class="btn primary" data-act="signOut">Sign out</button></div></div>`}</div>
   </section>`;
   }
@@ -1503,10 +1503,25 @@ function scoutBody(){
     if(S.view === "account") return proAccount();
     if(S.pro.status !== "approved") return proPending();
   }
+  if(isCollege() && S.college && S.college.status && S.college.status !== "approved"){   /* waiting for NextPass staff */
+    if(S.view === "account") return collegeAccount();
+    return collegePending();
+  }
   if(S.view === "shortlist") return shortlistHtml();
   if(S.view === "account") return collegeAccount();
   if(S.view === "opps") return oppsView();
   return scoutView();
+}
+function collegePending(){
+  const c = S.college, dec = c.status === "declined";
+  return `<div class="card stack" style="max-width:640px">
+    <span class="pill ${dec ? "bad" : "warn"}" style="align-self:flex-start">${dec ? "Not approved" : "Waiting for approval"}</span>
+    <h1>${dec ? "Your college coach account wasn't approved" : "Thanks, " + esc((c.name || "").split(" ")[0] || "coach") + ". We're checking your details"}</h1>
+    <p>${dec ? `We couldn't confirm your role at <b>${esc(c.school)}</b>. If something on your account is wrong, fix it under Account and it goes back for another look.`
+      : `${APP_NAME} staff approve every college coach before they can see players, because players listed are 16 and 17 as well as adults. We'll check your role at <b>${esc(c.school)}</b> and may email you at <b>${esc(c.email)}</b>.`}</p>
+    <p class="small muted">Until then you can't search for players, message families or list opportunities. This page updates by itself once you're approved.</p>
+    <div class="row"><button class="btn" data-act="go" data-view="account">Check my details</button><a class="btn ghost" href="#contact">Contact us</a></div>
+  </div>`;
 }
 function proMissing(){ return `<div class="card stack"><h2>Your scout details can't be found</h2><p class="muted">Sign out and back in. If that doesn't help, contact us.</p><div><button class="btn" data-act="signOut">Sign out</button></div></div>`; }
 function proPending(){
@@ -1634,9 +1649,10 @@ const sentList = empty => { const sent = (S.interest || []).filter(i => i.coachI
 const shortName = n => { const w = String(n || "").trim().split(/\s+/); return w.length > 1 ? w[0] + " " + w[w.length - 1][0] + "." : w[0] || ""; };
 function collegeAccount(){
   const c = S.college || {};
+  const st = c.status || "approved";
   return `<div class="stack" style="gap:4px"><h1>Account</h1></div>
   <div class="grid2">
-    <form class="card stack" data-form="collegeEdit"><h2>Your program</h2>
+    <form class="card stack" data-form="collegeEdit"><div class="row between"><h2>Your program</h2><span class="pill ${st === "approved" ? "good" : st === "declined" ? "bad" : "warn"}">${st === "approved" ? "Approved" : st === "declined" ? "Not approved" : "Waiting for approval"}</span></div>
       ${collegeFields(c)}
       <p class="small muted">Families see your name, title, school, program, division and school email (${esc(c.email || "")}) when you message them.</p>
       <div><button class="btn primary" type="submit">Save</button></div></form>
@@ -1706,14 +1722,14 @@ function staffRecruit(){
 function scoutApprovals(){
   if(!S.owner) return "";
   const all = S.scouts || [], pend = all.filter(x => x.status === "pending"), rest = all.filter(x => x.status !== "pending");
-  const row = x => `<div class="req"><div class="stack" style="gap:4px"><span><b>${esc(x.name)}</b>${x.title ? ", " + esc(x.title) : ""} <span class="pill ${x.status === "approved" ? "good" : x.status === "declined" ? "bad" : "warn"}">${x.status === "approved" ? "Approved" : x.status === "declined" ? "Declined" : "Waiting"}</span></span>
-      <span class="small"><b>${esc(x.org)}</b> · ${esc(x.orgType)}${x.region ? " · " + esc(x.region) : ""}</span>
+  const row = x => `<div class="req"><div class="stack" style="gap:4px"><span><span class="pill plain">${x.kind === "college" ? "College coach" : "Pro scout"}</span> <b>${esc(x.name)}</b>${x.title ? ", " + esc(x.title) : ""} <span class="pill ${x.status === "approved" ? "good" : x.status === "declined" ? "bad" : "warn"}">${x.status === "approved" ? "Approved" : x.status === "declined" ? "Declined" : "Waiting"}</span></span>
+      <span class="small"><b>${esc(x.org)}</b>${x.orgType ? " · " + esc(x.orgType) : ""}${x.region ? " · " + esc(x.region) : ""}</span>
       <span class="small">✉️ <a href="mailto:${esc(x.email)}">${esc(x.email)}</a> <span class="muted">· asked ${esc(relDays(new Date(x.createdAt).toLocaleDateString("en-CA")).toLowerCase())}</span></span>
       ${x.about ? `<span class="small muted">“${esc(x.about)}”</span>` : ""}</div>
     <div class="row">${x.status !== "approved" ? `<button class="btn primary sm" data-act="decideScout" data-id="${esc(x.id)}" data-ok="1">Approve</button>` : ""}${x.status !== "declined" ? `<button class="btn ghost sm" data-act="decideScout" data-id="${esc(x.id)}" data-ok="">${x.status === "approved" ? "Remove access" : "Decline"}</button>` : ""}</div></div>`;
   return `<div class="card stack scout-approvals" style="grid-column:1/-1">
-    <div class="row between"><h2>Pro scout approvals${pend.length ? ` <span class="badge">${pend.length}</span>` : ""}</h2><span class="pill plain">${APP_NAME} owner</span></div>
-    <p class="small muted">Pro scouts can't see any players until you approve them here. Check that the person really works for the club or agency they name before you approve.</p>
+    <div class="row between"><h2>College coach and pro scout approvals${pend.length ? ` <span class="badge">${pend.length}</span>` : ""}</h2><span class="pill plain">${APP_NAME} staff</span></div>
+    <p class="small muted">College coaches and pro scouts can't see any players until you approve them here. Check that the person really works for the school, club or agency they name before you approve.</p>
     ${pend.length ? `<div class="list">${pend.map(row).join("")}</div>` : `<p class="muted">Nobody is waiting.</p>`}
     ${rest.length ? `<details><summary class="small">Already decided (${rest.length})</summary><div class="list" style="margin-top:8px">${rest.map(row).join("")}</div></details>` : ""}
   </div>`;
@@ -1721,7 +1737,7 @@ function scoutApprovals(){
 
 /* family: the Recruiting tab, in three sections */
 const SECTION_BLURB = {
-  college:`For players aged ${RECRUIT_AGE} and over aiming for college soccer. Verified college coaches with a school .edu email can find the profile if you turn that on.`,
+  college:`For players aged ${RECRUIT_AGE} and over aiming for college soccer. College coaches approved by ${APP_NAME} staff can find the profile if you turn that on.`,
   pro:`For players aged ${RECRUIT_AGE} and over aiming for professional clubs and academies. Only scouts that ${APP_NAME} has approved one by one can find the profile, and only if you turn that on.`,
   youth:`For players of any age looking for a new club, tryouts or guest playing. Only coaches of clubs on ${APP_NAME} can find the profile, and only if you turn that on. Under-16s never get a public link.`};
 /* what each recruiting path usually looks for; families can change the ticks */
@@ -2030,9 +2046,9 @@ function plansView(){
   const staff = isStaff();
   return `<div class="stack" style="gap:4px"><h1>Pricing</h1><p class="muted">${staff ? "Every family on your teams gets Home Drills and Recruiting with your plan." : "Full Access is free when your player is on a club's team."}</p></div>
   ${staff ? planSummary() : ""}
+  <div class="plans4">${PLANS.map(P => clubPlanCard(P.k, staff)).join("")}</div>
+  ${clubIncludes()}
   <div class="grid3 plans3">
-    ${clubPlanCard("team", staff)}
-    ${clubPlanCard("unlimited", staff)}
     <div class="card plan">
       <span class="pill good" style="align-self:flex-start">For players without a club</span>
       <h2>Full Access</h2>
@@ -2044,20 +2060,21 @@ function plansView(){
 }
 
 function clubPlanCard(k, staff){
-  const pi = staff ? planInfo() : null, cur = pi && pi.plan === k, admin = staff && isAdmin();
+  const P = planOf(k), pi = staff ? planInfo() : null, cur = pi && pi.plan === k, admin = staff && isAdmin(), fits = !pi || planFits(k, pi.n);
   return `<div class="card plan${cur ? " featured" : ""}">
-    <div class="row between"><span class="pill ${k === "unlimited" ? "warn" : "plain"}">${k === "unlimited" ? "Best for 10+ teams" : "For clubs & coaches"}</span>${cur ? `<span class="pill good">✓ Your plan</span>` : ""}</div>
-    <h2>${planName(k)}</h2>
-    <div><span class="price">${k === "unlimited" ? PRICES.unlimited : PRICES.club}</span> <span class="muted">${k === "unlimited" ? PRICES.unlimitedPer : PRICES.clubPer + " you register"}</span></div>
-    ${pi ? `<p class="small">${k === "unlimited" ? `For your club: <b>${money(PRICE_NUM.unlimited)}</b> a month, however many teams you add.` : `For your club: ${pi.n} team${pi.n===1?"":"s"} × ${PRICES.club} = <b>${money(pi.perTeam)}</b> a month.`}</p>` : ""}
-    <ul><li>${k === "unlimited" ? "<b>Unlimited teams</b>, players and coaches" : "Unlimited players and coaches on each team"}</li>${CLUB_FEATURES}</ul>
-    ${admin && !cur ? `<div style="margin-top:auto"><button class="btn${k === "unlimited" ? " primary" : ""}" data-act="setPlan" data-id="${k}">Switch to ${planName(k)}</button></div>` : ""}
+    <div class="row between"><span class="pill plain">${P.cap ? `Up to ${P.cap} teams` : k === "team" ? "Pay per team" : "Unlimited teams"}</span>${cur ? `<span class="pill good">✓ Your plan</span>` : ""}</div>
+    <h2>${P.name}</h2>
+    <div><span class="price">${money(P.price)}</span> <span class="muted">${P.per}</span></div>
+    <p class="small ${pi ? "" : "muted"}">${pi ? (fits ? `For your ${pi.n} team${pi.n === 1 ? "" : "s"}: <b>${money(planCost(k, pi.n))}</b> a month.` : `Your club has ${pi.n} teams, more than this plan includes.`) : P.note}</p>
+    <div style="margin-top:auto">${staff ? (admin && !cur && fits ? `<button class="btn${pi.best === k ? " primary" : ""}" data-act="setPlan" data-id="${k}">Switch to ${P.short}</button>` : "")
+      : `<button type="button" class="btn${k === "t20" ? " primary" : ""}" data-act="pickPortal" data-id="coach">Start your club</button>`}</div>
   </div>`;
 }
+const clubIncludes = () => `<section class="card stack plan-includes" aria-labelledby="h-incl"><h2 id="h-incl">Every club plan includes everything for players and coaches</h2><ul class="ticks two-col">${CLUB_FEATURES}</ul></section>`;
 function planSummary(){
   const pi = planInfo();
-  const tip = pi.plan === "team" && pi.save > 0 ? ` <b>Switch to Club Unlimited to save ${money(pi.save)} a month.</b>` : pi.plan === "unlimited" && pi.save < 0 ? ` With ${pi.n} team${pi.n===1?"":"s"}, the per-team plan would cost ${money(pi.perTeam)} a month.` : "";
-  return `<div class="card plan-summary"><p>Your club is on <b>${planName(pi.plan)}</b>: ${pi.plan === "unlimited" ? `${money(PRICE_NUM.unlimited)} a month for unlimited teams (${pi.n} now)` : `${pi.n} team${pi.n===1?"":"s"}, ${money(pi.perTeam)} a month`}.${tip}</p>
+  const tip = pi.best !== pi.plan && pi.save > 0 ? ` <b>${planName(pi.best)} would save you ${money(pi.save)} a month.</b>` : "";
+  return `<div class="card plan-summary"><p>Your club is on <b>${planName(pi.plan)}</b>: ${pi.n} team${pi.n === 1 ? "" : "s"}${pi.cap ? ` of ${pi.cap}` : ""}, ${money(pi.cost)} a month.${tip}</p>
     ${isAdmin() ? `<div class="row"><button class="btn sm" data-act="modal" data-m="clubSettings">Club settings</button></div>` : `<p class="small muted">Only the club admin can change the plan.</p>`}</div>`;
 }
 function clubView(){
@@ -2070,7 +2087,7 @@ function clubView(){
       <div class="row between"><h2>${esc(S.club.name)}</h2>${admin?`<button class="btn sm" data-act="modal" data-m="clubSettings">Edit</button>`:""}</div>
       <p>Coach join code: <span class="code">${esc(S.club.code)}</span> <button class="btn ghost sm" data-act="copy" data-text="${esc(S.club.code)}">Copy code</button> <button class="btn ghost sm" data-act="copy" data-text="${esc(coachInviteUrl())}" data-label="Coach invite link">Copy invite link</button></p>
       <p>Home Drills and Recruiting: <b>included for every family on your teams</b></p>
-      ${(() => { const pi = planInfo(); return `<p>Plan: <b>${planName(pi.plan)}</b> · ${pi.plan === "unlimited" ? money(PRICE_NUM.unlimited) + " a month, unlimited teams" : money(pi.perTeam) + " a month for " + pi.n + " team" + (pi.n===1?"":"s")}</p>${pi.plan === "team" && pi.save > 0 ? `<p class="small"><b>Tip:</b> Club Unlimited would save you ${money(pi.save)} a month. <button class="btn ghost sm" data-act="go" data-view="plans">Compare plans</button></p>` : ""}`; })()}
+      ${(() => { const pi = planInfo(); return `<p>Plan: <b>${planName(pi.plan)}</b> · ${money(pi.cost)} a month for ${pi.n} team${pi.n === 1 ? "" : "s"}${pi.cap ? ` (up to ${pi.cap})` : ""}</p>${pi.best !== pi.plan && pi.save > 0 ? `<p class="small"><b>Tip:</b> ${planName(pi.best)} would save you ${money(pi.save)} a month. <button class="btn ghost sm" data-act="go" data-view="plans">Compare plans</button></p>` : ""}`; })()}
       <p class="muted small">${fams.length} famil${fams.length===1?"y":"ies"} connected.</p>
     </div>
     <div class="card stack">
@@ -2158,12 +2175,18 @@ document.addEventListener("keydown", ev => {
 const teamOptions = sel => S.teams.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(t=>`<option value="${esc(t.id)}" ${t.id===sel?"selected":""}>${esc(t.name)}</option>`).join("");
 
 const MODALS = {
-  team: () => `<h2>Add team</h2><form data-form="team">
+  team: () => { const pc = planInfo(); if(pc.cap && pc.n >= pc.cap) return `<h2>Your plan is full</h2>
+    <p>${planName(pc.plan)} includes up to ${pc.cap} teams, and your club has ${pc.n}. Switch to a bigger plan to add more teams.</p>
+    <div class="row">${isAdmin() ? `<button class="btn primary" data-act="go" data-view="plans">Compare plans</button>` : `<p class="small muted">Ask your club admin to change the plan.</p>`}<button class="btn" type="button" data-act="close">Close</button></div>`;
+    return `<h2>Add team</h2><form data-form="team">
     <label class="f" for="t-name">Team name<input type="text" id="t-name" name="name" required maxlength="60" placeholder="e.g. U12 Boys Premier"></label>
     <label class="f" for="t-age">Age group<input type="text" id="t-age" name="age" maxlength="20" placeholder="e.g. U12"></label>
-    ${(() => { const pi = planInfo(); return pi.plan === "unlimited" ? `<p class="small muted">Included in Club Unlimited: add as many teams as you like.</p>`
-      : `<p class="small muted">Adds ${PRICES.club} a month: ${pi.n + 1} team${pi.n ? "s" : ""} = ${money((pi.n + 1) * PRICE_NUM.team)} a month.${(pi.n + 1) * PRICE_NUM.team > PRICE_NUM.unlimited ? " Club Unlimited (" + PRICES.unlimited + ") would be cheaper." : ""}</p>`; })()}
-    <div class="row"><button class="btn primary" type="submit">Add team</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`,
+    ${(() => { const pi = planInfo();
+      if(pi.plan === "unlimited") return `<p class="small muted">Included in Club Unlimited: add as many teams as you like.</p>`;
+      if(pi.cap) return `<p class="small muted">Included in ${planName(pi.plan)}: team ${pi.n + 1} of ${pi.cap}.</p>`;
+      const next = planCost("team", pi.n + 1), cheaper = PLANS.filter(P => P.k !== "team" && planFits(P.k, pi.n + 1) && P.price < next)[0];
+      return `<p class="small muted">Adds ${money(PLANS[0].price)} a month: ${pi.n + 1} team${pi.n ? "s" : ""} = ${money(next)} a month.${cheaper ? ` ${cheaper.name} (${money(cheaper.price)}) would be cheaper.` : ""}</p>`; })()}
+    <div class="row"><button class="btn primary" type="submit">Add team</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`; },
   editPlayer: (ds) => { const p = S.players.find(x=>x.id===ds.player); if(!p) return "<p>Player not found.</p>"; return `<h2>Edit ${esc(p.name)}</h2><form data-form="editPlayer" data-id="${esc(p.id)}">
     <p class="small muted">${p.birthDate ? "Born " + esc(fmtDob(p.birthDate)) + ". " : p.birthYear ? "Born " + esc(p.birthYear) + ". " : ""}The family manages the name, date of birth and profile.</p>
     <div class="grid2" style="gap:14px">
@@ -2239,8 +2262,7 @@ const MODALS = {
   clubSettings: () => { const pi = planInfo(); return `<h2>Club settings</h2><form data-form="clubSettings">
     <label class="f" for="c-name">Club name<input type="text" id="c-name" name="name" required maxlength="80" value="${esc(S.club.name)}"></label>
     <fieldset class="stack" style="border:0;padding:0;margin:0"><legend style="font-weight:600;margin-bottom:8px">Plan</legend>
-      <label class="choice" for="pl-team"><input type="radio" id="pl-team" name="plan" value="team" ${pi.plan==="team"?"checked":""}><span><b>Club (per team): ${PRICES.club} a month per team</b><br><span class="small muted">With your ${pi.n} team${pi.n===1?"":"s"}: ${money(pi.perTeam)} a month.</span></span></label>
-      <label class="choice" for="pl-unl"><input type="radio" id="pl-unl" name="plan" value="unlimited" ${pi.plan==="unlimited"?"checked":""}><span><b>Club Unlimited: ${PRICES.unlimited} a month</b><br><span class="small muted">Unlimited teams, players and coaches.${pi.save > 0 ? " Saves you " + money(pi.save) + " a month." : " Worth it from 10 teams."}</span></span></label>
+      ${PLANS.map(P => { const fits = planFits(P.k, pi.n); return `<label class="choice${fits ? "" : " off"}" for="pl-${P.k}"><input type="radio" id="pl-${P.k}" name="plan" value="${P.k}" ${pi.plan === P.k ? "checked" : ""} ${fits ? "" : "disabled"}><span><b>${P.name}: ${money(P.price)} ${P.per}</b><br><span class="small muted">${fits ? `With your ${pi.n} team${pi.n === 1 ? "" : "s"}: ${money(planCost(P.k, pi.n))} a month.${pi.best === P.k && pi.plan !== P.k ? " The cheapest for your club." : ""}` : `Includes up to ${P.cap} teams; your club has ${pi.n}.`}</span></span></label>`; }).join("")}
     </fieldset>
 
     <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`; },
@@ -2403,7 +2425,7 @@ const MODALS = {
       <h3 class="form-sec">Contact & visibility</h3>
       <label class="f" for="rd-loc">Location<input type="text" id="rd-loc" name="location" maxlength="60" value="${esc(R.location || "")}" placeholder="City and state, e.g. Cincinnati, OH"></label>
       <label class="f" for="rd-mail">Contact email for college coaches (optional)<input type="email" id="rd-mail" name="contact" maxlength="120" value="${esc(R.contact || "")}" placeholder="A parent's email is best"></label>
-      <label class="choice" for="rd-search"><input type="checkbox" id="rd-search" name="searchable" ${R.searchable ? "checked" : ""}><span><b>Let college coaches find this profile in ${APP_NAME}</b><br><span class="small muted">Verified college coaches (school .edu email) can search for it and send you a message. Only works while the profile is Public. Turn it off any time.</span></span></label>
+      <label class="choice" for="rd-search"><input type="checkbox" id="rd-search" name="searchable" ${R.searchable ? "checked" : ""}><span><b>Let college coaches find this profile in ${APP_NAME}</b><br><span class="small muted">College coaches approved by ${APP_NAME} staff can search for it and send you a message. Only works while the profile is Public. Turn it off any time.</span></span></label>
       <p class="small muted">Everything above shows on the Recruitment Profile when it's public, including the contact email.</p>
       <div class="row"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="close">Cancel</button></div></form>`; },
   highlight: ds => `<h2>Add a career highlight</h2><form data-form="highlight" data-id="${esc(ds.player)}">
@@ -2521,7 +2543,8 @@ const ACTS = {
   exitPublic: () => { try { history.replaceState(null, "", location.pathname + location.search); } catch(_){ try { location.hash = ""; } catch(__){} } S.publicSlug = null; S.pub = null; render(); },
   delPhoto: async ds => { const p = S.players.find(x=>x.id===ds.id); if(p) await saveProfile(p, {photo:null}, "Photo removed"); },
   slFilter: ds => { S.slFilter = ds.id; render(); },
-  setPlan: async ds => { if(!isAdmin()) return; const plan = ds.id === "unlimited" ? "unlimited" : "team";
+  setPlan: async ds => { if(!isAdmin()) return; const plan = planOf(ds.id).k;
+    if(!planFits(plan, (S.teams || []).length)){ toast("Your club has more teams than that plan includes.", true); return; }
     const ok = await save(() => S.db.doc("clubs/" + S.club.id).update({plan}), "You're now on " + planName(plan));
     if(ok){ S.club = {...S.club, plan}; render(); schedule("club"); } },
   scoutClear: () => { S.scout = {f:{}}; runScout(); },
@@ -2532,7 +2555,7 @@ const ACTS = {
     catch(e){ console.error(e); toast((e && e.message) || "This profile can't be opened right now."); }
   },
   decideScout: async ds => {
-    const ok = await save(() => rpc("decide_scout", {sid:ds.id, approve:!!ds.ok}), ds.ok ? "Scout approved. They can search now." : "Done. They can't search for players.");
+    const ok = await save(() => rpc("decide_scout", {sid:ds.id, approve:!!ds.ok}), ds.ok ? "Approved. They can search now." : "Done. They can't search for players.");
     if(ok) schedule("scouts");
   },
   shortlistAdd: async ds => {
@@ -2662,6 +2685,8 @@ const FORMS = {
     S.recovery = false; toast("Password updated"); render();
   },
   team: async fd => {
+    const pi = planInfo();
+    if(pi.cap && pi.n >= pi.cap){ toast(`Your plan includes up to ${pi.cap} teams. Switch to a bigger plan to add more.`, true); return; }
     closeModal(); const id = crypto.randomUUID();
     const ok = await save(() => S.db.collection("teams").doc(id).set({clubId:S.me.clubId, name:fd.get("name").trim(), ageGroup:fd.get("age").trim(), createdAt:Date.now()}), "Team added. You're its coach.");
     if(ok){ await loadKey("teams"); await setTeamCoach(id, S.uid, true); }
@@ -2800,7 +2825,7 @@ const FORMS = {
     closeModal();
     await save(() => S.db.collection("comments").doc().set({clubId:S.me.clubId, playerId:form.dataset.id, kind:fd.get("kind")==="comment"?"comment":"reference", text:String(fd.get("text")).trim(), authorId:S.uid, authorName:S.me.name||"", authorTitle:String(fd.get("title")||"").trim(), date:today(), createdAt:Date.now()}), "Posted");
   },
-  clubSettings: async fd => { closeModal(); const plan = fd.get("plan") === "unlimited" ? "unlimited" : "team";
+  clubSettings: async fd => { closeModal(); const plan = planOf(fd.get("plan")).k;
     const ch = {name:fd.get("name").trim(), familyAccess:"included", plan};
     const ok = await save(() => S.db.doc("clubs/" + S.club.id).update(ch), "Club updated");
     if(ok){ S.club = {...S.club, ...ch}; render(); schedule("club"); } }
@@ -3018,17 +3043,25 @@ document.addEventListener("change", ev => {
 
 
 /* ---------- public site pages (menu next to the logo) ---------- */
-const PRICES = {club:"$19.99", clubPer:"per month, per team", unlimited:"$199", unlimitedPer:"per month, unlimited teams", family:"$4.99", familyPer:"per month, per player"};
-const PRICE_NUM = {team:19.99, unlimited:199};
+const PRICES = {family:"$4.99", familyPer:"per month, per player"};
 const money = n => "$" + n.toFixed(2).replace(/\.00$/, "");
-/* the club's plan and what it costs this month */
+/* club plans: every one includes everything for players and coaches; they differ only in teams */
+const PLANS = [
+  {k:"team", name:"Club (per team)", short:"Club", price:9.99, cap:null, per:"per team, per month", note:"10 teams: $99.90 a month."},
+  {k:"t20", name:"Club 20", short:"Club 20", price:149.99, cap:20, per:"per month, up to 20 teams", note:"Cheaper than per team from 16 teams."},
+  {k:"t50", name:"Club 50", short:"Club 50", price:349.99, cap:50, per:"per month, up to 50 teams", note:"Cheaper than per team from 36 teams."},
+  {k:"unlimited", name:"Club Unlimited", short:"Club Unlimited", price:499.99, cap:null, per:"per month, unlimited teams", note:"For clubs with more than 50 teams."}];
+const planOf = k => PLANS.find(p => p.k === k) || PLANS[0];
+const planFits = (k, n) => !planOf(k).cap || n <= planOf(k).cap;
+const planCost = (k, n) => k === "team" ? Math.round(n * PLANS[0].price * 100) / 100 : planOf(k).price;
+const planName = k => planOf(k).name;
+/* the club's plan, what it costs this month, and the cheapest plan for its teams */
 function planInfo(){
-  const plan = S.club && S.club.plan === "unlimited" ? "unlimited" : "team", n = (S.teams || []).length;
-  const perTeam = Math.round(n * PRICE_NUM.team * 100) / 100;
-  return {plan, n, perTeam, cost: plan === "unlimited" ? PRICE_NUM.unlimited : perTeam, save: Math.round((perTeam - PRICE_NUM.unlimited) * 100) / 100};
+  const plan = planOf(S.club && S.club.plan).k, n = (S.teams || []).length, cost = planCost(plan, n);
+  const best = PLANS.filter(p => planFits(p.k, n)).sort((a, b) => planCost(a.k, n) - planCost(b.k, n))[0];
+  return {plan, n, cost, cap: planOf(plan).cap, best: best.k, save: Math.round((cost - planCost(best.k, n)) * 100) / 100};
 }
-const planName = k => k === "unlimited" ? "Club Unlimited" : "Club (per team)";
-const CLUB_FEATURES = `<li>Player and keeper reviews</li><li>Progress timelines</li><li>Drill library and session planner</li><li>Team chat</li><li>Home Drills and Recruiting for every family</li>`;
+const CLUB_FEATURES = `<li>Unlimited players and coaches on every team</li><li>Player and keeper reviews</li><li>Progress timelines</li><li>Team Drills and session planner</li><li>Team chat and messages</li><li>Home Drills for every player</li><li>Recruiting for every player</li><li>Tryouts, camps and showcases</li>`;
 const FULL_ACCESS_LI = `<li>Full home drill library with step-by-step instructions</li><li>Animated drill demos</li><li>Recruiting: a profile for college coaches, pro scouts and youth clubs</li><li>Tryouts, camps and showcases from coaches</li><li>Progress charts for every skill</li>`;
 const FEATURE_PAGES = ["drills","team-drills","clubs","recruiting"];
 const PUBLIC_PAGES = [
@@ -3308,7 +3341,7 @@ function pageSafety(){
       ${row("Private messages", "The family, their coaches and the club admin. Monitored by the club and " + APP_NAME + " for safety.")}
       ${row("Team chat", "Families and coaches on that team. Monitored by the club and " + APP_NAME + " for safety.")}
       ${row("Player profile", "The family and their club. Public only if the family chooses, from " + RECRUIT_AGE + ".")}
-      ${row("Recruiting: College", `Verified college coaches, if the parent turns it on. Ages ${RECRUIT_AGE}+.`)}
+      ${row("Recruiting: College", `College coaches approved by ${APP_NAME} staff, if the parent turns it on. Ages ${RECRUIT_AGE}+.`)}
       ${row("Recruiting: Pro", `Approved scouts, if the parent turns it on. Ages ${RECRUIT_AGE}+.`)}
       ${row("Recruiting: Youth clubs", `Other clubs' coaches, if the parent turns it on. Under ${RECRUIT_AGE}: first name and last initial only.`)}
     </tbody></table></div>
@@ -3418,7 +3451,7 @@ function pageRecruiting(){
     <p class="lead">One profile, three sections. Families choose who can find their player.</p></section>
   <div class="grid3 sec-cards">
     <div class="card stack"><span class="pill plain" style="align-self:flex-start">Ages ${RECRUIT_AGE} and over</span><h2>College</h2>
-      <p>Academics and division interest, seen by verified college coaches.</p>
+      <p>Academics and division interest, seen by college coaches approved by ${APP_NAME} staff.</p>
       <div><button type="button" class="btn sm" data-act="pickPortal" data-id="college">College coach? Join free</button></div></div>
     <div class="card stack"><span class="pill plain" style="align-self:flex-start">Ages ${RECRUIT_AGE} and over</span><h2>Pro</h2>
       <p>Playing level and trial availability, seen only by approved scouts.</p>
@@ -3456,24 +3489,10 @@ function pageRecruiting(){
 function pagePricing(){
   return `<section class="page-hero stack"><span class="eyebrow">Pricing</span>
     <h1>Simple plans for clubs and families</h1>
-    <p class="lead">Pay per team, or one price for the whole club. Every club plan includes Home Drills and Recruiting for its families. Players without a club can get Full Access.</p></section>
-  <div class="grid3 plans3">
-    <div class="card plan">
-      <span class="pill plain" style="align-self:flex-start">For clubs & coaches</span>
-      <h2>Club</h2>
-      <div><span class="price">${PRICES.club}</span> <span class="muted">${PRICES.clubPer} you register</span></div>
-      <p class="small muted">5 teams: $99.95 a month.</p>
-      <ul><li>Unlimited players and coaches</li>${CLUB_FEATURES}</ul>
-      <button type="button" class="btn" data-act="pickPortal" data-id="coach" style="align-self:flex-start;margin-top:auto">Start your club</button>
-    </div>
-    <div class="card plan featured">
-      <span class="pill warn" style="align-self:flex-start">Best for 10+ teams</span>
-      <h2>Club Unlimited</h2>
-      <div><span class="price">${PRICES.unlimited}</span> <span class="muted">${PRICES.unlimitedPer}</span></div>
-      <p class="small muted">Cheaper than per-team from 10 teams.</p>
-      <ul><li><b>Unlimited teams</b> and players</li>${CLUB_FEATURES}</ul>
-      <button type="button" class="btn primary" data-act="pickPortal" data-id="coach" style="align-self:flex-start;margin-top:auto">Start your club</button>
-    </div>
+    <p class="lead">Every club plan includes everything for players and coaches. Pay per team, or pick a plan for 20, 50 or unlimited teams. College coaches and pro scouts are free.</p></section>
+  <div class="plans4">${PLANS.map(P => clubPlanCard(P.k, false)).join("")}</div>
+  ${clubIncludes()}
+  <div class="grid2 plans3">
     <div class="card plan">
       <span class="pill good" style="align-self:flex-start">For players without a club</span>
       <h2>Full Access</h2>
@@ -3483,19 +3502,21 @@ function pagePricing(){
       <p class="small muted">Always free: latest review, ratings, profile and team chat.</p>
       <button type="button" class="btn" data-act="pickPortal" data-id="family" style="align-self:flex-start;margin-top:auto">Sign up as a family</button>
     </div>
-  </div>
-  <div class="card plan college-plan">
-    <div class="row between"><div class="stack" style="gap:4px"><span class="pill plain" style="align-self:flex-start">For college coaches</span>
-      <h2>College recruiting</h2><div><span class="price">Free</span> <span class="muted">with a college coach account</span></div></div>
-      <button type="button" class="btn" data-act="pickPortal" data-id="college" style="align-self:center">Create a free account</button></div>
-    <ul><li>Search players ${RECRUIT_AGE}+ by position, class and GPA</li><li>Private shortlist and notes</li><li>Message families directly</li><li>Needs a school .edu email</li></ul>
+    <div class="card plan college-plan">
+      <span class="pill plain" style="align-self:flex-start">For college coaches and pro scouts</span>
+      <h2>Recruiting accounts</h2>
+      <div><span class="price">Free</span> <span class="muted">approved by ${APP_NAME} staff</span></div>
+      <p class="small muted">We check every college coach and pro scout before they can see any player.</p>
+      <ul><li>Search players ${RECRUIT_AGE}+ who choose to be found</li><li>Private shortlist and notes</li><li>Message families directly</li><li>College coaches need a school .edu email</li></ul>
+      <div class="row" style="margin-top:auto"><button type="button" class="btn" data-act="pickPortal" data-id="college">College coach sign-up</button><button type="button" class="btn" data-act="pickPortal" data-id="pro">Pro scout sign-up</button></div>
+    </div>
   </div>
   <section class="card stack" aria-labelledby="h-pfaq"><h2 id="h-pfaq">Questions</h2>
-    ${[["Do college coaches or scouts pay?", "No. Both are free. Scouts are approved by hand first."],
-       ["How is the Club plan charged?", `${PRICES.club} a month per team, with unlimited players and coaches.`],
-       ["When is Club Unlimited worth it?", `From 10 teams. Ten teams per-team cost $199.90; Unlimited is ${PRICES.unlimited}.`],
+    ${[["Do college coaches or scouts pay?", `No. Both are free. ${APP_NAME} staff approve every college coach and pro scout before they can search for players.`],
+       ["How is the per-team plan charged?", `${money(PLANS[0].price)} a month for each team, with unlimited players and coaches.`],
+       ["Which club plan is cheapest for us?", "Per team up to 15 teams, then Club 20 up to 20 teams. From 21 to 35 teams, per team is cheaper again; Club 50 from 36 to 50 teams; Club Unlimited above 50."],
        ["Is Full Access free if my club uses NextPass?", "Yes. Every club plan includes Home Drills and Recruiting for every player on the club's teams."],
-       ["We have two children. Do we pay twice?", `${PRICES.family} a month for each player whose club doesn't include it.`],
+       ["We have two children. Do we pay twice?", `Not if they play for a club on ${APP_NAME}. Without a club, Full Access is ${PRICES.family} a month for each player.`],
        ["What happens if we change clubs?", "You keep the profile and every review. The old club loses access."],
        ["Something else?", `<a href="#contact">Contact us</a> and we'll get back to you.`]].map(([q, a]) => `<details class="faq-d"><summary>${q}</summary><p class="muted">${a}</p></details>`).join("")}
   </section>`;
@@ -3937,7 +3958,7 @@ FORMS.slSave = async (fd, form) => {
 FORMS.collegeStart = async fd => {
   const g = k => String(fd.get(k) || "").trim();
   const ok = await save(() => rpc("start_college", {my_name:g("name"), p_title:g("title"), p_school:g("school"), p_program:g("program"), p_division:g("division")}));
-  if(ok){ toast("Welcome! Start by searching for players."); S.view = "scout"; await loadMe(); }
+  if(ok){ toast("Thanks! We'll check your details. You can search for players once you're approved."); S.view = "scout"; await loadMe(); }
 };
 FORMS.collegeEdit = async fd => {
   const g = k => String(fd.get(k) || "").trim();
@@ -4507,7 +4528,7 @@ function authView(){
     ? `<span class="pill plain" style="align-self:flex-start">College coach</span>
        <h1>${mode==="signup"?"Find your next recruits":"Welcome back, coach"}</h1>
        <p style="max-width:52ch">Search Recruitment Profiles of players aged ${RECRUIT_AGE} and over by position, class, GPA, league and division interest. Keep a private shortlist and message families directly.</p>
-       <div class="card stack"><h2 class="h3">Free for college coaches</h2><p class="small">Search, shortlist and messaging are free once you create an account. Use your school email address ending in <b>.edu</b>; families see it when you message them.</p></div>`
+       <div class="card stack"><h2 class="h3">Free for college coaches</h2><p class="small">Search, shortlist and messaging are free once ${APP_NAME} staff approve your account. Use your school email address ending in <b>.edu</b>; families see it when you message them.</p></div>`
     : coach
     ? `<span class="pill warn" style="align-self:flex-start">Coach</span>
        <h1>${mode==="signup"?"Bring your club onto "+APP_NAME:"Welcome back, coach"}</h1>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-i18nv="13">
+<html lang="en" data-i18nv="14">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1171,6 +1171,16 @@ main > .home-hero.card{padding:56px 0 52px}
   .home-facts > *:nth-child(odd){border-left:0;padding-left:0}
 }
 @media (prefers-reduced-motion: reduce){ .btn{transition:none} }
+
+/* Pricing: four club plans in a row, then what every plan includes */
+.plans4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.plans4 .plan{height:100%}
+.plans4 .plan .price{font-size:2.6rem}
+@media (max-width:1100px){ .plans4{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:600px){ .plans4{grid-template-columns:1fr} }
+.plan-includes .two-col{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 24px}
+@media (max-width:700px){ .plan-includes .two-col{grid-template-columns:1fr} }
+.choice.off{opacity:.55}
 
 /* family Home Drills: the purchase option */
 .buy-home{border:2px solid var(--accent);scroll-margin-top:84px}
