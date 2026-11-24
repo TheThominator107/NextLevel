@@ -901,7 +901,19 @@ main > p.small, main > p.muted{background:var(--surface);border:1px solid var(--
 .tkey b.k-run{border-top-style:solid}
 .tkey b.k-shot{border-top:3px solid #d4a800}
 .sess-list{gap:12px}
-.tdgrid{align-items:start}
+.tdgrid{align-items:stretch}
+/* team drill cards: every card the same size (fixed diagram frame, reserved lines for each text block) */
+.tdgrid .tdrill{height:100%}
+.tdgrid .tdrill .top-al{flex-direction:column-reverse;align-items:flex-start;gap:6px}
+.tdgrid .tdrill .td-pills{justify-content:flex-start;min-height:1.7rem}
+.tdgrid .tdrill h3{min-height:2.6em}
+.tdgrid .tdiag-w{height:190px;flex:none}
+.tdgrid .tdiag{width:100%;height:100%;max-height:none}
+.tdgrid .dmeta{min-height:3.8em;align-content:flex-start}
+.tdgrid .dgoal{min-height:5.6em}
+.tdgrid .trains{min-height:3.1em}
+.tdgrid .tdrill > .drill-how,.tdgrid .tdrill > .td-lock{margin-top:auto}
+.tdgrid .tdrill > .td-lock,.tdgrid .tdrill > .drill-how:not([open]){min-height:64px}
 .lib-tools.stack{align-items:stretch}
 .td-pills{gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .lvl-pill{display:inline-flex;align-items:center;gap:5px}
