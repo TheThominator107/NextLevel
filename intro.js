@@ -66,7 +66,7 @@ function sceneHtml(s){
   case "session": {
     const blocks = [["Warm-up", "Rondo 4v1", 15, "#2f9e5b"], ["Possession", "Rondo 5v2", 15, "#1f5fc9"], ["Finishing", "2v1 to goal", 20, "#c4471c"], ["Game", "Dutch 4v4", 20, "#14213a"], ["Cool-down", "Reflection", 5, "#8a94a6"]];
     let sum = 0;
-    return `${kick("For teams", "Plan the next practice", "Pick from 61 team drills, or build a session around what your team's reviews say it needs.")}
+    return `${kick("For teams", "Plan the next practice", "Pick from 128 team drills, or build a session around what your team's reviews say it needs.")}
     <div class="iv-card iv-plan" data-in=".35" data-fx="left">
       <div class="iv-plan-h"><b>Tuesday practice</b><small>U12 Girls · 75 min</small></div>
       ${blocks.map(([p, n, m, c], i) => { sum += m; return `<div class="iv-blk" data-in="${(1 + i * .55).toFixed(2)}" data-fx="left"><i style="background:${c}"></i><span><b>${n}</b><small>${p}</small></span><em>${m} min</em></div>`; }).join("")}
