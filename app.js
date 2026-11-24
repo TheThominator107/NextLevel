@@ -2165,7 +2165,7 @@ let modalReturn = null;
 function openModal(html){
   const m = document.getElementById("modal"), wasOpen = !!m.innerHTML;
   if(!wasOpen) modalReturn = document.activeElement;
-  m.innerHTML = `<div class="backdrop" data-act="closeBg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">${html}<button type="button" class="m-close" data-act="close" aria-label="Close">×</button></div></div>`;
+  m.innerHTML = `<div class="backdrop${wasOpen ? "" : " enter"}" data-act="closeBg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">${html}<button type="button" class="m-close" data-act="close" aria-label="Close">×</button></div></div>`;
   const h = m.querySelector(".modal h2, .modal h3"); if(h){ h.id = "modal-title"; h.tabIndex = -1; }
   const app = document.getElementById("app"); if(app) app.inert = true;
   const f = m.querySelector(".modal input:not([type=hidden]):not([type=file]),.modal select,.modal textarea,.modal button.primary") || h;
@@ -2490,8 +2490,8 @@ const MODALS = {
 const ACTS = {
   go: (ds, el) => { S.view = ds.view; S.preview = false; S.menuOpen = false; S.navOpen = null; S.navQuiet = !!(el && el.closest && el.closest(".nav-dd"));
     if(ds.team){ S.teamFilter = ds.team; S.view = "roster"; }
-    if(ds.sec) S.rsec = ds.sec; if(S.publicPage){ S.publicPage = null; try { history.replaceState(null, "", location.pathname + location.search); } catch(_){} } window.scrollTo(0,0); render(); },
-  open: ds => { S.playerId = ds.id; S.view = "player"; S.preview = false; S.chartSkill = "overall"; S.ptab = "dev"; S.recSec = null; window.scrollTo(0,0); render(); },
+    if(ds.sec) S.rsec = ds.sec; if(S.publicPage){ S.publicPage = null; try { history.replaceState(null, "", location.pathname + location.search); } catch(_){} } withTransition(() => { window.scrollTo(0,0); render(); }); },
+  open: ds => { S.playerId = ds.id; S.view = "player"; S.preview = false; S.chartSkill = "overall"; S.ptab = "dev"; S.recSec = null; withTransition(() => { window.scrollTo(0,0); render(); }); },
   team: ds => { S.teamFilter = ds.id; render(); },
   cat: ds => { S.catFilter = ds.id; render(); },
   child: ds => { S.childId = ds.id; render(); },
@@ -3004,7 +3004,16 @@ document.addEventListener("error", ev => {
     t.replaceWith(d);
   }
 }, true);
-window.addEventListener("hashchange", readHash);
+/* page changes cross-fade (browsers with view transitions; none for reduced motion) */
+const withTransition = fn => {
+  const still = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(document.startViewTransition && !still && !document.hidden){ try { document.startViewTransition(fn); return; } catch(_){} }
+  fn();
+};
+window.addEventListener("hashchange", () => withTransition(readHash));
+/* the header tightens once the page has scrolled */
+const markScrolled = () => document.documentElement.classList.toggle("scrolled", window.scrollY > 8);
+window.addEventListener("scroll", markScrolled, {passive:true}); markScrolled();
 /* invite links: one click selects the whole link */
 document.addEventListener("focusin", ev => { if(ev.target.matches && ev.target.matches("input[data-select-all]")) setTimeout(() => ev.target.select(), 0); });
 document.addEventListener("change", async ev => {
