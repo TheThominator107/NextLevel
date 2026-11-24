@@ -667,6 +667,13 @@ function navGroup(gr){
     <div class="nav-dd-menu" id="dd-${gr.g}" ${open ? "" : "hidden"}>${gr.items.map(navBtn).join("")}</div>
   </div>`;
 }
+/* the sub-menu bar: the items of the menu group you're in, one click away */
+function subnavHtml(){
+  if(!S.me || S.publicPage || S.publicSlug || isScout() || (isStaff() && (!S.club || clubWaiting()))) return "";
+  const gr = navItems().find(it => it.g && it.items.some(navCurrent));
+  if(!gr) return "";
+  return `<nav class="subnav" aria-label="${esc(gr.l)}"><div class="subnav-in"><span class="subnav-l"${gr.brand ? ' translate="no"' : ""}>${esc(gr.l)}</span>${gr.items.map(navBtn).join("")}</div></nav>`;
+}
 function topbar(){
   let tabs = "";
   if(S.me && (S.club || !isStaff())){
@@ -679,7 +686,7 @@ function topbar(){
     <a href="#" class="brand" data-act="home" aria-label="${APP_NAME} home">${logoHtml()}</a>
 
     ${!S.uid && !S.noConfig ? publicNav() : (tabs || (S.uid ? `<nav class="tabs"><a href="#contact" class="signout-link">Contact</a>${langToggle("nav-lang")}<button class="signout-link" data-act="signOut">Sign out</button></nav>` : ""))}
-  </div></header>`;
+  </div></header>${subnavHtml()}`;
 }
 function render(){
   if(S.me && !S.loading) setTimeout(checkNotices, 0);
@@ -946,14 +953,13 @@ function rosterView(){
     <div class="stack" style="gap:4px"><h1>${team ? esc(team.name) : "All teams"}</h1>${team ? `<p class="muted small">${players.length} player${players.length===1?"":"s"}${team.ageGroup ? " · " + esc(team.ageGroup) : ""}</p>` : ""}</div>
     <div class="row"><button class="btn" data-act="modal" data-m="team">Add team</button></div>
   </div>
-  ${setupCard()}
-  ${requestsCard()}
-  ${inviteCard(team)}
-  <div class="grid3">
+  <div class="grid3 tiles-row">
     <div class="card tile"><div class="big num">${S.players.length}</div><div class="lbl">Players in ${esc(S.club.name)}</div></div>
     <div class="card tile"><div class="big num" style="color:${due?"var(--warn)":"var(--good)"}">${due}</div><div class="lbl">Need a review (none in 30 days)</div></div>
     <div class="card tile"><div class="big num">${target?Math.round(done/target*100)+"%":"–"}</div><div class="lbl">Home drills done this week${target?` (${done} of ${target})`:""}</div></div>
   </div>
+  ${requestsCard()}
+  <div class="pair-grid">${setupCard()}${inviteCard(team)}</div>
   <div class="card stack">
     ${players.length ? `<div class="tbl-wrap"><table>
       <thead><tr><th>Player</th><th>Team</th><th>Overall</th><th>Last review</th><th>Home drills this week</th><th>Status</th></tr></thead>
