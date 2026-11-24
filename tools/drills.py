@@ -1,12 +1,65 @@
-# NextPass solo drill library: the single source for the drill list in app.js and the
-# instructions in the database (supabase/migrations/017_solo_drills.sql).
-# Every drill is done alone with a ball, cones and a wall. Ages 10 to 18.
+# NextPass solo drill library (Home Drills): the single source for the drill list in app.js and the
+# instructions in the database (supabase/migrations/028_home_drills_60.sql).
+# 60 drills, each done alone with a ball, cones and a wall. Ages 10 to 18.
+# Every drill with a ball is done with both feet (strong foot, then weak foot); keeper drills work both sides.
 # Run: python3 tools/build_drills.py
 
 D = []
-def drill(id, title, cat, lvl, mins, eq, skills, tags, goal, setup, steps, reps, points, easier, harder, free=False, gk=False):
+def drill(id, title, cat, lvl, mins, eq, skills, tags, goal, setup, steps, reps, points, easier, harder, free=False, gk=False, improves=None):
     D.append(dict(id=id, title=title, cat=cat, lvl=lvl, mins=mins, eq=eq, skills=skills, tags=tags, goal=goal, setup=setup,
-                  steps=steps, reps=reps, points=points, easier=easier, harder=harder, free=free, gk=gk))
+                  steps=steps, reps=reps, points=points, easier=easier, harder=harder, free=free, gk=gk,
+                  improves=improves or IMPROVES[id]))
+
+# what each drill helps improve (shown on every drill card)
+IMPROVES = {
+  "b-toe-taps": ["Quick feet", "Touch on the ball", "Balance"],
+  "b-tick-tock": ["Close control", "Quick feet", "Weak foot"],
+  "b-sole-roll": ["Close control", "Moving sideways with the ball", "Balance"],
+  "b-inside-outside": ["Close control", "Change of direction", "Coordination"],
+  "b-v-pull": ["Changing direction", "Protecting the ball", "Close control"],
+  "b-cushion": ["First touch", "Softening the ball", "Coordination"],
+  "b-wall-control": ["First touch", "Using every surface", "Composure"],
+  "b-juggle": ["Juggling", "Touch on the ball", "Coordination"],
+  "b-first-touch": ["Receiving on the half-turn", "First touch", "Playing forward"],
+  "b-receive-turn": ["Turning", "First touch", "Playing forward"],
+  "b-scan": ["Scanning", "Awareness", "First touch"],
+  "b-aerial": ["Aerial control", "First touch", "Composure"],
+  "b-wall-pass": ["Passing accuracy", "First touch", "Weak foot"],
+  "b-pass-gate": ["Passing accuracy", "Pass weight", "Weak foot"],
+  "b-wall-one-touch": ["One-touch passing", "Quick feet", "Passing accuracy"],
+  "b-one-two": ["Combination play", "Passing accuracy", "Acceleration"],
+  "b-driven-pass": ["Long passing", "Striking technique", "Passing accuracy"],
+  "b-cone-weave": ["Close control", "Dribbling", "Coordination"],
+  "b-push-stop": ["Change of pace", "Close control", "Stopping the ball"],
+  "b-basic-turns": ["Turning", "Close control", "Changing direction"],
+  "b-four-turns": ["Turning", "Changing direction", "Weak foot"],
+  "b-skill-moves": ["1v1 moves", "Close control", "Confidence on the ball"],
+  "b-change-pace": ["Change of pace", "Changing direction", "1v1 moves"],
+  "b-combo-moves": ["1v1 moves", "Dribbling at speed", "Composure"],
+  "b-laces": ["Striking technique", "Shot power", "Shooting accuracy"],
+  "b-dribble-shoot": ["Shooting accuracy", "Setting the ball", "Striking technique"],
+  "b-wall-return-finish": ["Finishing", "First touch", "Shooting accuracy"],
+  "b-volley": ["Volleying", "Striking technique", "Composure"],
+  "b-curl": ["Curling the ball", "Shooting accuracy", "Striking technique"],
+  "b-first-time": ["Finishing first time", "Shooting accuracy", "Composure"],
+  "b-quick-feet": ["Quick feet", "Coordination", "Agility"],
+  "b-5-10-5": ["Agility", "Changing direction", "Acceleration"],
+  "b-accel-decel": ["Acceleration", "Deceleration", "Injury prevention"],
+  "b-arrowhead": ["Agility", "Dribbling at speed", "Changing direction"],
+  "b-jockey": ["Defensive footwork", "Balance", "Patience in 1v1s"],
+  "b-recovery": ["Recovery runs", "Acceleration", "Reading the game"],
+  "b-defend-approach": ["Closing down", "Tackling timing", "Defensive footwork"],
+  "b-balance": ["Balance", "Leg strength", "Injury prevention"],
+  "b-jump-land": ["Landing control", "Leg power", "Injury prevention"],
+  "b-dribble-intervals": ["Stamina", "Dribbling at speed", "Recovery between sprints"],
+  "g-w-catch": ["Handling", "Catching technique", "Getting behind the ball"],
+  "g-shuffle": ["Footwork in goal", "Set position", "Positioning"],
+  "g-collapse": ["Diving", "Handling", "Getting up quickly"],
+  "g-reaction": ["Reaction speed", "Handling", "Set position"],
+  "g-low-dive": ["Diving", "Handling", "Getting up quickly"],
+  "g-angles": ["Positioning", "Narrowing the angle", "Decision making"],
+  "g-goal-kicks": ["Distribution", "Kicking range", "Weak foot"],
+}
 
 # =========================== BEGINNER ===========================
 drill("b-toe-taps", "Toe taps", "Ball mastery", "Beginner", 6, "Ball", ["first_touch", "handling_speed"], ["Confidence on the ball"],
@@ -58,29 +111,7 @@ drill("b-inside-outside", "Inside-outside touches", "Ball mastery", "Beginner", 
   "Stop the ball with the sole after every two touches.",
   "Walk, then jog forward while doing it, eyes up every second touch.")
 
-drill("b-pull-push", "Pull-back and push", "Ball mastery", "Beginner", 6, "Ball", ["first_touch", "dribbling"], ["Confidence on the ball"],
-  "Drag the ball back with the sole and push it forward again: the start of most turns.",
-  "A ball and 3 yards of flat space.",
-  ["Put your right sole on top of the ball, slightly in front of you.",
-   "Pull it back toward you so it rolls under your foot.",
-   "As it comes back, push it forward again with your laces or the inside of the same foot.",
-   "Do 10 on one foot, then 10 on the other."],
-  "4 rounds of 10 each foot, short rest between rounds.",
-  ["Pull with the front of the sole, not the heel.", "Step back slightly with your standing foot as the ball comes back.", "Push the ball just one step ahead."],
-  "Pull back, stop the ball, then push.",
-  "Pull back with one foot and push forward with the other foot.")
 
-drill("b-juggle-basics", "Juggling: kick, bounce, catch", "Ball mastery", "Beginner", 8, "Ball", ["first_touch"], ["First touch"],
-  "Learn to strike the ball softly and straight up: the first step to juggling.",
-  "A ball and some flat space. A wall nearby helps you collect the ball.",
-  ["Drop the ball from your hands onto your laces and kick it gently straight up to about waist height.",
-   "Let it bounce once, then catch it.",
-   "Next, two kicks before the bounce, then two kicks with no bounce.",
-   "Use both feet equally."],
-  "10 minutes. Write down your best score of kicks in a row.",
-  ["Toes pointed slightly up so the ball goes straight up.", "Keep your eyes on the ball.", "Kick from the knee, not the hip: a small, soft swing."],
-  "Let it bounce between every kick.",
-  "Alternate feet: right, left, right, with no bounce. Add a thigh touch.")
 
 drill("b-cushion", "Throw, cushion and control", "First touch", "Beginner", 8, "Ball", ["first_touch"], ["First touch", "Composure"],
   "Take the pace off a dropping ball so it stays within a step of you.",
@@ -155,17 +186,6 @@ drill("b-push-stop", "Push and stop", "Dribbling", "Beginner", 8, "Ball, 2 cones
   "Walk, stop, walk.",
   "Stop and turn back the other way instead of going on.")
 
-drill("b-box-dribble", "Dribble the box", "Dribbling", "Beginner", 10, "Ball, 4 cones", ["dribbling", "handling_speed"], ["Confidence on the ball", "Weak foot"],
-  "Keep the ball close while turning corners with both feet.",
-  "Four cones in a 6 by 6 yard square.",
-  ["Dribble round the outside of the square, right foot only.",
-   "At each cone, turn sharply with the outside of the foot.",
-   "Next lap go the other way with the left foot.",
-   "Then dribble an X: corner to corner through the middle."],
-  "8 laps, changing direction each lap. 30 seconds rest every 2.",
-  ["Small touches into each corner.", "Lean into the turn and push out of it.", "Look up at the next cone before you reach the corner."],
-  "Make the square bigger and use any foot.",
-  "Add a skill move (step-over or drag-back) at every cone.")
 
 drill("b-basic-turns", "Hook turns", "Dribbling", "Beginner", 10, "Ball, 2 cones", ["dribbling", "first_touch"], ["Confidence on the ball"],
   "Turn away from trouble with the inside and outside hook.",
@@ -241,18 +261,6 @@ drill("g-shuffle", "Shuffle and set", "Goalkeeping", "Beginner", 8, "Ball, wall,
   "Throw the ball first, then shuffle and set before you catch it.",
   gk=True)
 
-drill("g-roll-out", "Roll-outs to a target", "Goalkeeping", "Beginner", 8, "Ball, 2 cones", ["gk_distribution"], ["Passing range"],
-  "Quick, accurate bowling distribution to start attacks.",
-  "A 2-yard cone gate 15 yards away.",
-  ["Hold the ball in one hand, step forward with the opposite foot.",
-   "Bend low and roll the ball along the ground through the gate.",
-   "Fetch the ball and go again.",
-   "Change hands every 5 rolls."],
-  "20 rolls. Score a point for each one through the gate.",
-  ["Release the ball close to the ground.", "No bounce: smooth roll.", "Follow through toward the target."],
-  "Make the gate wider and move it closer.",
-  "Move the gate further away and to the side, or make it narrower.",
-  gk=True)
 
 # =========================== INTERMEDIATE ===========================
 drill("b-v-pull", "V pull-backs", "Ball mastery", "Intermediate", 8, "Ball", ["first_touch", "dribbling"], ["Confidence on the ball"],
@@ -279,17 +287,6 @@ drill("b-juggle", "Juggling ladder", "First touch", "Intermediate", 10, "Ball", 
   "Let it bounce once between touches.",
   "Add head touches, or juggle while walking forward.")
 
-drill("b-weak-foot", "Weak-foot only", "Passing", "Intermediate", 12, "Ball, wall, 4 cones", ["passing", "dribbling", "first_touch"], ["Weak foot"],
-  "Make your weaker foot a real option.",
-  "Stand 5 yards from a wall with four cones in a line behind you, 2 yards apart.",
-  ["Pass 10 against the wall with your weaker foot only.",
-   "Control and dribble through the cones and back, weaker foot only.",
-   "Finish with 5 strikes at the wall with the weaker foot.",
-   "Every touch uses the weaker foot."],
-  "3 rounds.",
-  ["Same technique as your strong foot: plant foot, locked ankle.", "Go slower to be accurate.", "Every touch counts."],
-  "Pass from 3 yards and skip the dribble.",
-  "Do the whole round one-touch.")
 
 drill("b-first-touch", "Open-body first touch", "First touch", "Intermediate", 10, "Ball, wall, 2 cones", ["first_touch", "positional_awareness", "decision_making"], ["First touch", "Composure", "Scanning"],
   "Receive side-on and take your first touch into space to play forward.",
@@ -388,17 +385,6 @@ drill("b-change-pace", "Change of pace and direction", "Dribbling", "Intermediat
   "Walk the slow part.",
   "Use two changes of direction before the sprint.")
 
-drill("b-speed-dribble", "Speed dribble and stop", "Dribbling", "Intermediate", 10, "Ball, 2 cones", ["dribbling", "separation_speed"], ["Speed"],
-  "Run fast with the ball, then stop under control.",
-  "Two cones 25 yards apart.",
-  ["Push the ball ahead with your laces every 2 to 3 steps and sprint.",
-   "Stop the ball dead on the far line.",
-   "Turn and race back.",
-   "Time your runs if you can."],
-  "6 runs, 45 seconds rest.",
-  ["Push with the laces, toe pointed down.", "Bigger touches at speed.", "Stop the ball with the sole."],
-  "Jog with the ball.",
-  "Use only your weaker foot, or race against your best time.")
 
 drill("b-dribble-shoot", "Dribble, set and shoot", "Finishing", "Intermediate", 12, "Ball, wall, 5 cones", ["shooting", "dribbling"], ["Finishing"],
   "Combine dribbling and finishing at game speed.",
@@ -486,18 +472,6 @@ drill("g-reaction", "Reaction saves off the wall", "Goalkeeping", "Intermediate"
   "Face away from the wall and turn when the ball hits it.",
   gk=True)
 
-drill("g-distribution", "Distribution to targets", "Goalkeeping", "Intermediate", 15, "Ball, 4 cones", ["gk_distribution"], ["Passing range"],
-  "Accurate throws to start attacks.",
-  "Make three 3-yard boxes with cones at 10, 20 and 30 yards.",
-  ["Roll the ball to the near box.",
-   "Sidearm throw to the middle box.",
-   "Overarm throw to the far box.",
-   "Fetch the balls and repeat."],
-  "5 to each box. Score a point for each one landing in the box.",
-  ["Step toward the target.", "Follow through.", "Choose the right throw for the distance."],
-  "Bring the boxes closer.",
-  "Move the boxes wider.",
-  gk=True)
 
 # =========================== ADVANCED ===========================
 drill("b-combo-moves", "Combination moves at speed", "Dribbling", "Advanced", 12, "Ball, 5 cones", ["dribbling", "separation_speed", "handling_speed"], ["1v1 attacking"],
@@ -536,17 +510,6 @@ drill("b-volley", "Volleys and half-volleys", "Finishing", "Advanced", 10, "Ball
   "Let it bounce twice and strike it as it rolls.",
   "Volley the rebound off the wall without catching the ball.")
 
-drill("b-switch-play", "Receive, scan and switch", "Passing", "Advanced", 12, "Ball, wall, 4 cones", ["passing", "positional_awareness", "decision_making"], ["Scanning", "Passing range"],
-  "Change the point of attack quickly, like a central midfielder.",
-  "Stand 8 yards from a wall. Make a 2-yard cone gate 15 yards to your left and another 15 yards to your right.",
-  ["Pass firmly against the wall.",
-   "While the ball travels, check both shoulders.",
-   "Open your body and take your first touch toward one gate.",
-   "Hit a long, driven pass through that gate. Fetch the ball and go the other way."],
-  "10 switches to each side.",
-  ["Scan before the ball arrives, not after.", "First touch out of your feet sets up the long pass.", "Strike through the middle of the ball so it stays low and fast."],
-  "Move the gates to 10 yards and take two touches before the pass.",
-  "Play the switch first time off the wall.")
 
 drill("b-driven-pass", "Driven passes at a wall target", "Passing", "Advanced", 12, "Ball, wall, 2 cones", ["passing"], ["Passing range"],
   "Low, fast passes over distance that a teammate can control.",
@@ -560,17 +523,6 @@ drill("b-driven-pass", "Driven passes at a wall target", "Passing", "Advanced", 
   "Move to 12 yards and use your stronger foot.",
   "Play it from a rolling ball after a touch out of your feet.")
 
-drill("b-long-pass", "Long passes into a box", "Passing", "Advanced", 15, "Ball, 4 cones", ["passing"], ["Passing range"],
-  "Hit long, lofted passes that land where you want them.",
-  "Make a 5 by 5 yard box of cones 30 yards away.",
-  ["Approach the ball from a slight angle.",
-   "Lean back a little and plant your foot beside and slightly behind the ball.",
-   "Strike the bottom half of the ball with your laces.",
-   "Land it in the box. Fetch the balls and hit from the other side."],
-  "10 with each foot. Score a point for each one landing in the box.",
-  ["Lock the ankle.", "Strike under the middle of the ball, not the very bottom.", "Follow through high toward the target."],
-  "Move to 20 yards and make the box bigger.",
-  "Play a long pass straight after a touch out of your feet, or make the box 3 by 3 yards.")
 
 drill("b-curl", "Curl round the wall", "Finishing", "Advanced", 15, "Ball, wall, 5 cones", ["shooting"], ["Finishing"],
   "Bend the ball round a defensive wall into the corner.",
@@ -584,17 +536,6 @@ drill("b-curl", "Curl round the wall", "Finishing", "Advanced", 15, "Ball, wall,
   "Move closer and take away the cone wall.",
   "Make the target 2 yards wide, or curl it in from a wide angle.")
 
-drill("b-chip", "Chips into a box", "Finishing", "Advanced", 12, "Ball, 7 cones", ["passing", "shooting"], ["Finishing", "Passing range"],
-  "Lift the ball over a defender or keeper and land it softly.",
-  "Put a line of three cones 8 yards away as the 'defender'. Make a 4-yard box of cones 6 yards behind them.",
-  ["Dribble toward the cone line.",
-   "Stab underneath the ball with your toes or laces.",
-   "Chip it over the cones.",
-   "Land it in the box without a big bounce."],
-  "15 chips, then 15 with the other foot.",
-  ["Lean back slightly.", "Short stab, little follow-through.", "Get your foot right under the ball."],
-  "Chip a stationary ball.",
-  "Chip a rolling ball after a touch, or move the box closer to the cones.")
 
 drill("b-first-time", "First-time finishing", "Finishing", "Advanced", 12, "Ball, wall, 4 cones", ["shooting", "first_touch"], ["Finishing", "Composure"],
   "Finish without a controlling touch: the fastest way to score.",
@@ -608,29 +549,7 @@ drill("b-first-time", "First-time finishing", "Finishing", "Advanced", 12, "Ball
   "Take one touch to set it.",
   "Use only your weaker foot.")
 
-drill("b-tight-space", "Receive, protect and spin", "First touch", "Advanced", 12, "Ball, wall, 1 cone", ["first_touch", "physicality", "dribbling"], ["Shielding", "Composure"],
-  "Receive with your back to pressure, protect the ball and turn away.",
-  "Stand 6 yards from a wall. A cone 1 yard behind you is the 'defender'.",
-  ["Pass to the wall, then check away a few steps and come back.",
-   "Receive side-on with your body between the cone and the ball.",
-   "Keep an arm out to feel the defender.",
-   "Spin off the cone with the inside or outside of your foot and accelerate away."],
-  "3 rounds of 8, spinning left and right.",
-  ["Low centre of gravity, knees bent.", "Ball on your far foot, away from the cone.", "Spin on the first or second touch."],
-  "Control the ball and stop it before you turn.",
-  "Spin with the outside of the foot in one touch.")
 
-drill("b-weak-finish", "Weak-foot finishing", "Finishing", "Advanced", 12, "Ball, wall, 4 cones", ["shooting"], ["Weak foot", "Finishing"],
-  "Score with your weaker foot so defenders can't force you one way.",
-  "Make a 3-yard target on the wall with two cones. Two cones as start points, 15 yards out, left and right.",
-  ["Dribble in from the cone.",
-   "Set the ball onto your weaker foot with one touch.",
-   "Strike low at the target with your weaker foot.",
-   "Alternate start cones."],
-  "3 rounds of 8.",
-  ["Plant foot beside the ball, pointing at the target.", "Locked ankle, strike through the middle.", "Head still, eyes on the ball."],
-  "Strike a stationary ball from 10 yards.",
-  "Finish first time off a wall pass with the weaker foot.")
 
 drill("b-accel-decel", "Acceleration and deceleration", "Speed & agility", "Advanced", 12, "4 cones", ["separation_speed", "physicality"], ["Speed"],
   "Sprint, brake under control and go again: how you get away from defenders.",
@@ -692,17 +611,6 @@ drill("b-dribble-intervals", "Dribble intervals", "Fitness", "Advanced", 15, "Ba
   "Fewer reps, longer rest.",
   "Shorter rest, or add a turn halfway.")
 
-drill("b-game-sim", "Game-speed wall circuit", "Finishing", "Advanced", 15, "Ball, wall, 6 cones", ["passing", "first_touch", "dribbling", "shooting", "decision_making"], ["Composure", "Finishing"],
-  "Pass, receive, turn, dribble and finish in one sequence at match speed.",
-  "Make a 3-yard target on the wall with two cones. Put four cones in a line 10 to 20 yards from the wall, 3 yards apart.",
-  ["Pass against the wall from the end of the cone line.",
-   "Receive on the half-turn and turn away from the wall.",
-   "Dribble through the four cones.",
-   "Turn and finish at the target within two touches."],
-  "6 rounds, 60 seconds rest.",
-  ["Every touch at game speed.", "Scan before you receive.", "Quality over speed when you're tired."],
-  "Take extra touches and walk the dribble.",
-  "Time each round and try to beat your best.")
 
 drill("g-low-dive", "Low diving saves off the wall", "Goalkeeping", "Advanced", 12, "Ball, wall", ["gk_diving", "gk_shot_stopping"], ["Composure"],
   "Dive to save low shots near the post.",
@@ -742,3 +650,185 @@ drill("g-goal-kicks", "Goal kicks and drop kicks", "Goalkeeping", "Advanced", 15
   "Move the boxes closer.",
   "Move the boxes further and wider.",
   gk=True)
+
+# =========================== ADDED NOV 2026 ===========================
+drill("b-box-escape", "Box escape", "Ball mastery", "Intermediate", 8, "Ball, 4 cones", ["first_touch", "dribbling", "handling_speed"], ["Confidence on the ball", "Shielding"],
+  "Keep the ball alive in a tiny space, then explode out of it.",
+  "Make a 2 × 2 yard box with 4 cones on flat ground.",
+  ["Start in the middle of the box with the ball at your feet.",
+   "For 20 seconds, keep the ball moving inside the box using only sole rolls and outside-of-the-foot touches.",
+   "On your own count of three, drive out of a side of the box at full speed for 5 yards.",
+   "Stop the ball dead with your sole, turn and dribble back into the box.",
+   "Escape through a different side each time."],
+  "6 rounds of 20 seconds in the box plus the escape, 30 seconds rest.",
+  ["Low hips and short steps: the ball stays within one step.", "Eyes up between touches, as if a defender is close.", "The first touch out of the box is the fastest touch of the drill."],
+  "Make the box 3 × 3 yards and use any surface.",
+  "Make the box 1.5 × 1.5 yards and escape with a fake to one side first.",
+  improves=["Close control", "Protecting the ball", "Acceleration"])
+
+drill("b-juggle-sequence", "Juggling surfaces sequence", "Ball mastery", "Advanced", 10, "Ball", ["first_touch", "handling_speed"], ["Confidence on the ball", "First touch"],
+  "Control the ball in the air with every surface in a set order.",
+  "A ball and 4 yards of flat space, away from windows.",
+  ["Start juggling with your feet.",
+   "Follow this order: right foot, left foot, right thigh, left thigh, head.",
+   "Then repeat the order from the start without letting the ball drop.",
+   "If the ball drops, start the sequence again from the first touch.",
+   "Count full sequences, not single touches."],
+  "4 × 2 minutes, 1 minute rest. Write down your best number of full sequences.",
+  ["Small, soft contacts keep the ball below head height.", "Lock the ankle with the toes pointing slightly up.", "Stay on your toes so you can move under the ball."],
+  "Let the ball bounce once between each touch.",
+  "Add a chest touch and an outside-of-the-foot touch to the order.",
+  improves=["Juggling", "Touch on the ball", "Coordination"])
+
+drill("b-gate-touch", "Directional first touch through gates", "First touch", "Advanced", 10, "Ball, wall, 6 cones", ["first_touch", "decision_making", "positional_awareness"], ["First touch", "Scanning"],
+  "Take the first touch into the space you choose, not wherever the ball goes.",
+  "Stand 6 yards from a wall. Set 3 cone gates, each 2 yards wide, 4 yards behind you: left, centre and right.",
+  ["Pass firmly into the wall.",
+   "As the ball comes back, say a gate out loud: left, centre or right.",
+   "Take your first touch through that gate.",
+   "Dribble back to the start and pass again.",
+   "Mix up the gates so you can't plan ahead."],
+  "4 sets of 12 touches, 45 seconds rest. Score a point for each touch that goes through the right gate.",
+  ["Open your hips toward the gate before the ball arrives.", "The first touch sets the direction; the second step shouldn't have to fix it.", "Glance over your shoulder before you call the gate."],
+  "Call the gate before you pass and use any surface.",
+  "Call the gate only when the ball is half-way back, and use one touch through the gate.",
+  improves=["First touch", "Scanning", "Decision making"])
+
+drill("b-wall-targets", "Wall targets on a clock", "Passing", "Intermediate", 10, "Ball, wall, 2 cones", ["passing"], ["Passing range", "Composure"],
+  "Hit a small target with the right pace and the right foot, again and again.",
+  "Mark three 1-yard squares on a wall with tape or chalk: low left, low right and high in the centre. Stand 10 yards away between 2 cones.",
+  ["Call a target before each pass.",
+   "Receive the rebound and pass at that target within two touches.",
+   "Use the inside of the foot for the low targets and a firm, slightly lofted pass for the high one.",
+   "Keep score: 1 point for each hit.",
+   "Start the next pass from between the cones."],
+  "30 passes per set, 3 sets. Try to beat your score each set.",
+  ["Point your standing foot at the target.", "Lock the ankle and strike through the middle of the ball.", "Follow through toward the target."],
+  "Use bigger targets and stand 7 yards away.",
+  "One-touch passes only, from 14 yards.",
+  improves=["Passing accuracy", "Pass weight", "Weak foot"])
+
+drill("b-bend-pass", "Bent pass around a cone", "Passing", "Advanced", 10, "Ball, wall, 2 cones", ["passing", "decision_making"], ["Passing range"],
+  "Curve a pass around a defender onto a target.",
+  "Mark a target on a wall. Stand 12 yards away and put a cone 4 yards in front of you, in line with the target, as the defender.",
+  ["Approach the ball at a slight angle.",
+   "Strike the outside half of the ball with the inside of your foot so it curves around the cone.",
+   "Aim for the ball to land on or near the target.",
+   "Do the next set with the outside of the foot, curving the other way.",
+   "Move the cone to the other side after each set."],
+  "3 sets of 10 with the inside of the foot, 2 sets of 10 with the outside.",
+  ["Strike across the ball, not through it.", "Follow through across your body.", "Start the curve outside the cone, not at it."],
+  "Move the cone to the side so the pass only needs a little curve.",
+  "Receive a wall pass first and bend it with your second touch.",
+  improves=["Curling the ball", "Passing accuracy", "Passing range"])
+
+drill("b-shadow-defender", "Shadow defender", "Dribbling", "Advanced", 10, "Ball, 5 cones", ["dribbling", "separation_speed", "decision_making"], ["1v1 attacking", "Speed"],
+  "Beat a defender at speed with a move, then accelerate away.",
+  "Put one cone in the middle as the defender. Put 2 cones as a start gate 10 yards in front of it and 2 cones as a finish gate 5 yards behind it.",
+  ["Dribble from the start gate toward the defender at match speed.",
+   "One yard before the defender, do a move: scissors, Cruyff turn, body feint or La Croqueta.",
+   "Explode past the defender into space.",
+   "Sprint through the finish gate in 3 touches or fewer.",
+   "Walk back and use a different move each rep."],
+  "4 sets of 6 reps, 1 minute rest between sets.",
+  ["Do the move one yard from the defender, never three.", "Change speed after the move: slow in, fast out.", "Get your body between the defender and the ball after the move."],
+  "Do the move at walking pace and add speed only after the move.",
+  "Move the defender cone after every rep so the angle changes.",
+  improves=["1v1 moves", "Change of pace", "Dribbling at speed"])
+
+drill("b-corner-targets", "Corner-target finishing", "Finishing", "Intermediate", 10, "Ball, wall, 4 cones", ["shooting"], ["Finishing", "Composure"],
+  "Place shots into the corners instead of hitting them at the middle.",
+  "On a wall, mark a goal 6 yards wide with 2 cones and a target in each corner (tape, chalk or a bag). Stand 16 yards away.",
+  ["Call a corner before you shoot.",
+   "Take a touch out of your feet to set the ball.",
+   "Shoot low with your laces for the low corners.",
+   "Shoot with the inside of the foot for the high corners.",
+   "Score only clean hits on the corner you called."],
+  "20 shots per set, 2 sets. Count your hits.",
+  ["Pick the corner before your last touch, then look at the ball.", "Land on your shooting foot after the strike.", "Keep your head and chest over the ball to keep it low."],
+  "Make the corner targets bigger and shoot from 12 yards.",
+  "Dribble in from 25 yards and shoot without breaking stride.",
+  improves=["Shooting accuracy", "Striking technique", "Composure"])
+
+drill("b-cutback", "Cutback finish", "Finishing", "Advanced", 10, "Ball, wall, 3 cones", ["shooting", "dribbling", "first_touch"], ["Finishing", "Speed"],
+  "Drive to the byline, cut the ball back and finish in one smooth move.",
+  "Treat the wall as the goal line. Put a cone 2 yards from the wall and 8 yards to the side as the byline. Put a second cone 12 yards out as the penalty spot, and a start cone 20 yards out wide.",
+  ["Dribble hard from the start cone toward the byline cone.",
+   "Stop the ball with your sole and drag it back across your body.",
+   "Take one touch toward the penalty-spot cone.",
+   "Finish at a target on the wall with your second touch.",
+   "Run it from both sides."],
+  "3 sets of 8 reps, alternating sides, 1 minute rest.",
+  ["Arrive at the byline at speed so a defender would have to commit.", "Open your body to the goal as you drag the ball back.", "Keep the finish low and across the target."],
+  "Pass the ball back with the inside of the foot instead of dragging it.",
+  "Finish one-touch from your own cutback by rolling the ball into your path.",
+  improves=["Finishing", "Dribbling at speed", "Shooting accuracy"])
+
+drill("b-curved-runs", "Curved runs", "Speed & agility", "Intermediate", 8, "Ball, 5 cones", ["separation_speed", "positional_awareness"], ["Speed"],
+  "Run a curved line at full speed, the way strikers run in behind a defender.",
+  "Set 5 cones in an arc about 15 yards long. Put a ball 5 yards past the last cone.",
+  ["Start beside the first cone.",
+   "Sprint around the outside of the arc, leaning into the curve.",
+   "Come out of the last cone running straight.",
+   "Collect the ball at full speed and dribble 5 yards.",
+   "Walk back and run the arc the other way."],
+  "6 reps each direction, 45 seconds rest between reps.",
+  ["Drop your inside shoulder in the bend.", "Short, quick steps in the curve, then longer strides out of it.", "Look up as you come out of the curve, as if checking for the pass."],
+  "Make the arc wider and run at three-quarter speed.",
+  "Turn your head toward an imaginary passer every two steps during the curve.",
+  improves=["Acceleration", "Agility", "Timing your runs"])
+
+drill("b-intercept", "Intercept the wall pass", "Defending", "Intermediate", 10, "Ball, wall, 2 cones", ["defending", "decision_making", "positional_awareness"], ["1v1 defending", "Positioning"],
+  "Read the angle of a pass and step in front to win the ball.",
+  "Put 2 cones 4 yards apart, 6 yards from the wall: one is where you pass from, the other is where the \"attacker\" receives. Stand 3 yards to the side of the line between the wall and the attacker cone.",
+  ["Pass the ball at an angle into the wall so it rebounds toward the attacker cone.",
+   "As soon as the ball leaves the wall, step across to intercept it before it reaches the cone.",
+   "Take the ball forward with your first touch, as if starting an attack.",
+   "Reset and change the angle of the pass."],
+  "4 sets of 10, 45 seconds rest.",
+  ["Read the angle early from how the ball leaves the wall.", "Step in front of the attacker's line, not into its back.", "Intercept on the move and take the ball away with your first touch."],
+  "Stand closer to the line and pass more softly.",
+  "Start facing away from the wall and turn when you hear the ball hit it.",
+  improves=["Reading the game", "Defensive footwork", "Winning the ball"])
+
+drill("b-clearance", "Clearances: height, distance, width", "Defending", "Intermediate", 8, "Ball, 2 cones", ["defending", "physicality"], ["Composure"],
+  "Clear the ball out of danger high, far and wide.",
+  "Find a big open space. Put 2 cones 25 yards away and 15 yards to the side as the target zone.",
+  ["Throw the ball high in front of you.",
+   "Clear it on the volley before it bounces, aiming for the side target zone.",
+   "Next rep, let it bounce once and clear it on the half-volley.",
+   "Then throw it higher and clear it with your head.",
+   "Mix the three clearances."],
+  "3 sets of 10 clearances, 1 minute rest.",
+  ["Height, distance, width: get the ball out of danger, not just away.", "Lean back slightly to lift the ball.", "For headers, attack the ball with your forehead and eyes open."],
+  "Let the ball bounce before every clearance.",
+  "Start lying on your back; get up and clear before the second bounce.",
+  improves=["Clearing the ball", "Heading", "Striking technique"])
+
+drill("b-single-leg", "Single-leg strength with the ball", "Fitness", "Intermediate", 10, "Ball", ["physicality", "first_touch"], ["Work rate"],
+  "Build strong, stable legs that protect knees and ankles.",
+  "A ball and 2 yards of flat space.",
+  ["Stand on one leg and hold the ball at your chest.",
+   "Do a slow single-leg squat: bend the standing knee and sit back, then stand up.",
+   "Then do a single-leg Romanian deadlift: hinge forward, lower the ball toward the ground, then stand up.",
+   "Put the ball down and do 30 seconds of sole taps with the other foot while balancing.",
+   "Switch legs and repeat."],
+  "3 rounds on each leg: 8 squats, 8 deadlifts, 30 seconds of taps. 1 minute rest between rounds.",
+  ["The knee tracks over the second toe; it never collapses inward.", "Move slowly: 3 seconds down, 1 second up.", "Keep your hips level and your back straight."],
+  "Touch a wall with one hand for balance.",
+  "Close your eyes for the last 3 reps of each exercise.",
+  improves=["Leg strength", "Balance", "Injury prevention"])
+
+drill("g-high-ball", "High-ball claim", "Goalkeeping", "Advanced", 8, "Ball", ["gk_ball_handling", "gk_decision_making"], ["Positioning"],
+  "Attack a high ball and catch it at the highest point.",
+  "A ball and 5 yards of open space.",
+  ["Throw the ball high and slightly in front of you.",
+   "Call \"Keeper!\" loudly.",
+   "Take one or two steps, jump off one leg and drive the other knee up.",
+   "Catch the ball in front of your head with your hands in a W.",
+   "Bring it down into your chest as you land."],
+  "3 sets of 8 catches, 45 seconds rest. Alternate the jumping leg each rep.",
+  ["Catch at the highest point, in front of your head.", "The raised knee protects you in a crowd.", "A loud, early call tells defenders to move away."],
+  "Jump off two feet and throw the ball lower.",
+  "Turn 180 degrees after the throw before you attack the ball.",
+  gk=True, improves=["Catching high balls", "Handling", "Decision making"])

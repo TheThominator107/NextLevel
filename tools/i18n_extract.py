@@ -47,12 +47,12 @@ def main():
     global CSSWORDS
     CSSWORDS = css_words()
     seen = {}
-    for f in ["app.js", "intro.js", "teamdrills.js", "anim.js", "index.html"]:
+    for f in ["app.js", "intro.js", "teamdrills.js", "index.html"]:
         src = open(os.path.join(ROOT, f)).read()
         for q in frags_from(src, f.endswith(".html")):
             seen.setdefault(q, f)
-    # solo drill instructions live in the database (update 017)
-    sql = open(os.path.join(ROOT, "supabase", "migrations", "017_solo_drills.sql")).read()
+    # Home Drills instructions live in the database (update 028)
+    sql = open(os.path.join(ROOT, "supabase", "migrations", "028_home_drills_60.sql")).read()
     for m in re.finditer(r"\$s\$(.*?)\$s\$", sql, re.S):
         t = re.sub(r"\s+", " ", m.group(1)).strip()
         if " " in t and keep(t): seen.setdefault(t, "zz-drill_steps")

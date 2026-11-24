@@ -1,10 +1,8 @@
 /* NextPass introductory video for the home page: a short animated tour for coaches, players and parents.
    Everything is drawn from the time t, so it can be paused, scrubbed by chapter and exported frame by frame. */
-import { animSvg, animScan, animSeek, animDur } from "./anim.js";
 const tr = t => (window.npT ? window.npT(t) : t); /* Spanish when that language is on (i18n.js) */
 
 const W = 640, H = 360;
-const DRILL = "b-wall-pass";
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 const SCENES = [
@@ -13,7 +11,7 @@ const SCENES = [
   {id:"review",  chap:"Coaches",    dur:6.8, cap:"Coaches review each player and say what to work on.",
     text:"Coaches review each player on 19 field skills or 7 goalkeeper skills, mark a strength and what to work on, and add a note."},
   {id:"home",    chap:"Players",    dur:6.8, cap:"Players train at home with drills picked for them.",
-    text:"Players get home drills picked from their latest review. Each drill has an animation and simple steps, and they tick them off as they go."},
+    text:"Players get home drills picked from their latest review. Each drill shows what it helps improve and has simple steps done with both feet, and they tick them off as they go."},
   {id:"parents", chap:"Parents",    dur:6.4, cap:"Parents follow progress and message the coach.",
     text:"Parents see every review, follow their child's progress over the season, and message the coach in one place."},
   {id:"session", chap:"Teams",      dur:6.4, cap:"Coaches plan team practices from the drill library.",
@@ -48,10 +46,10 @@ function sceneHtml(s){
       <div class="iv-tags"><span class="good" data-in="3.2" data-fx="pop">Strength: Dribbling</span><span class="work" data-in="3.45" data-fx="pop">Work on: First touch</span></div>
       <p class="iv-note"><span data-type="3.9" data-text="Great energy this week. Keep that first touch out of your feet."></span><i class="iv-caret" data-blink="3.9"></i></p>
     </div>`; }
-  case "home": return `${kick("For players", "Train at home", "Drills are picked from the latest review. Each one has an animation and simple steps.")}
+  case "home": return `${kick("For players", "Train at home", "Drills are picked from the latest review, with simple steps done with both feet.")}
     <div class="iv-phone" data-in=".3" data-fx="up">
       <div class="iv-ph-top"><b>This week</b><small>3 drills</small></div>
-      <div class="iv-ph-drill">${animSvg(DRILL, "Wall passes")}</div>
+      <div class="iv-ph-card" data-in=".8" data-fx="up"><b>Two-touch wall passes</b><small>Helps improve: Passing accuracy · First touch · Weak foot</small><span class="iv-ph-feet">Both feet</span></div>
       ${[["Wall passes", "10 min", 2.6], ["Toe taps", "5 min", 3.6], ["Cone weave", "10 min", 4.6]].map(([n, m, at]) => `<div class="iv-ph-row"><span class="iv-check" data-on="${at}"></span><span>${n}</span><small>${m}</small></div>`).join("")}
     </div>
     <span class="iv-badge" data-in="5.2" data-fx="pop">3 of 3 done this week</span>`;
@@ -170,7 +168,6 @@ function renderAt(root, t){
     sc.querySelectorAll("[data-count]").forEach(el => { const [a, d] = el.dataset.count.split(",").map(Number); el.textContent = Math.round(ease((lt - a) / d) * parseFloat(el.dataset.to)); });
     sc.querySelectorAll("[data-type]").forEach(el => { const a = parseFloat(el.dataset.type), txt = tr(el.dataset.text); el.textContent = txt.slice(0, Math.max(0, Math.floor((lt - a) * 34))); });
     sc.querySelectorAll("[data-blink]").forEach(el => { el.style.opacity = lt < parseFloat(el.dataset.blink) ? 0 : (Math.floor(lt * 2.4) % 2 ? .15 : 1); });
-    const d = sc.querySelector(".drill-anim"); if(d){ const dur = animDur(DRILL) || 6; animSeek(d, Math.max(0, lt - .6) % dur); }
   });
   root.querySelector(".iv-step").textContent = `${SCENES.indexOf(s) + 1}/${SCENES.length}`;
   const ct = root.querySelector(".iv-captext"), capT = tr(s.cap); if(ct.textContent !== capT) ct.textContent = capT;
@@ -205,9 +202,6 @@ const kickLoop = () => { if(!state.raf && state.root) state.raf = requestAnimati
 export function introMount(root = document){
   const wrap = root.querySelector(".iv-wrap"); if(!wrap || wrap.dataset.mounted) return;
   wrap.dataset.mounted = "1"; state.root = wrap;
-  /* the phone shows a real drill animation; it is driven by the video's clock, not by itself */
-  wrap.querySelectorAll(".drill-anim").forEach(d => { d.removeAttribute("data-act"); d.removeAttribute("role"); d.removeAttribute("tabindex"); d.removeAttribute("title"); d.setAttribute("aria-hidden", "true"); });
-  animScan(wrap);
   if(reduced() && !state.userPaused && state.t === 0){ state.playing = false; state.t = 2.9; }
   scale(wrap);
   if("ResizeObserver" in window) new ResizeObserver(() => scale(wrap)).observe(wrap.querySelector(".iv"));
