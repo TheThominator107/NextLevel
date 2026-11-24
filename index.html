@@ -769,7 +769,9 @@ summary{min-height:28px;display:flex;align-items:center;gap:6px;cursor:pointer}
 .top-in .notif-wrap + .app-menu-btn{margin-left:6px}
 .bell-btn{position:relative;display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;background:transparent;border:0;color:inherit;cursor:pointer}
 .bell-btn:hover,.bell-btn[aria-expanded="true"]{background:rgba(255,255,255,.12)}
-.bell-badge{position:absolute;top:2px;right:0;min-width:18px;height:18px;font-size:.68rem;padding:0 4px}
+.bell-badge{position:absolute;top:2px;right:0;min-width:18px;height:18px;font-size:.68rem;padding:0 4px;margin:0;background:#e02424;color:#fff;box-shadow:0 0 0 2px var(--kit-navy, #14213a)}
+.notif-wrap + .notif-wrap{margin-left:2px}
+.inbox-item[aria-current="page"]{outline:2px solid var(--line)}
 .notif-panel{position:absolute;top:calc(100% + 8px);right:0;width:min(360px,calc(100vw - 24px));max-height:70vh;overflow:auto;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:0 16px 40px rgba(8,14,28,.28);padding:14px;z-index:30;text-align:left}
 .notif-list{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
 .notif-item{display:flex;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:10px;padding:10px;cursor:pointer;color:inherit;font:inherit}
@@ -781,7 +783,7 @@ summary{min-height:28px;display:flex;align-items:center;gap:6px;cursor:pointer}
 .notif-perm{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px;align-items:flex-start}
 @media (max-width:980px){ .notif-panel{position:fixed;top:64px;right:12px;left:12px;width:auto} }
 #for-parents-sec{scroll-margin-top:84px} #for-parents-sec:focus{outline:none}
-@media (min-width:981px){ .top-in .notif-wrap{order:3;margin-left:4px} .top-in nav.app-tabs{order:2} }
+@media (min-width:981px){ .top-in .notif-wrap{order:3;margin-left:4px} .top-in .notif-wrap + .notif-wrap{margin-left:2px} .top-in nav.app-tabs{order:2} }
 /* drill video locked without a club plan or Full Access */
 .chat-monitor{margin:6px 0 0}
 /* invite links */

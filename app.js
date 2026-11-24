@@ -632,8 +632,6 @@ const brandSvg = "";
 const curSec = () => SECTION_KEYS.includes(S.rsec) ? S.rsec : isStaff() ? "youth" : "college";
 function navItems(){
   if(isScout()) return [{v:"scout", l:"Find players"}, {v:"shortlist", l:"Shortlist"}].concat(S.me && S.me.role === "college" ? [{v:"opps", l:"Opportunities"}] : []).concat([{v:"account", l:"Account"}]);
-  const un = totalUnread(), pmu = totalPmUnread() + totalMeetingRequests();
-  const inbox = {g:"inbox", l:"Inbox", n:un + pmu, items:[{v:"chat", l:"Team Chat", n:un}, {v:"messages", l:"Messages", n:pmu}]};
   const recruit = {g:"recruit", l:"Recruiting", n:newInterest().length, items:[["pro","Pro"],["college","College"],["youth","Youth"]].map(([k,l]) => ({v:"recruit", sec:k, l, n:newInterest(k).length})).concat([{v:"opps", l:"Opportunities"}])};
   if(isStaff() && clubWaiting()) return [];
   if(isStaff()){
@@ -645,10 +643,15 @@ function navItems(){
     const ps = pendingScouts().length;
     const club = {g:"club", l:S.club.name, brand:true, n:req + ps, items:[{v:"club", l:"Club", n:ps}, {v:"roster", team:"all", l:"My Teams", n:req}]
       .concat(list.map(t => ({v:"roster", team:t.id, l:t.name, sub:true})))};
-    return [club, {g:"training", l:"Training", items:[{v:"sessions", l:"Team Drills"}, {v:"drills", l:"Home Drills"}]}, inbox, recruit, {v:"plans", l:"Pricing"}];
+    return [club, {g:"training", l:"Training", items:[{v:"sessions", l:"Team Drills"}, {v:"drills", l:"Home Drills"}]}, recruit, {v:"plans", l:"Pricing"}];
   }
   /* families: Recruiting is one page, with a "what are you looking for" filter on it */
-  return [{v:"home", l:"My player"}, {v:"drills", l:"Home Drills"}, inbox, {v:"recruit", l:"Recruiting", n:newInterest().length}, {v:"account", l:"Account", n:pendingScouts().length}];
+  return [{v:"home", l:"My player"}, {v:"drills", l:"Home Drills"}, {v:"recruit", l:"Recruiting", n:newInterest().length}, {v:"account", l:"Account", n:pendingScouts().length}];
+}
+/* Inbox lives in the envelope beside the bell, not in the menu */
+function inboxGroup(){
+  const un = totalUnread(), pmu = totalPmUnread() + totalMeetingRequests();
+  return {g:"inbox", l:"Inbox", n:un + pmu, items:[{v:"chat", l:"Team Chat", n:un}, {v:"messages", l:"Messages", n:pmu}]};
 }
 function navCurrent(it){
   if(S.publicPage) return false;
@@ -670,7 +673,7 @@ function navGroup(gr){
 /* the sub-menu bar: the items of the menu group you're in, one click away */
 function subnavHtml(){
   if(!S.me || S.publicPage || S.publicSlug || isScout() || (isStaff() && (!S.club || clubWaiting()))) return "";
-  const gr = navItems().find(it => it.g && it.items.some(navCurrent));
+  const gr = navItems().concat(isScout() ? [] : [inboxGroup()]).find(it => it.g && it.items.some(navCurrent));
   if(!gr) return "";
   return `<nav class="subnav" aria-label="${esc(gr.l)}"><div class="subnav-in"><span class="subnav-l"${gr.brand ? ' translate="no"' : ""}>${esc(gr.l)}</span>${gr.items.map(navBtn).join("")}</div></nav>`;
 }
@@ -678,8 +681,8 @@ function topbar(){
   let tabs = "";
   if(S.me && (S.club || !isStaff())){
     const items = navItems();
-    const allUnread = totalUnread() + totalPmUnread() + totalMeetingRequests();
-    tabs = `${bellHtml()}<button type="button" class="menu-btn app-menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="app-nav">${S.menuOpen ? "Close" : "Menu"}${!S.menuOpen && allUnread ? `<span class="badge">${allUnread>99?"99+":allUnread}</span>` : ""}</button>
+    const allUnread = items.reduce((a, it) => a + (it.n || 0), 0);
+    tabs = `${inboxHtml()}${bellHtml()}<button type="button" class="menu-btn app-menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="app-nav">${S.menuOpen ? "Close" : "Menu"}${!S.menuOpen && allUnread ? `<span class="badge">${allUnread>99?"99+":allUnread}</span>` : ""}</button>
     <nav id="app-nav" class="tabs app-tabs${S.menuOpen ? " open" : ""}${S.navQuiet ? " dd-quiet" : ""}" aria-label="Main">${items.map(it => it.g ? navGroup(it) : navBtn(it)).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a>${langToggle("nav-lang")}<button class="signout-link" data-act="signOut">Sign out</button></nav>`;
   }
   return `<header class="top"><div class="top-in">
@@ -2888,7 +2891,8 @@ ACTS.ptdLevel = ds => { S.ptdLevel = ds.id; render(); const b = document.querySe
 ACTS.navDd = ds => { S.navOpen = S.navOpen === ds.g ? null : ds.g; render(); const b = document.querySelector(`.nav-dd-btn[data-g="${ds.g}"]`); if(b) b.focus(); };
 document.addEventListener("click", ev => {
   if(S.navOpen && !ev.target.closest(".nav-dd")){ S.navOpen = null; render(); }
-  if(S.notifOpen && !ev.target.closest(".notif-wrap")){ S.notifOpen = false; render(); }
+  if(S.notifOpen && !ev.target.closest(".notif-wrap:not(.inbox-wrap)")){ S.notifOpen = false; render(); }
+  if(S.inboxOpen && !ev.target.closest(".inbox-wrap")){ S.inboxOpen = false; render(); }
   if(S.reactFor && !ev.target.closest(".reacts") && !ev.target.closest(".bubble[data-rk]")){ S.reactFor = null; render(); }
 }, true);
 /* reactions: a mouse click on a message opens the emoji; on a phone, press and hold */
@@ -2925,7 +2929,8 @@ document.addEventListener("mouseover", ev => {
   if(S.navQuiet && !ev.target.closest(".nav-dd")){ S.navQuiet = false; document.querySelectorAll("#app-nav, #site-nav").forEach(n => n.classList.remove("dd-quiet")); }
 });
 document.addEventListener("keydown", ev => {
-  if(ev.key === "Escape" && S.notifOpen){ S.notifOpen = false; render(); const b = document.querySelector(".bell-btn"); if(b) b.focus(); return; }
+  if(ev.key === "Escape" && S.notifOpen){ S.notifOpen = false; render(); const b = document.querySelector(".bell-btn:not(.inbox-btn)"); if(b) b.focus(); return; }
+  if(ev.key === "Escape" && S.inboxOpen){ S.inboxOpen = false; render(); const b = document.querySelector(".inbox-btn"); if(b) b.focus(); return; }
   if(ev.key === "Escape" && S.reactFor){ const id = S.reactFor.split(":")[1]; S.reactFor = null; render(); const b = document.querySelector(`.react-add[data-id="${CSS.escape(id)}"]`); if(b) b.focus({preventScroll:true}); return; }
   if(ev.key === "Escape" && S.navOpen){ const g = S.navOpen; S.navOpen = null; render(); const b = document.querySelector(`.nav-dd-btn[data-g="${g}"]`); if(b) b.focus(); }
 });
@@ -3649,6 +3654,25 @@ function bellHtml(){
     ${open ? notifPanel(list) : ""}
   </div>`;
 }
+function inboxHtml(){
+  if(!S.me || isScout() || (isStaff() && clubWaiting())) return "";
+  const gr = inboxGroup(), n = gr.n, open = !!S.inboxOpen;
+  return `<div class="notif-wrap inbox-wrap">
+    <button type="button" class="bell-btn inbox-btn" data-act="inboxToggle" aria-expanded="${open}" aria-controls="inbox-panel" aria-label="Inbox${n ? ", " + n + " unread" : ""}">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+      ${n ? `<span class="badge bell-badge">${n > 9 ? "9+" : n}</span>` : ""}</button>
+    ${open ? `<div class="notif-panel inbox-panel" id="inbox-panel" role="region" aria-label="Inbox">
+      <h2 class="h3" style="margin:0">Inbox</h2>
+      <ul class="notif-list">${gr.items.map(it => `<li><button type="button" class="notif-item inbox-item${it.n ? " new" : ""}" data-act="inboxGo" data-view="${it.v}"${navCurrent(it) ? ' aria-current="page"' : ""}>
+        <span class="ni-ic" aria-hidden="true">${it.v === "chat" ? "💬" : "✉️"}</span><span class="ni-body"><b>${esc(it.l)}</b><span class="small muted">${it.n ? `<span class="ni-new">${it.n} unread</span>` : "No unread messages"}</span></span></button></li>`).join("")}</ul>
+    </div>` : ""}
+  </div>`;
+}
+ACTS.inboxToggle = () => {
+  S.inboxOpen = !S.inboxOpen; if(S.inboxOpen) S.notifOpen = false;
+  render(); const b = document.querySelector(".inbox-btn"); if(b) b.focus();
+};
+ACTS.inboxGo = ds => { S.inboxOpen = false; ACTS.go({view:ds.view}); };
 function notifPanel(list){
   const seen = S.notifSeenBefore || 0;
   const perm = typeof Notification === "undefined" ? "none" : Notification.permission;
@@ -3666,8 +3690,9 @@ function notifPanel(list){
 }
 ACTS.notifToggle = () => {
   S.notifOpen = !S.notifOpen;
+  if(S.notifOpen){ S.inboxOpen = false; }
   if(S.notifOpen){ S.notifSeenBefore = lsGet("notif-seen", 0); lsSet("notif-seen", Date.now()); }
-  render(); const b = document.querySelector(".bell-btn"); if(b) b.focus();
+  render(); const b = document.querySelector(".bell-btn:not(.inbox-btn)"); if(b) b.focus();
 };
 ACTS.notifOpen = ds => {
   const m = S.meetings.find(x => x.id === ds.id); S.notifOpen = false; if(!m) return render();
