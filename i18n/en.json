@@ -675,7 +675,6 @@
 "1196": "If we change this policy in a way that matters, we'll tell you on the site before the change takes effect.",
 "1197": "If you are signed in and still see this, ask the person who shared it to give you Contributor access.",
 "1198": "If you change your organization, your account goes back for approval.",
-"1199": "Inbox",
 "1201": "Included in Club Unlimited: add as many teams as you like.",
 "1202": "Information",
 "1203": "Information coaches add:",
@@ -1847,7 +1846,6 @@
 "2461": "higher",
 "2462": "home",
 "2463": "ies",
-"2464": "inbox",
 "2466": "input",
 "2467": "interest",
 "2468": "is filled in for you on the next step.",
@@ -5018,5 +5016,9 @@
 "6563": "Wingers one-touch, or a direct winger-to-winger pass counts double.",
 "6564": "Work through inside hook, outside hook, drag back and Cruyff turn on both feet.",
 "6565": "Yellow: dribble slowly with small touches.",
-"6566": "Zig-zag one-twos"
+"6566": "Zig-zag one-twos",
+"6567": "Choose a conversation",
+"6568": "Conversations",
+"6569": "Messages, {0} new",
+"6570": "{0} · Team Chat{1}"
 }

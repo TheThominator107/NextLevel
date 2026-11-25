@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-i18nv="19">
+<html lang="en" data-i18nv="20">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -769,9 +769,7 @@ summary{min-height:28px;display:flex;align-items:center;gap:6px;cursor:pointer}
 .top-in .notif-wrap + .app-menu-btn{margin-left:6px}
 .bell-btn{position:relative;display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;background:transparent;border:0;color:inherit;cursor:pointer}
 .bell-btn:hover,.bell-btn[aria-expanded="true"]{background:rgba(255,255,255,.12)}
-.bell-badge{position:absolute;top:2px;right:0;min-width:18px;height:18px;font-size:.68rem;padding:0 4px;margin:0;background:#e02424;color:#fff;box-shadow:0 0 0 2px var(--kit-navy, #14213a)}
-.notif-wrap + .notif-wrap{margin-left:2px}
-.inbox-item[aria-current="page"]{outline:2px solid var(--line)}
+.bell-badge,.mail-badge{position:absolute;top:2px;right:0;min-width:18px;height:18px;font-size:.68rem;padding:0 4px;margin:0;background:#e02424;color:#fff;box-shadow:0 0 0 2px var(--kit-navy, #14213a)}
 .notif-panel{position:absolute;top:calc(100% + 8px);right:0;width:min(360px,calc(100vw - 24px));max-height:70vh;overflow:auto;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:0 16px 40px rgba(8,14,28,.28);padding:14px;z-index:30;text-align:left}
 .notif-list{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
 .notif-item{display:flex;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:10px;padding:10px;cursor:pointer;color:inherit;font:inherit}
@@ -783,7 +781,7 @@ summary{min-height:28px;display:flex;align-items:center;gap:6px;cursor:pointer}
 .notif-perm{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px;align-items:flex-start}
 @media (max-width:980px){ .notif-panel{position:fixed;top:64px;right:12px;left:12px;width:auto} }
 #for-parents-sec{scroll-margin-top:84px} #for-parents-sec:focus{outline:none}
-@media (min-width:981px){ .top-in .notif-wrap{order:3;margin-left:4px} .top-in .notif-wrap + .notif-wrap{margin-left:2px} .top-in nav.app-tabs{order:2} }
+@media (min-width:981px){ .top-in .notif-wrap{order:3;margin-left:4px} .top-in nav.app-tabs{order:2} }
 /* drill video locked without a club plan or Full Access */
 .chat-monitor{margin:6px 0 0}
 /* invite links */
@@ -1430,6 +1428,23 @@ tbody td{padding-top:14px;padding-bottom:14px}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .invite-code{border:1px solid rgba(255,255,255,.16)} :root:not([data-theme="light"]) thead th{background:var(--kit-band)} }
 :root[data-theme="dark"] .invite-code{border:1px solid rgba(255,255,255,.16)}
 :root[data-theme="dark"] thead th{background:var(--kit-band)}
+
+/* header icons: Messages (envelope) and the bell, side by side */
+.top-icons{display:flex;align-items:center;gap:2px;margin-left:auto}
+.top-icons .notif-wrap{margin-left:0}
+.top-in .top-icons + .app-menu-btn{margin-left:6px}
+@media (min-width:981px){ .top-in .top-icons{order:3;margin-left:4px} }
+.mail-btn{position:relative;display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;background:transparent;border:0;color:inherit;cursor:pointer}
+.mail-btn:hover{background:rgba(255,255,255,.12)}
+.mail-btn[aria-current="page"]{background:rgba(255,255,255,.16);box-shadow:inset 0 -2px 0 #c4471c}
+.top .mail-btn:focus-visible{outline:2px solid #ffffff;outline-offset:2px}
+
+/* Messages list: team chats pinned on top, then private chats newest first */
+.inbox-side .conv-name{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.inbox-side .conv-pin{flex:none;color:#c4471c}
+.inbox-side .conv-tag{font-size:.72rem;font-weight:600;color:var(--muted);background:var(--chip);border-radius:4px;padding:1px 6px}
+.inbox-side .conv-team{background:var(--surface)}
+.inbox-side .conv-team + button:not(.conv-team){border-top:1px solid var(--line)}
 
 /* status labels: one set everywhere: green done, orange needs action, red problem */
 .pill{border-radius:4px;font-weight:700}

@@ -648,11 +648,6 @@ function navItems(){
   /* families: Recruiting is one page, with a "what are you looking for" filter on it */
   return [{v:"home", l:"My player"}, {v:"drills", l:"Home Drills"}, {v:"recruit", l:"Recruiting", n:newInterest().length}, {v:"account", l:"Account", n:pendingScouts().length}];
 }
-/* Inbox lives in the envelope beside the bell, not in the menu */
-function inboxGroup(){
-  const un = totalUnread(), pmu = totalPmUnread() + totalMeetingRequests();
-  return {g:"inbox", l:"Inbox", n:un + pmu, items:[{v:"chat", l:"Team Chat", n:un}, {v:"messages", l:"Messages", n:pmu}]};
-}
 function navCurrent(it){
   if(S.publicPage) return false;
   if(it.team) return (S.view === "roster" || S.view === "player") && (S.teamFilter || "all") === it.team;
@@ -673,7 +668,7 @@ function navGroup(gr){
 /* the sub-menu bar: the items of the menu group you're in, one click away */
 function subnavHtml(){
   if(!S.me || S.publicPage || S.publicSlug || isScout() || (isStaff() && (!S.club || clubWaiting()))) return "";
-  const gr = navItems().concat(isScout() ? [] : [inboxGroup()]).find(it => it.g && it.items.some(navCurrent));
+  const gr = navItems().find(it => it.g && it.items.some(navCurrent));
   if(!gr) return "";
   return `<nav class="subnav" aria-label="${esc(gr.l)}"><div class="subnav-in"><span class="subnav-l"${gr.brand ? ' translate="no"' : ""}>${esc(gr.l)}</span>${gr.items.map(navBtn).join("")}</div></nav>`;
 }
@@ -681,8 +676,8 @@ function topbar(){
   let tabs = "";
   if(S.me && (S.club || !isStaff())){
     const items = navItems();
-    const allUnread = items.reduce((a, it) => a + (it.n || 0), 0);
-    tabs = `${inboxHtml()}${bellHtml()}<button type="button" class="menu-btn app-menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="app-nav">${S.menuOpen ? "Close" : "Menu"}${!S.menuOpen && allUnread ? `<span class="badge">${allUnread>99?"99+":allUnread}</span>` : ""}</button>
+    const menuN = items.reduce((n, it) => n + (it.n || 0), 0);
+    tabs = `<div class="top-icons">${mailHtml()}${bellHtml()}</div><button type="button" class="menu-btn app-menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="app-nav">${S.menuOpen ? "Close" : "Menu"}${!S.menuOpen && menuN ? `<span class="badge">${menuN>99?"99+":menuN}</span>` : ""}</button>
     <nav id="app-nav" class="tabs app-tabs${S.menuOpen ? " open" : ""}${S.navQuiet ? " dd-quiet" : ""}" aria-label="Main">${items.map(it => it.g ? navGroup(it) : navBtn(it)).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a>${langToggle("nav-lang")}<button class="signout-link" data-act="signOut">Sign out</button></nav>`;
   }
   return `<header class="top"><div class="top-in">
@@ -723,12 +718,13 @@ function render(){
   if(ci2 && keep && prevTeam === S.chatTeam){ ci2.value = keep.v; const a = document.getElementById("chat-ann"); if(a) a.checked = !!keep.ann; if(keep.f){ ci2.focus(); try{ ci2.setSelectionRange(keep.s, keep.e); }catch(_){} } }
   const th2 = document.getElementById("thread");
   if(th2){ th2.scrollTop = (atBottom || prevTeam !== S.chatTeam) ? th2.scrollHeight : prevScroll; }
-  S._renderedChatTeam = S.view === "chat" ? S.chatTeam : null;
-  if(S.view === "chat") markRead();
+  const onTeamChat = S.view === "messages" && S.msgKind === "team";
+  S._renderedChatTeam = onTeamChat ? S.chatTeam : null;
+  if(onTeamChat) markRead();
   const pt2 = document.getElementById("pm-thread"), pi2 = document.getElementById("pm-input");
   if(pi2 && pkeep && pt2 && pkeep.key === pt2.dataset.key){ pi2.value = pkeep.v; if(pkeep.f){ pi2.focus(); try{ pi2.setSelectionRange(pkeep.s, pkeep.e); }catch(_){} } }
   if(pt2){ pt2.scrollTop = (pAtBottom || pPrevKey !== pt2.dataset.key) ? pt2.scrollHeight : pPrevScroll; }
-  if(S.view === "messages") markPmRead();
+  if(S.view === "messages" && S.msgKind === "pm") markPmRead();
 }
 
 function viewBody(){
@@ -741,8 +737,7 @@ function viewBody(){
       case "club": return clubView();
       case "recruit": return staffRecruit();
       case "opps": return oppsView();
-      case "chat": return chatView();
-      case "messages": return messagesView();
+      case "chat": case "messages": return inboxView();
       default: return rosterView();
     }
   }
@@ -753,8 +748,7 @@ function viewBody(){
     case "recruit": return recruitView();
     case "opps": return oppsView();
     case "plans": return drillsView();   /* families buy Home Drills access on the Home Drills tab */
-    case "chat": return chatView();
-    case "messages": return messagesView();
+    case "chat": case "messages": return inboxView();
     default: return familyHome();
   }
 }
@@ -1852,7 +1846,7 @@ async function markRead(){
   try { await S.db.doc("members/" + S.uid).update({lastRead:{...(S.me.lastRead||{}), [tid]:newest}}); } catch(_){}
   readPending = false;
 }
-document.addEventListener("visibilitychange", () => { if(!document.hidden && S.view === "chat") markRead(); });
+document.addEventListener("visibilitychange", () => { if(!document.hidden && S.view === "messages" && S.msgKind === "team") markRead(); });
 function msgTime(ts){ return new Date(ts).toLocaleTimeString(LOC,{hour:"numeric",minute:"2-digit"}); }
 function dayLabel(ts){
   const d = new Date(ts).toLocaleDateString("en-CA");
@@ -1939,9 +1933,9 @@ function reactsHtml(kind, m, idx){
   const pick = open ? `<div class="react-pick" role="group" aria-label="Pick a reaction">${REACTS.map(([e, label]) => `<button type="button" class="react-opt${mineE === e ? " on" : ""}" data-act="react" data-k="${kind}" data-id="${esc(m.id)}" data-e="${e}" aria-pressed="${mineE === e}" title="${label}"><span aria-hidden="true">${e}</span><span class="sr-only">${label}</span></button>`).join("")}</div>` : "";
   return `<div class="reacts">${chips}<button type="button" class="react-add" data-act="reactOpen" data-k="${kind}" data-id="${esc(m.id)}" aria-expanded="${open}" aria-label="Add a reaction" title="Add a reaction">${SMILE_SVG}</button>${pick}</div>`;
 }
-function chatView(){
+function chatView(o = {}){
   const teams = myTeams();
-  if(!teams.length) return `<h1>Team Chat</h1><div class="locked"><h2>No team chats yet</h2><p class="muted">${isStaff() ? "Add a team and its chat appears here for the coaches and every family on that team." : "Your player isn't on a team yet. Find your club under My player and ask to join a team. The chat opens once a coach approves."}</p>${isStaff()?`<button class="btn primary" data-act="modal" data-m="team">Add team</button>`:""}</div>`;
+  if(!teams.length) return `<h1>${o.inbox ? "Messages" : "Team Chat"}</h1><div class="locked"><h2>No team chats yet</h2><p class="muted">${isStaff() ? "Add a team and its chat appears here for the coaches and every family on that team." : "Your player isn't on a team yet. Find your club under My player and ask to join a team. The chat opens once a coach approves."}</p>${isStaff()?`<button class="btn primary" data-act="modal" data-m="team">Add team</button>`:""}</div>`;
   if(!teams.find(t => t.id === S.chatTeam)) S.chatTeam = teams[0].id;
   const team = teams.find(t => t.id === S.chatTeam);
   const ms = teamMsgs(team.id);
@@ -1965,14 +1959,14 @@ function chatView(){
     lastAuthor = m.announce ? "" : m.authorId; lastTs = m.createdAt;
   }
   if(!ms.length) thread = `<div class="muted" style="margin:auto;text-align:center;max-width:40ch">No messages yet. ${isStaff()?"Post a welcome or this week's schedule.":"Say hi to your team."}</div>`;
-  return `<h1 class="sr-only">Team chat</h1><div class="chat">
-    <aside class="chat-side" aria-label="Team chats"><h2 class="side-h">Your teams</h2>
+  return `<h1 class="sr-only">${o.side ? "Messages" : "Team chat"}</h1><div class="chat">
+    ${o.side || `<aside class="chat-side" aria-label="Team chats"><h2 class="side-h">Your teams</h2>
       ${teams.map(t => { const last = teamMsgs(t.id).slice(-1)[0]; const u = unreadFor(t.id); return `<button data-act="chatTeam" data-id="${esc(t.id)}" aria-current="${t.id===team.id}"><span class="tn"><span>${esc(t.name)}</span><span class="tp">${last ? esc((last.authorName||"") + ": " + last.text) : "No messages yet"}</span></span>${u?`<span class="badge">${u}</span>`:""}</button>`; }).join("")}
-    </aside>
+    </aside>`}
     <section class="chat-main" aria-label="${esc(team.name)} chat">
       <div class="chat-head">
         <div class="stack" style="gap:0"><h2>${esc(team.name)}</h2><span class="small muted">${coaches} coach${coaches===1?"":"es"} · ${fams} famil${fams===1?"y":"ies"}</span></div>
-        <select class="chat-pick" aria-label="Choose team chat" data-change="chatTeam">${teams.map(t=>`<option value="${esc(t.id)}" ${t.id===team.id?"selected":""}>${esc(t.name)}${unreadFor(t.id)?" ("+unreadFor(t.id)+")":""}</option>`).join("")}</select>
+        ${o.pick || `<select class="chat-pick" aria-label="Choose team chat" data-change="chatTeam">${teams.map(t=>`<option value="${esc(t.id)}" ${t.id===team.id?"selected":""}>${esc(t.name)}${unreadFor(t.id)?" ("+unreadFor(t.id)+")":""}</option>`).join("")}</select>`}
       </div>
       ${pin ? `<div class="pinned"><b>Pinned:</b><span>${esc(String(pin.text).slice(0,160))}${String(pin.text).length>160?"…":""}</span></div>` : ""}
       <div class="thread" id="thread" aria-live="polite">${thread}</div>
@@ -2497,7 +2491,7 @@ const MODALS = {
 
 /* ---------- actions ---------- */
 const ACTS = {
-  go: (ds, el) => { S.view = ds.view; S.preview = false; S.menuOpen = false; S.navOpen = null; S.navQuiet = !!(el && el.closest && el.closest(".nav-dd"));
+  go: (ds, el) => { S.view = ds.view === "chat" ? "messages" : ds.view; if(ds.view === "chat") S.msgKind = "team"; S.preview = false; S.menuOpen = false; S.navOpen = null; S.navQuiet = !!(el && el.closest && el.closest(".nav-dd"));
     if(ds.team){ S.teamFilter = ds.team; S.view = "roster"; }
     if(ds.sec) S.rsec = ds.sec; if(S.publicPage){ S.publicPage = null; try { history.replaceState(null, "", location.pathname + location.search); } catch(_){} } window.scrollTo(0,0); render(); },
   open: ds => { S.playerId = ds.id; S.view = "player"; S.preview = false; S.chartSkill = "overall"; S.ptab = "dev"; S.recSec = null; window.scrollTo(0,0); render(); },
@@ -2562,7 +2556,7 @@ const ACTS = {
       catch(e){ if(e.code === "invalid_argument"){ const x = new Error("x"); x.userMessage = "Adding drills yourself needs a quick database update (003). Ask your club admin, or ask your coach to assign it."; throw x; } throw e; }
     }, "Added to this week's drills. Your coach can see it too.");
   },
-  chatTeam: ds => { S.chatTeam = ds.id; render(); const c = document.getElementById("chat-input"); if(c) c.focus(); },
+  chatTeam: ds => { S.chatTeam = ds.id; S.msgKind = "team"; render(); const c = document.getElementById("chat-input"); if(c) c.focus(); },
   delMsg: async ds => { await save(() => S.db.doc("messages/" + ds.id).delete(), "Message deleted"); },
   exitPublic: () => { try { history.replaceState(null, "", location.pathname + location.search); } catch(_){ try { location.hash = ""; } catch(__){} } S.publicSlug = null; S.pub = null; render(); },
   delPhoto: async ds => { const p = S.players.find(x=>x.id===ds.id); if(p) await saveProfile(p, {photo:null}, "Photo removed"); },
@@ -2891,8 +2885,7 @@ ACTS.ptdLevel = ds => { S.ptdLevel = ds.id; render(); const b = document.querySe
 ACTS.navDd = ds => { S.navOpen = S.navOpen === ds.g ? null : ds.g; render(); const b = document.querySelector(`.nav-dd-btn[data-g="${ds.g}"]`); if(b) b.focus(); };
 document.addEventListener("click", ev => {
   if(S.navOpen && !ev.target.closest(".nav-dd")){ S.navOpen = null; render(); }
-  if(S.notifOpen && !ev.target.closest(".notif-wrap:not(.inbox-wrap)")){ S.notifOpen = false; render(); }
-  if(S.inboxOpen && !ev.target.closest(".inbox-wrap")){ S.inboxOpen = false; render(); }
+  if(S.notifOpen && !ev.target.closest(".notif-wrap")){ S.notifOpen = false; render(); }
   if(S.reactFor && !ev.target.closest(".reacts") && !ev.target.closest(".bubble[data-rk]")){ S.reactFor = null; render(); }
 }, true);
 /* reactions: a mouse click on a message opens the emoji; on a phone, press and hold */
@@ -2929,8 +2922,7 @@ document.addEventListener("mouseover", ev => {
   if(S.navQuiet && !ev.target.closest(".nav-dd")){ S.navQuiet = false; document.querySelectorAll("#app-nav, #site-nav").forEach(n => n.classList.remove("dd-quiet")); }
 });
 document.addEventListener("keydown", ev => {
-  if(ev.key === "Escape" && S.notifOpen){ S.notifOpen = false; render(); const b = document.querySelector(".bell-btn:not(.inbox-btn)"); if(b) b.focus(); return; }
-  if(ev.key === "Escape" && S.inboxOpen){ S.inboxOpen = false; render(); const b = document.querySelector(".inbox-btn"); if(b) b.focus(); return; }
+  if(ev.key === "Escape" && S.notifOpen){ S.notifOpen = false; render(); const b = document.querySelector(".bell-btn"); if(b) b.focus(); return; }
   if(ev.key === "Escape" && S.reactFor){ const id = S.reactFor.split(":")[1]; S.reactFor = null; render(); const b = document.querySelector(`.react-add[data-id="${CSS.escape(id)}"]`); if(b) b.focus({preventScroll:true}); return; }
   if(ev.key === "Escape" && S.navOpen){ const g = S.navOpen; S.navOpen = null; render(); const b = document.querySelector(`.nav-dd-btn[data-g="${g}"]`); if(b) b.focus(); }
 });
@@ -3065,6 +3057,9 @@ document.addEventListener("change", ev => {
     S.childId = ev.target.value; render(); const el = document.getElementById("sel-player"); if(el) el.focus(); return; }
   if(ev.target.dataset && (ev.target.dataset.change === "oppKind" || ev.target.dataset.change === "oppGender")){ S[ev.target.dataset.change] = ev.target.value; render(); const el = document.getElementById(ev.target.id); if(el) el.focus(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "chatTeam"){ S.chatTeam = ev.target.value; render(); return; }
+  if(ev.target.dataset && ev.target.dataset.change === "msgPick"){ const v = ev.target.value, id = v.slice(2);
+    if(v[0] === "t"){ S.msgKind = "team"; S.chatTeam = id; } else { S.msgKind = "pm"; S.pmPlayer = id; S.meetingId = null; }
+    render(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "chartSkill"){ S.chartSkill = ev.target.value; render(); const s = document.getElementById("chart-skill"); if(s) s.focus(); }
 });
 
@@ -3644,6 +3639,15 @@ function meetingNotices(){
   return out.sort((a, b) => b.at - a.at);
 }
 const noticesUnread = list => { const seen = lsGet("notif-seen", 0); return list.filter(n => n.at > seen).length; };
+/* the envelope: every chat in one place, with what's unread */
+const inboxUnread = () => totalUnread() + totalPmUnread() + totalMeetingRequests();
+function mailHtml(){
+  if(!S.me || isScout() || isCollege()) return "";
+  const n = inboxUnread(), cur = S.view === "messages" && !S.publicPage;
+  return `<button type="button" class="mail-btn" data-act="openInbox" title="Messages" aria-label="${n ? `Messages, ${n} new` : "Messages"}"${cur ? ' aria-current="page"' : ""}>
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/></svg>
+      ${n ? `<span class="badge mail-badge">${n > 9 ? "9+" : n}</span>` : ""}</button>`;
+}
 function bellHtml(){
   if(!S.me || isScout() || isCollege()) return "";
   const list = meetingNotices(), n = noticesUnread(list), open = !!S.notifOpen;
@@ -3654,25 +3658,6 @@ function bellHtml(){
     ${open ? notifPanel(list) : ""}
   </div>`;
 }
-function inboxHtml(){
-  if(!S.me || isScout() || (isStaff() && clubWaiting())) return "";
-  const gr = inboxGroup(), n = gr.n, open = !!S.inboxOpen;
-  return `<div class="notif-wrap inbox-wrap">
-    <button type="button" class="bell-btn inbox-btn" data-act="inboxToggle" aria-expanded="${open}" aria-controls="inbox-panel" aria-label="Inbox${n ? ", " + n + " unread" : ""}">
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
-      ${n ? `<span class="badge bell-badge">${n > 9 ? "9+" : n}</span>` : ""}</button>
-    ${open ? `<div class="notif-panel inbox-panel" id="inbox-panel" role="region" aria-label="Inbox">
-      <h2 class="h3" style="margin:0">Inbox</h2>
-      <ul class="notif-list">${gr.items.map(it => `<li><button type="button" class="notif-item inbox-item${it.n ? " new" : ""}" data-act="inboxGo" data-view="${it.v}"${navCurrent(it) ? ' aria-current="page"' : ""}>
-        <span class="ni-ic" aria-hidden="true">${it.v === "chat" ? "💬" : "✉️"}</span><span class="ni-body"><b>${esc(it.l)}</b><span class="small muted">${it.n ? `<span class="ni-new">${it.n} unread</span>` : "No unread messages"}</span></span></button></li>`).join("")}</ul>
-    </div>` : ""}
-  </div>`;
-}
-ACTS.inboxToggle = () => {
-  S.inboxOpen = !S.inboxOpen; if(S.inboxOpen) S.notifOpen = false;
-  render(); const b = document.querySelector(".inbox-btn"); if(b) b.focus();
-};
-ACTS.inboxGo = ds => { S.inboxOpen = false; ACTS.go({view:ds.view}); };
 function notifPanel(list){
   const seen = S.notifSeenBefore || 0;
   const perm = typeof Notification === "undefined" ? "none" : Notification.permission;
@@ -3690,13 +3675,12 @@ function notifPanel(list){
 }
 ACTS.notifToggle = () => {
   S.notifOpen = !S.notifOpen;
-  if(S.notifOpen){ S.inboxOpen = false; }
   if(S.notifOpen){ S.notifSeenBefore = lsGet("notif-seen", 0); lsSet("notif-seen", Date.now()); }
-  render(); const b = document.querySelector(".bell-btn:not(.inbox-btn)"); if(b) b.focus();
+  render(); const b = document.querySelector(".bell-btn"); if(b) b.focus();
 };
 ACTS.notifOpen = ds => {
   const m = S.meetings.find(x => x.id === ds.id); S.notifOpen = false; if(!m) return render();
-  S.view = "messages"; S.pmPlayer = m.playerId; S.pmTab = "meetings"; S.meetingId = m.id; S.menuOpen = false; render(); window.scrollTo(0, 0);
+  S.view = "messages"; S.msgKind = "pm"; S.pmPlayer = m.playerId; S.pmTab = "meetings"; S.meetingId = m.id; S.menuOpen = false; render(); window.scrollTo(0, 0);
 };
 ACTS.notifAllow = async () => {
   try { await Notification.requestPermission(); } catch(_){}
@@ -3769,7 +3753,7 @@ async function markPmRead(){
   try { await S.db.doc("members/" + S.uid).update({lastRead:{...(S.me.lastRead||{}), [key]:newest}}); } catch(_){}
   pmReadPending = false;
 }
-document.addEventListener("visibilitychange", () => { if(!document.hidden && S.view === "messages") markPmRead(); });
+document.addEventListener("visibilitychange", () => { if(!document.hidden && S.view === "messages" && S.msgKind === "pm") markPmRead(); });
 
 function bubblesHtml(ms, emptyText){
   if(!ms.length) return `<div class="muted" style="margin:auto;text-align:center;max-width:44ch">${emptyText}</div>`;
@@ -3815,7 +3799,7 @@ function reviewMini(r){
   </div>`;
 }
 
-function messagesView(){
+function messagesView(o = {}){
   const players = pmPlayers();
   if(!players.length){
     if(isStaff() && !isAdmin() && !myCoachTeamIds().length) return `<h1>Messages</h1><div class="locked"><h2>You're not assigned to a team yet</h2><p>Private conversations are only open to each player's own team coaches. Ask your club admin to add you to your teams on the Club page, or add yourself there.</p><button class="btn primary" data-act="go" data-view="club">Go to Club</button></div>`;
@@ -3826,13 +3810,13 @@ function messagesView(){
   const fams = S.members.filter(m => m.role === "family" && (m.playerIds||[]).includes(p.id));
   const famNames = fams.map(m => m.name).filter(Boolean);
   const nReq = meetingRequests(p.id), mUnread = meetingsFor(p.id).reduce((n, mt) => n + unreadIn(p.id, mt.id), 0), cUnread = unreadIn(p.id, null);
-  const side = `<aside class="chat-side" aria-label="Private conversations"><h2 class="side-h">${isStaff() ? "Players" : "Your player"}</h2>
+  const side = o.side || `<aside class="chat-side" aria-label="Private conversations"><h2 class="side-h">${isStaff() ? "Players" : "Your player"}</h2>
     ${players.map(pl => { const last = pmThread(pl.id).slice(-1)[0], u = pmUnreadFor(pl.id), rq = meetingRequests(pl.id);
       return `<button data-act="pmPlayer" data-id="${esc(pl.id)}" aria-current="${pl.id===p.id}"><span class="tn"><span>${esc(pl.name)}${rq ? " " + reqBadge(rq) : ""}</span><span class="tp">${last ? esc((last.authorName||"") + ": " + last.text) : isStaff() ? esc(teamName(pl.teamId)) : "No messages yet"}</span></span>${u?`<span class="badge">${u}</span>`:""}</button>`; }).join("")}
   </aside>`;
   const head = `<div class="chat-head">
     <div class="stack" style="gap:0"><h2>${esc(p.name)}</h2><span class="small muted">🔒 ${(() => { const cs = coachesOfTeam(p.teamId).map(m => m.name).filter(Boolean); return cs.length ? esc(cs.join(", ")) + " (" + esc(teamName(p.teamId)) + " coaches)" : esc(teamName(p.teamId)) + " coaches"; })()} · club admin · ${famNames.length ? esc(famNames.join(", ")) : "family (not connected yet)"}</span></div>
-    <select class="chat-pick" aria-label="Choose player" data-change="pmPlayer">${players.map(pl=>`<option value="${esc(pl.id)}" ${pl.id===p.id?"selected":""}>${esc(pl.name)}</option>`).join("")}</select>
+    ${o.pick || `<select class="chat-pick" aria-label="Choose player" data-change="pmPlayer">${players.map(pl=>`<option value="${esc(pl.id)}" ${pl.id===p.id?"selected":""}>${esc(pl.name)}</option>`).join("")}</select>`}
   </div>
   <div class="subtabs pm-tabs" role="tablist">
     <button role="tab" data-act="pmTab" data-id="chat" aria-selected="${S.pmTab!=="meetings"}">Private chat${cUnread?` <span class="badge">${cUnread}</span>`:""}</button>
@@ -3849,6 +3833,41 @@ function messagesView(){
     main = meetingList(p);
   }
   return `<h1 class="sr-only">Messages</h1><div class="chat pm">${side}<section class="chat-main" aria-label="Private conversation about ${esc(p.name)}">${head}${main}</section></div>`;
+}
+
+/* Messages: every team chat pinned at the top, then each private conversation,
+   newest first by the last message sent or received */
+function convLast(kind, id){
+  if(kind === "team"){ const l = teamMsgs(id).slice(-1)[0]; return l ? l.createdAt || 0 : 0; }
+  let t = 0; const a = pmThread(id).slice(-1)[0]; if(a) t = a.createdAt || 0;
+  meetingsFor(id).forEach(mt => { const b = pmThread(id, mt.id).slice(-1)[0]; if(b && (b.createdAt || 0) > t) t = b.createdAt; });
+  return t;
+}
+const PIN_SVG = `<svg class="conv-pin" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/></svg>`;
+function inboxView(){
+  const teams = myTeams().slice().sort((a, b) => convLast("team", b.id) - convLast("team", a.id));
+  const players = pmPlayers().map((p, i) => ({p, i, t:convLast("pm", p.id)})).sort((a, b) => (b.t - a.t) || (a.i - b.i)).map(x => x.p);
+  /* not on a team yet and nothing written: explain how chats open */
+  if(!teams.length && !players.some(p => p.clubId || convLast("pm", p.id))) return isStaff() ? messagesView() : chatView({inbox:true});
+  if(S.msgKind === "team" && !teams.some(t => t.id === S.chatTeam)) S.msgKind = null;
+  if(S.msgKind === "pm" && !players.some(p => p.id === S.pmPlayer)) S.msgKind = null;
+  if(!S.msgKind){
+    if(teams.length){ S.msgKind = "team"; S.chatTeam = teams[0].id; }
+    else if(players.length){ S.msgKind = "pm"; S.pmPlayer = players[0].id; }
+    else return messagesView();
+  }
+  const on = (k, id) => S.msgKind === k && (k === "team" ? S.chatTeam : S.pmPlayer) === id;
+  const side = `<aside class="chat-side inbox-side" aria-label="Conversations">
+    ${teams.map(t => { const last = teamMsgs(t.id).slice(-1)[0], u = unreadFor(t.id);
+      return `<button class="conv-team" data-act="chatTeam" data-id="${esc(t.id)}" aria-current="${on("team", t.id)}"><span class="tn"><span class="conv-name">${PIN_SVG}<span>${esc(t.name)}</span><span class="conv-tag">Team Chat</span></span><span class="tp">${last ? esc((last.authorName||"") + ": " + last.text) : "No messages yet"}</span></span>${u?`<span class="badge">${u}</span>`:""}</button>`; }).join("")}
+    ${players.map(pl => { const last = pmThread(pl.id).slice(-1)[0], u = pmUnreadFor(pl.id), rq = meetingRequests(pl.id);
+      return `<button data-act="pmPlayer" data-id="${esc(pl.id)}" aria-current="${on("pm", pl.id)}"><span class="tn"><span>${esc(pl.name)}${rq ? " " + reqBadge(rq) : ""}</span><span class="tp">${last ? esc((last.authorName||"") + ": " + last.text) : isStaff() ? esc(teamName(pl.teamId)) : "No messages yet"}</span></span>${u?`<span class="badge">${u}</span>`:""}</button>`; }).join("")}
+  </aside>`;
+  const pick = `<select class="chat-pick" aria-label="Choose a conversation" data-change="msgPick">
+    ${teams.map(t => { const u = unreadFor(t.id); return `<option value="t:${esc(t.id)}" ${on("team", t.id)?"selected":""}>${esc(t.name)} · Team Chat${u?" ("+u+")":""}</option>`; }).join("")}
+    ${players.map(pl => { const u = pmUnreadFor(pl.id); return `<option value="p:${esc(pl.id)}" ${on("pm", pl.id)?"selected":""}>${esc(pl.name)}${u?" ("+u+")":""}</option>`; }).join("")}
+  </select>`;
+  return S.msgKind === "team" ? chatView({side, pick}) : messagesView({side, pick});
 }
 
 function meetingList(p){
@@ -3959,7 +3978,8 @@ ACTS.setVis = async ds => {
   await saveProfile(p, {visibility: ds.v === "public" ? "public" : "private"}, ds.v === "public" ? "The Recruitment Profile is public. Use Copy profile link to share it." : "The Recruitment Profile is private. Others only see the name, club and age.");
 };
 ACTS.previewPublic = ds => { S.previewAsOutsider = true; location.hash = "profile-" + ds.slug; };
-ACTS.pmPlayer = ds => { S.pmPlayer = ds.id; S.meetingId = null; render(); };
+ACTS.pmPlayer = ds => { S.pmPlayer = ds.id; S.msgKind = "pm"; S.meetingId = null; render(); };
+ACTS.openInbox = () => { S.msgKind = null; S.notifOpen = false; ACTS.go({view:"messages"}); };
 ACTS.pmTab = ds => { S.pmTab = ds.id; S.meetingId = null; render(); };
 ACTS.openMeeting = ds => { S.meetingId = ds.id; render(); };
 ACTS.closeMeeting = () => { S.meetingId = null; render(); };
@@ -3968,9 +3988,9 @@ ACTS.cancelMeeting = async (ds, el) => {
   if(!el.dataset.armed){ el.dataset.armed = "1"; el.textContent = "Click again to cancel"; return; }
   await save(() => S.db.doc("meetings/" + ds.id).update({status:"cancelled", updatedAt:Date.now()}), "Meeting cancelled");
 };
-ACTS.messageFamily = ds => { S.view = "messages"; S.pmPlayer = ds.id; S.pmTab = "chat"; S.meetingId = null; window.scrollTo(0,0); render(); };
+ACTS.messageFamily = ds => { S.view = "messages"; S.msgKind = "pm"; S.pmPlayer = ds.id; S.pmTab = "chat"; S.meetingId = null; window.scrollTo(0,0); render(); };
 ACTS.discussReview = ds => {
-  S.view = "messages"; S.pmPlayer = ds.player; S.pmTab = "meetings"; S.meetingId = null; window.scrollTo(0,0); render();
+  S.view = "messages"; S.msgKind = "pm"; S.pmPlayer = ds.player; S.pmTab = "meetings"; S.meetingId = null; window.scrollTo(0,0); render();
   openModal(MODALS.meetingNew({player:ds.player, review:ds.review}));
 };
 
@@ -4105,7 +4125,7 @@ FORMS.meetingNew = async (fd, form) => {
     createdBy:S.uid, createdByName:S.me.name||"", createdAt:Date.now(), updatedAt:Date.now()};
   closeModal();
   const ok = await save(() => S.db.collection("meetings").doc(id).set(row), isStaff() ? "Meeting created" : "Meeting requested. Your coach will see it in the meeting room.");
-  if(ok){ await loadKey("meetings"); S.view = "messages"; S.pmPlayer = pid; S.pmTab = "meetings"; S.meetingId = id; render(); }
+  if(ok){ await loadKey("meetings"); S.view = "messages"; S.msgKind = "pm"; S.pmPlayer = pid; S.pmTab = "meetings"; S.meetingId = id; render(); }
 };
 FORMS.meetingSchedule = async (fd, form) => {
   const when = fd.get("when"); closeModal();
