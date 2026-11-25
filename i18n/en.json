@@ -5062,7 +5062,6 @@
 "6609": "Run database update 029 in Supabase. Then sessions show up here.",
 "6610": "Save home session",
 "6611": "Schedule a home session",
-"6612": "Show on the team calendar. Families see the date, time, place and focus, not your notes or drills.",
 "6613": "Start time",
 "6614": "Team session",
 "6615": "Team sessions, meetings and the home sessions you plan.",
@@ -5077,5 +5076,13 @@
 "6624": "min",
 "6625": "repeat",
 "6626": "{0} home sessions added to the calendar",
-"6627": "✓ Done"
+"6627": "✓ Done",
+"6628": "Coach's note:",
+"6629": "Only coaches see these.",
+"6630": "Session notes",
+"6631": "Show on the team calendar. Families see the date, time, place and drill plan. Your session notes stay private to coaches.",
+"6632": "View session",
+"6633": "View session: {0}",
+"6634": "main h1",
+"6635": "← Calendar"
 }

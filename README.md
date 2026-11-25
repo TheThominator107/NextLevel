@@ -40,9 +40,9 @@ Anything marked `translate="no"` (like the NextPass logo) is never translated.
 
 **Home Drills (update 028)**: 60 solo drills, edited in `tools/drills.py` and built with `python3 tools/build_drills.py` (writes the list in app.js and update 028). Every drill shows what it helps improve; drills with a ball are done with both feet, keeper drills on both sides. The old animated demos were removed (anim.js is gone); retired drill ids open the closest current drill.
 
-**Calendar (update 029)**: a calendar icon left of the envelope. Coaches see their teams' sessions (a saved Team Drills session with a date, plus its new start time and place) and scheduled meetings; a session can be kept off the team calendar. Families see their team's calendar sessions (date, time, place, length and focus only, never the coach's notes or drills), meetings, and the home sessions they schedule (drills, length, repeat weekly, mark done). Run update 029 to switch it on.
+**Calendar (update 029)**: a calendar icon left of the envelope. Coaches see their teams' sessions (a saved Team Drills session with a date, plus its new start time and place) and scheduled meetings; a session can be kept off the team calendar. Families see their team's calendar sessions (date, time, place, length and focus only, never the coach's notes or drills), meetings, and the home sessions they schedule (drills, length, repeat weekly, mark done). Run update 029 to switch it on. Update 030 lets players and parents open "View session" to see the drill plan (read-only; session notes stay private to coaches).
 
-**Not sure which database updates you've run?** Run `supabase/all_updates.sql` once in the SQL Editor. It contains every update (002 to 029), is safe whatever state your database is in, and can be run again any time. If Supabase warns about a "destructive operation", click "Run this query": it only removes old, unused parts.
+**Not sure which database updates you've run?** Run `supabase/all_updates.sql` once in the SQL Editor. It contains every update (002 to 030), is safe whatever state your database is in, and can be run again any time. If Supabase warns about a "destructive operation", click "Run this query": it only removes old, unused parts.
 Existing database: run any migration you haven't run yet. They're all safe to run more than once.
 
 ## Paywall

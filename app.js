@@ -2499,7 +2499,7 @@ const MODALS = {
 
 /* ---------- actions ---------- */
 const ACTS = {
-  go: (ds, el) => { S.view = ds.view === "chat" ? "messages" : ds.view; if(ds.view === "chat") S.msgKind = "team"; S.preview = false; S.menuOpen = false; S.navOpen = null; S.navQuiet = !!(el && el.closest && el.closest(".nav-dd"));
+  go: (ds, el) => { S.calSession = null; S.view = ds.view === "chat" ? "messages" : ds.view; if(ds.view === "chat") S.msgKind = "team"; S.preview = false; S.menuOpen = false; S.navOpen = null; S.navQuiet = !!(el && el.closest && el.closest(".nav-dd"));
     if(ds.team){ S.teamFilter = ds.team; S.view = "roster"; }
     if(ds.sec) S.rsec = ds.sec; if(S.publicPage){ S.publicPage = null; try { history.replaceState(null, "", location.pathname + location.search); } catch(_){} } window.scrollTo(0,0); render(); },
   open: ds => { S.playerId = ds.id; S.view = "player"; S.preview = false; S.chartSkill = "overall"; S.ptab = "dev"; S.recSec = null; window.scrollTo(0,0); render(); },
@@ -4419,7 +4419,7 @@ function builderHtml(d){
       <label class="f" for="sd-min">Planned length<select id="sd-min" data-sd="minutes">${lens.map(m => `<option value="${m}" ${m === plan ? "selected" : ""}>${m} minutes</option>`).join("")}</select></label>
     </div>
     ${S.calReady ? `<label class="f" for="sd-loc">Place<input type="text" id="sd-loc" maxlength="120" data-sd="location" value="${esc(d.location || "")}" placeholder="e.g. Field 2, Oakley"></label>
-    <label class="check-row small" for="sd-cal"><input type="checkbox" id="sd-cal" data-sd="onCal" ${d.onCal !== false ? "checked" : ""}> Show on the team calendar. Families see the date, time, place and focus, not your notes or drills.</label>` : ""}
+    <label class="check-row small" for="sd-cal"><input type="checkbox" id="sd-cal" data-sd="onCal" ${d.onCal !== false ? "checked" : ""}> Show on the team calendar. Families see the date, time, place and drill plan. Your session notes stay private to coaches.</label>` : ""}
     <p class="sess-total small" id="sess-total" aria-live="polite">${totalText(total, plan)}</p>
     ${d.blocks.length ? `<ol class="blocks">${d.blocks.map(blk).join("")}</ol>`
       : `<div class="empty small"><p><b>No drills yet.</b> Use “Build a session for me”, add a recommended drill, or browse the team drill library.</p></div>`}
@@ -4838,7 +4838,7 @@ function calEvents(){
     (S.sessions || []).filter(s => s.sessionDate && s.teamId && teams.includes(s.teamId)).forEach(s => {
       const t = String(s.startTime || "").slice(0, 5);
       ev.push({kind:"team", id:s.id, day:s.sessionDate, at:new Date(s.sessionDate + "T" + (t || "00:00")).getTime(), timed:!!t, title:s.title, teamId:s.teamId,
-        minutes:s.minutes || sessTotal(s.blocks || []), location:s.location || "", focus:s.focus || [], hidden:s.onCalendar === false});
+        minutes:s.minutes || sessTotal(s.blocks || []), location:s.location || "", focus:s.focus || [], blocks:s.blocks || [], notes:s.notes || "", hidden:s.onCalendar === false});
     });
     const pids = new Set(pmPlayers().filter(p => teams.includes(p.teamId) || !S.calTeam || S.calTeam === "all").map(p => p.id));
     (S.meetings || []).filter(m => m.status === "scheduled" && m.scheduledAt && pids.has(m.playerId)).forEach(m =>
@@ -4848,7 +4848,7 @@ function calEvents(){
     const teamIds = new Set(kids.map(k => k.teamId).filter(Boolean)), kidIds = new Set(kids.map(k => k.id));
     (S.teamCal || []).filter(s => teamIds.has(s.teamId)).forEach(s => {
       const t = String(s.startTime || "").slice(0, 5);
-      ev.push({kind:"team", id:s.id, day:s.sessionDate, at:new Date(s.sessionDate + "T" + (t || "00:00")).getTime(), timed:!!t, title:s.title, teamId:s.teamId, minutes:s.minutes || 0, location:s.location || "", focus:s.focus || []});
+      ev.push({kind:"team", id:s.id, day:s.sessionDate, at:new Date(s.sessionDate + "T" + (t || "00:00")).getTime(), timed:!!t, title:s.title, teamId:s.teamId, minutes:s.minutes || 0, location:s.location || "", focus:s.focus || [], blocks:Array.isArray(s.blocks) ? s.blocks : []});
     });
     (S.homeSessions || []).filter(h => kidIds.has(h.playerId)).forEach(h =>
       ev.push({kind:"home", id:h.id, day:calKey(new Date(h.startsAt)), at:h.startsAt, timed:true, playerId:h.playerId, minutes:h.minutes, drills:h.drillIds || [], note:h.note || "", done:!!h.done}));
@@ -4877,7 +4877,7 @@ function calEventHtml(e, withDate){
       ${e.location ? `<span class="small cal-place"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>${esc(e.location)}</span>` : ""}
       ${(e.focus || []).length ? `<span class="chips">${e.focus.map(k => `<span class="chip">${esc(SKILL_LABEL[k] || k)}</span>`).join("")}</span>` : ""}
       ${e.hidden ? `<span class="small muted">Only coaches see this session. Families don't.</span>` : ""}`;
-    if(isStaff()) acts = `<button class="btn ghost sm" data-act="calOpenPlan" data-id="${esc(e.id)}">Open plan</button>`;
+    acts = `${(e.blocks || []).length ? `<button class="btn sm" data-act="calView" data-id="${esc(e.id)}" aria-label="View session: ${esc(e.title)}">View session</button>` : ""}${isStaff() ? `<button class="btn ghost sm" data-act="calOpenPlan" data-id="${esc(e.id)}">Open plan</button>` : ""}`;
   } else if(e.kind === "home"){
     const names = (e.drills || []).map(id => (drillById(id) || {}).title).filter(Boolean);
     body = `<b class="cal-ev-t">${names.length ? esc(names.join(", ")) : "Home training"}</b>${e.note ? `<span class="small muted">${esc(e.note)}</span>` : ""}`;
@@ -4896,6 +4896,7 @@ function calEventHtml(e, withDate){
   </li>`;
 }
 function calendarView(){
+  if(S.calSession){ const e = calEvents().find(x => x.kind === "team" && x.id === S.calSession); if(e) return calSessionView(e); S.calSession = null; }
   const now = new Date(), today = calKey(now), fam = !isStaff(), kids = calKids();
   if(!S.calDay) S.calDay = today;
   if(!S.calMonth) S.calMonth = S.calDay.slice(0, 7);
@@ -4951,6 +4952,36 @@ function calendarView(){
     </section>
   </div>`;
 }
+/* a team session's plan, read-only: what players will do at practice */
+function calSessionView(e){
+  const when = [calLong(e.day), e.timed ? calTime(e.at) : "", e.minutes ? e.minutes + " min" : ""].filter(Boolean).join(" · ");
+  const kids = calKids(), team = isStaff() ? myTeams().length > 1 : new Set(kids.map(k => k.teamId)).size > 1;
+  let start = 0;
+  const blocks = (e.blocks || []).map((b, i) => {
+    const dr = b.custom ? null : blockDrill(b), from = start; start += Number(b.minutes) || 0;
+    return `<li class="card stack vs-block">
+      <div class="row between top-al"><h2 class="vs-t"><span class="vs-n">${i + 1}</span>${esc(blockTitle(b))}</h2>
+        <span class="row td-pills">${dr ? `${lvlPill(dr)}<span class="pill plain">${esc(dr.phase)}</span>` : ""}<span class="pill plain">${esc(String(Number(b.minutes) || 0))} min</span></span></div>
+      ${b.notes ? `<p class="vs-note"><b>Coach's note:</b> ${esc(b.notes)}</p>` : ""}
+      ${dr ? `<div class="vs-body"><div class="tdiag-w">${diagramSvg(dr)}</div>
+        <div class="stack" style="gap:8px"><p class="dgoal">${esc(dr.summary)}</p>
+          <div class="trains small"><span class="muted">Works on:</span> ${(dr.skills || []).map(k => esc(SKILL_LABEL[k] || k)).join(" · ")}</div>
+          ${teamDrillDetails(dr)}</div></div>` : ""}
+    </li>`; }).join("");
+  return `<button class="btn ghost back" data-act="calBack">← Calendar</button>
+  <div class="stack vs-head" style="gap:6px">
+    <span class="cal-kind">Team session</span>
+    <h1>${esc(e.title)}</h1>
+    <p class="muted">${esc(when)}${team && e.teamId ? " · " + esc(teamName(e.teamId)) : ""}</p>
+    ${e.location ? `<p class="cal-place"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>${esc(e.location)}</p>` : ""}
+    ${(e.focus || []).length ? `<div class="chips"><span class="small muted">Focus:</span>${e.focus.map(k => `<span class="chip">${esc(SKILL_LABEL[k] || k)}</span>`).join("")}</div>` : ""}
+  </div>
+  ${isStaff() && e.notes ? `<div class="card stack"><h2>Session notes</h2><p class="small muted">Only coaches see these.</p><p>${esc(e.notes)}</p></div>` : ""}
+  <ol class="vs-blocks" aria-label="Session plan">${blocks}</ol>
+  ${isStaff() ? `<div><button class="btn" data-act="calOpenPlan" data-id="${esc(e.id)}">Open plan</button></div>` : ""}`;
+}
+ACTS.calView = ds => { S.calSession = ds.id; render(); window.scrollTo(0, 0); const h = document.querySelector("main h1"); if(h){ h.tabIndex = -1; h.focus({preventScroll:true}); } };
+ACTS.calBack = () => { const id = S.calSession; S.calSession = null; render(); const b = document.querySelector(`[data-act="calView"][data-id="${CSS.escape(id || "")}"]`); if(b) b.focus(); };
 ACTS.calDay = ds => { S.calDay = ds.id; S.calMonth = ds.id.slice(0, 7); render();
   if(window.matchMedia("(max-width:900px)").matches){ const h = document.getElementById("cal-dh"); if(h){ h.focus({preventScroll:true}); h.scrollIntoView({block:"start", behavior:"smooth"}); } }
   else { const b = document.querySelector(`[data-act="calDay"][data-id="${ds.id}"].cal-d`); if(b) b.focus(); } };

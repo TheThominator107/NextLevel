@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-i18nv="21">
+<html lang="en" data-i18nv="22">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1509,6 +1509,16 @@ tbody td{padding-top:14px;padding-bottom:14px}
 .hs-drills legend{font-weight:600;padding:0 4px}
 .hs-drills summary{font-weight:600;font-size:.9rem;margin-top:6px}
 .hs-lv{margin:8px 0 2px}
+/* View session: the team's practice plan, read-only */
+.vs-head .cal-kind{align-self:flex-start}
+.vs-head .chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.vs-blocks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:16px}
+.vs-t{display:flex;align-items:center;gap:10px;margin:0;font-size:1.2rem}
+.vs-n{flex:none;width:32px;height:32px;border-radius:50%;background:#c4471c;color:#ffffff;display:grid;place-items:center;font-family:var(--headline);font-size:1.15rem}
+.vs-note{margin:0;padding:8px 12px;border-left:3px solid #c4471c;background:var(--paper);border-radius:4px}
+.vs-body{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:20px;align-items:start}
+.vs-body .tdiag-w{height:auto}
+@media (max-width:720px){ .vs-body{grid-template-columns:minmax(0,1fr)} }
 .check-row{display:flex;align-items:flex-start;gap:8px;min-height:32px;padding:4px 0;cursor:pointer}
 .check-row input{margin-top:3px;width:18px;height:18px;flex:none}
 
