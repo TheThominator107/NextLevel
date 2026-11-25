@@ -206,7 +206,7 @@ const S = {
   view:null, playerId:null, childId:null, teamFilter:"all", catFilter:"All",
   chartSkill:"overall", preview:false, loading:true, noDb:false, notice:null, subClubId:undefined,
   profiles:[], comments:[], ptab:"dev", assets:null, publicSlug:null, pub:null,
-  sessions:[], sessTab:"plan", sessTeam:null, draft:null, tdPhase:"All", tdSkill:"", tdSearch:"", tdAllAges:false,
+  sessions:[], homeSessions:[], teamCal:[], calMonth:null, calDay:null, calTeam:"all", calKid:"all", sessTab:"plan", sessTeam:null, draft:null, tdPhase:"All", tdSkill:"", tdSearch:"", tdAllAges:false,
   messages:[], chatTeam:null, pmessages:[], reactions:[], reactFor:null, opps:[], oppKind:"", oppGender:"", oppQ:"", meetings:[], teamCoaches:[], pmPlayer:null, pmTab:"chat", meetingId:null
 };
 const APP_URL = location.origin + location.pathname;
@@ -434,7 +434,7 @@ async function save(fn, ok){
 let sb = null, channel = null, loadTimer;
 const TABLE = {clubs:"clubs", teams:"teams", players:"players", reviews:"reviews", assignments:"assignments", drills:"drills",
   members:"members", profiles:"player_profiles", comments:"comments", messages:"messages",
-  pmessages:"private_messages", meetings:"meetings", requests:"join_requests", interest:"recruit_interest", shortlist:"college_shortlist", college:"college_coaches", sessions:"team_sessions", reactions:"message_reactions", opps:"opportunities"};
+  pmessages:"private_messages", meetings:"meetings", requests:"join_requests", interest:"recruit_interest", shortlist:"college_shortlist", college:"college_coaches", sessions:"team_sessions", reactions:"message_reactions", opps:"opportunities", homeSessions:"home_sessions"};
 const PK = {profiles:"player_id"};
 const TABLE_TO_KEY = Object.fromEntries(Object.entries(TABLE).map(([k,v]) => [v,k]));
 TABLE_TO_KEY.clubs = "club"; TABLE_TO_KEY.family_links = "links"; TABLE_TO_KEY.team_coaches = "teamCoaches";
@@ -548,7 +548,7 @@ async function loadKey(key){
   /* college coaches and pro scouts only load their own details, shortlist and messages */
   if(col && !["college","shortlist","interest","opps"].includes(key)) return;
   if(pro && !["pro","shortlist","interest"].includes(key)) return;
-  if((key === "college" && !col) || (key === "pro" && !pro) || (key === "shortlist" && fam) || (key === "sessions" && fam)) return;
+  if((key === "college" && !col) || (key === "pro" && !pro) || (key === "shortlist" && fam) || (key === "sessions" && fam) || (key === "homeSessions" && !fam)) return;
   const byClub = t => fam ? sb.from(t).select("*") : sb.from(t).select("*").eq("club_id", cid);
   let q;
   if(key === "club") q = fam ? sb.rpc("family_clubs") : sb.from("clubs").select("*").eq("id", cid).maybeSingle();
@@ -565,6 +565,8 @@ async function loadKey(key){
   else if(key === "college") q = sb.from("college_coaches").select("*").eq("id", S.uid).maybeSingle();
   else if(key === "links") q = sb.from("family_links").select("*");
   else if(key === "teamCoaches") q = sb.from("team_coaches").select("*");
+  else if(key === "teamCal") q = sb.rpc("team_calendar");
+  else if(key === "homeSessions") q = sb.from("home_sessions").select("*").order("starts_at", {ascending:true}).limit(2000);
   /* the database's privacy rules pick the rows: profiles and family drills follow the player, not a club */
   else if(TABLE[key] && (fam || key === "members" || key === "profiles" || key === "assignments")) q = sb.from(TABLE[key]).select("*");
   else if(TABLE[key]) q = byClub(TABLE[key]);
@@ -575,6 +577,7 @@ async function loadKey(key){
     if(key === "sessions"){ S.sessionsMissing = true; render(); return; } /* not there until database update 018 is run */
     if(key === "reactions"){ S.reactionsMissing = true; render(); return; } /* not there until database update 022 is run */
     if(key === "opps"){ S.oppsMissing = true; render(); return; } /* not there until database update 024 is run */
+    if(key === "teamCal" || key === "homeSessions"){ S.calMissing = true; render(); return; } /* not there until database update 029 is run */
     S.notice = "Some data couldn't load. Reload the page to try again."; render(); return; }
   if(key === "club" && fam){ const before = JSON.stringify(S.clubs); S.clubs = (Array.isArray(data) ? data : []).map(camel); S.club = null; S.clubLoaded = true; if(before !== JSON.stringify(S.clubs)) loadSteps(); }
   else if(key === "club"){ const before = S.club && S.club.familyAccess, wasWaiting = clubWaiting(); S.club = data ? camel(data) : null; S.clubLoaded = true; if(S.club && before !== undefined && before !== S.club.familyAccess) loadSteps();
@@ -587,6 +590,7 @@ async function loadKey(key){
   else if(key === "owner") S.owner = (data || []).length > 0;
   else if(key === "scouts") S.scouts = (Array.isArray(data) ? data : []).map(camel);
   else if(key === "teamCoaches") S.teamCoaches = data || [];
+  else if(key === "teamCal"){ S.teamCal = (Array.isArray(data) ? data : []).map(camel); S.calMissing = false; S.calReady = true; }
   else { if(key === "sessions") S.sessionsMissing = false; if(key === "reactions") S.reactionsMissing = false; if(key === "opps") S.oppsMissing = false; S[key] = data.map(camel); }
   if(key === "members" || key === "links"){
     const links = S.links || [];
@@ -598,6 +602,7 @@ function subscribeClub(cid){
   if(channel){ sb.removeChannel(channel); channel = null; }
   S.subClubId = cid; S.clubLoaded = false;
   S.club = null; S.teams = []; S.players = []; S.reviews = []; S.assignments = []; S.drills = []; S.members = []; S.links = [];
+  S.homeSessions = []; S.teamCal = [];
   S.profiles = []; S.comments = []; S.messages = []; S.pmessages = []; S.reactions = []; S.reactFor = null; S.opps = []; S.meetings = []; S.teamCoaches = []; S.clubs = []; S.requests = []; S.interest = []; S.shortlist = []; S.scout = null; S.college = null; S.pro = null; S.proLoaded = false; S.scouts = []; S.owner = false; S.sessions = []; S.sessionsMissing = false; S.draft = null;
   if(!cid) return;
   ALL_KEYS.forEach(k => loadKey(k));
@@ -609,14 +614,15 @@ function subscribeClub(cid){
       /* a player joining or leaving a club changes what else is visible */
       if(payload.table === "players" || payload.table === "join_requests" || payload.table === "recruit_interest") ["club","teams","players","messages","members","drills","profiles","assignments","reviews","comments","requests","interest"].forEach(schedule);
       if(payload.table === "pro_scouts"){ schedule("pro"); schedule("scouts"); }
+      if(payload.table === "team_sessions") schedule("teamCal");
       schedule(key);
     })
     .subscribe();
 }
-const ALL_KEYS = ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","reactions","opps","meetings","teamCoaches","requests","interest","shortlist","college","pro","owner","scouts","sessions"];
+const ALL_KEYS = ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","reactions","opps","meetings","teamCoaches","requests","interest","shortlist","college","pro","owner","scouts","sessions","teamCal","homeSessions"];
 function refreshAll(){ ALL_KEYS.forEach(schedule); }
 function fixView(){
-  const staffViews = ["roster","player","sessions","chat","messages","drills","recruit","plans","club"], famViews = ["home","chat","messages","drills","recruit","plans","account"];
+  const staffViews = ["roster","player","sessions","chat","messages","calendar","drills","recruit","plans","club"], famViews = ["home","chat","messages","calendar","drills","recruit","plans","account"];
   if(!S.me) { S.view = null; return; }
   if(isScout()){ if(!["scout","shortlist","account"].includes(S.view)) S.view = "scout"; return; }
   const ok = isStaff() ? staffViews : famViews;
@@ -677,7 +683,7 @@ function topbar(){
   if(S.me && (S.club || !isStaff())){
     const items = navItems();
     const menuN = items.reduce((n, it) => n + (it.n || 0), 0);
-    tabs = `<div class="top-icons">${mailHtml()}${bellHtml()}</div><button type="button" class="menu-btn app-menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="app-nav">${S.menuOpen ? "Close" : "Menu"}${!S.menuOpen && menuN ? `<span class="badge">${menuN>99?"99+":menuN}</span>` : ""}</button>
+    tabs = `<div class="top-icons">${calHtml()}${mailHtml()}${bellHtml()}</div><button type="button" class="menu-btn app-menu-btn" data-act="menu" aria-expanded="${!!S.menuOpen}" aria-controls="app-nav">${S.menuOpen ? "Close" : "Menu"}${!S.menuOpen && menuN ? `<span class="badge">${menuN>99?"99+":menuN}</span>` : ""}</button>
     <nav id="app-nav" class="tabs app-tabs${S.menuOpen ? " open" : ""}${S.navQuiet ? " dd-quiet" : ""}" aria-label="Main">${items.map(it => it.g ? navGroup(it) : navBtn(it)).join("")}<a href="#contact" class="signout-link" ${S.publicPage==="contact"?'aria-current="page"':""}>Contact</a>${langToggle("nav-lang")}<button class="signout-link" data-act="signOut">Sign out</button></nav>`;
   }
   return `<header class="top"><div class="top-in">
@@ -738,6 +744,7 @@ function viewBody(){
       case "recruit": return staffRecruit();
       case "opps": return oppsView();
       case "chat": case "messages": return inboxView();
+      case "calendar": return calendarView();
       default: return rosterView();
     }
   }
@@ -749,6 +756,7 @@ function viewBody(){
     case "opps": return oppsView();
     case "plans": return drillsView();   /* families buy Home Drills access on the Home Drills tab */
     case "chat": case "messages": return inboxView();
+    case "calendar": return calendarView();
     default: return familyHome();
   }
 }
@@ -3057,6 +3065,10 @@ document.addEventListener("change", ev => {
     S.childId = ev.target.value; render(); const el = document.getElementById("sel-player"); if(el) el.focus(); return; }
   if(ev.target.dataset && (ev.target.dataset.change === "oppKind" || ev.target.dataset.change === "oppGender")){ S[ev.target.dataset.change] = ev.target.value; render(); const el = document.getElementById(ev.target.id); if(el) el.focus(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "chatTeam"){ S.chatTeam = ev.target.value; render(); return; }
+  if(ev.target.dataset && ev.target.dataset.change === "calTeam"){ S.calTeam = ev.target.value; render(); const el = document.getElementById("cal-team"); if(el) el.focus(); return; }
+  if(ev.target.dataset && ev.target.dataset.change === "calKid"){ S.calKid = ev.target.value; render(); const el = document.getElementById("cal-kid"); if(el) el.focus(); return; }
+  if(ev.target.dataset && ev.target.dataset.change === "hsKid"){ const f = ev.target.form, fd = new FormData(f);
+    openModal(MODALS.homeSess({id:f.dataset.id || "", pid:ev.target.value, date:fd.get("date"), time:fd.get("time"), minutes:fd.get("minutes"), note:fd.get("note"), drills:""})); const el = document.getElementById("hs-kid"); if(el) el.focus(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "msgPick"){ const v = ev.target.value, id = v.slice(2);
     if(v[0] === "t"){ S.msgKind = "team"; S.chatTeam = id; } else { S.msgKind = "pm"; S.pmPlayer = id; S.meetingId = null; }
     render(); return; }
@@ -4256,7 +4268,7 @@ const defaultFocus = F => F.field.filter(s => s.need > 0.5).slice(0, 3).map(s =>
 
 function newDraft(teamId){
   const F = teamFocus(teamId);
-  return {id:null, title:"", teamId, date:"", minutes:75, focus:defaultFocus(F), blocks:[], notes:"", focusTouched:false};
+  return {id:null, title:"", teamId, date:"", time:"", location:"", onCal:true, minutes:75, focus:defaultFocus(F), blocks:[], notes:"", focusTouched:false};
 }
 function draft(){
   const tid = sessTeamId();
@@ -4403,8 +4415,11 @@ function builderHtml(d){
     <label class="f" for="sd-title">Title<input type="text" id="sd-title" maxlength="100" data-sd="title" value="${esc(d.title)}" placeholder="e.g. Tuesday: playing through pressure"></label>
     <div class="row wrap-f">
       <label class="f" for="sd-date">Date<input type="date" id="sd-date" data-sd="date" value="${esc(d.date || "")}"></label>
+      ${S.calReady ? `<label class="f" for="sd-time">Start time<input type="time" id="sd-time" data-sd="time" value="${esc(d.time || "")}"></label>` : ""}
       <label class="f" for="sd-min">Planned length<select id="sd-min" data-sd="minutes">${lens.map(m => `<option value="${m}" ${m === plan ? "selected" : ""}>${m} minutes</option>`).join("")}</select></label>
     </div>
+    ${S.calReady ? `<label class="f" for="sd-loc">Place<input type="text" id="sd-loc" maxlength="120" data-sd="location" value="${esc(d.location || "")}" placeholder="e.g. Field 2, Oakley"></label>
+    <label class="check-row small" for="sd-cal"><input type="checkbox" id="sd-cal" data-sd="onCal" ${d.onCal !== false ? "checked" : ""}> Show on the team calendar. Families see the date, time, place and focus, not your notes or drills.</label>` : ""}
     <p class="sess-total small" id="sess-total" aria-live="polite">${totalText(total, plan)}</p>
     ${d.blocks.length ? `<ol class="blocks">${d.blocks.map(blk).join("")}</ol>`
       : `<div class="empty small"><p><b>No drills yet.</b> Use “Build a session for me”, add a recommended drill, or browse the team drill library.</p></div>`}
@@ -4524,6 +4539,7 @@ Object.assign(ACTS, {
     const id = d.id || crypto.randomUUID();
     const row = {clubId:S.me.clubId, teamId:team ? team.id : null, title:title.slice(0, 100), sessionDate:d.date || null, minutes:Number(d.minutes) || 0,
       focus:(d.focus || []).slice(0, 4), notes:(d.notes || "").slice(0, 4000), updatedAt:Date.now(),
+      ...(S.calReady ? {startTime:d.time || null, location:(d.location || "").slice(0, 120), onCalendar:d.onCal !== false} : {}),
       blocks:d.blocks.slice(0, 30).map(b => b.custom ? {custom:true, title:String(b.title || "").slice(0, 80), minutes:Math.max(0, Math.min(120, Number(b.minutes) || 0)), notes:String(b.notes || "").slice(0, 300)}
         : {drillId:b.drillId, minutes:Math.max(0, Math.min(120, Number(b.minutes) || 0)), notes:String(b.notes || "").slice(0, 300)})};
     if(!d.id){ row.createdBy = S.uid; row.createdAt = Date.now(); }
@@ -4531,7 +4547,7 @@ Object.assign(ACTS, {
     if(ok){ d.id = id; d.title = row.title; keepDraft(); render(); }
   },
   sessOpen: ds => { const s = (S.sessions || []).find(x => x.id === ds.id); if(!s) return;
-    S.draft = {id:s.id, title:s.title, teamId:s.teamId || "all", date:s.sessionDate || "", minutes:s.minutes || sessTotal(s.blocks), focus:(s.focus || []).slice(), blocks:JSON.parse(JSON.stringify(s.blocks || [])), notes:s.notes || "", focusTouched:true};
+    S.draft = {id:s.id, title:s.title, teamId:s.teamId || "all", date:s.sessionDate || "", time:String(s.startTime || "").slice(0, 5), location:s.location || "", onCal:s.onCalendar !== false, minutes:s.minutes || sessTotal(s.blocks), focus:(s.focus || []).slice(), blocks:JSON.parse(JSON.stringify(s.blocks || [])), notes:s.notes || "", focusTouched:true};
     S.sessTeam = S.draft.teamId; S.sessTab = "plan"; keepDraft(); render(); window.scrollTo(0, 0); },
   sessCopy: ds => { ACTS.sessOpen(ds); if(S.draft){ S.draft.id = null; S.draft.date = ""; S.draft.title = S.draft.title + " (copy)"; keepDraft(); render(); toast("Copied into a new plan. Save it when you're ready."); } },
   sessDel: async ds => { const ok = await save(() => S.db.doc("sessions/" + ds.id).delete(), "Session deleted");
@@ -4552,7 +4568,7 @@ FORMS.sessCustom = async fd => {
 };
 document.addEventListener("input", ev => {
   const t = ev.target; if(!t.dataset || !S.draft) return;
-  if(t.dataset.sd && t.dataset.sd !== "teamId"){ const k = t.dataset.sd; S.draft[k] = k === "minutes" ? Number(t.value) || 0 : t.value; if(k === "minutes") updSessTotal(); keepDraft(); }
+  if(t.dataset.sd && t.dataset.sd !== "teamId"){ const k = t.dataset.sd; S.draft[k] = k === "minutes" ? Number(t.value) || 0 : k === "onCal" ? t.checked : t.value; if(k === "minutes") updSessTotal(); keepDraft(); }
   else if(t.dataset.blk != null){ const b = S.draft.blocks[+t.dataset.blk]; if(!b) return; const k = t.dataset.k;
     b[k] = k === "minutes" ? Math.max(0, Math.min(120, Number(t.value) || 0)) : t.value; if(k === "minutes") updSessTotal(); keepDraft(); }
   else if(t.dataset.input === "tdSearch"){ S.tdSearch = t.value; const pos = t.selectionStart; render();
@@ -4803,3 +4819,197 @@ async function onSession(session, event){
   const {data} = await sb.auth.getSession();
   await onSession(data.session, "INITIAL");
 })();
+
+/* ---------- calendar: team sessions, meetings and at-home sessions ----------
+   The calendar icon sits left of the envelope. Coaches see their teams' sessions
+   and scheduled meetings; families also see and plan their player's home sessions. */
+function calPad(n){ return String(n).padStart(2, "0"); }
+function calKey(d){ return d.getFullYear() + "-" + calPad(d.getMonth() + 1) + "-" + calPad(d.getDate()); }
+function calDate(k){ return new Date(k + "T12:00:00"); }
+function calKids(){ return isStaff() ? [] : S.players.filter(p => (S.me.playerIds || []).includes(p.id)); }
+function calTime(ms){ return new Date(ms).toLocaleTimeString(LOC, {hour:"numeric", minute:"2-digit"}); }
+function calLong(k){ return calDate(k).toLocaleDateString(LOC, {weekday:"long", month:"long", day:"numeric"}); }
+function calShort(k){ return calDate(k).toLocaleDateString(LOC, {weekday:"short", month:"short", day:"numeric"}); }
+/* every event the signed-in person can see, filtered by the team or player picked on the page */
+function calEvents(){
+  const ev = [];
+  if(isStaff()){
+    const teams = myTeams().filter(t => !S.calTeam || S.calTeam === "all" || S.calTeam === t.id).map(t => t.id);
+    (S.sessions || []).filter(s => s.sessionDate && s.teamId && teams.includes(s.teamId)).forEach(s => {
+      const t = String(s.startTime || "").slice(0, 5);
+      ev.push({kind:"team", id:s.id, day:s.sessionDate, at:new Date(s.sessionDate + "T" + (t || "00:00")).getTime(), timed:!!t, title:s.title, teamId:s.teamId,
+        minutes:s.minutes || sessTotal(s.blocks || []), location:s.location || "", focus:s.focus || [], hidden:s.onCalendar === false});
+    });
+    const pids = new Set(pmPlayers().filter(p => teams.includes(p.teamId) || !S.calTeam || S.calTeam === "all").map(p => p.id));
+    (S.meetings || []).filter(m => m.status === "scheduled" && m.scheduledAt && pids.has(m.playerId)).forEach(m =>
+      ev.push({kind:"meet", id:m.id, day:calKey(new Date(m.scheduledAt)), at:m.scheduledAt, timed:true, title:m.topic, playerId:m.playerId, minutes:30}));
+  } else {
+    const kids = calKids().filter(k => !S.calKid || S.calKid === "all" || S.calKid === k.id);
+    const teamIds = new Set(kids.map(k => k.teamId).filter(Boolean)), kidIds = new Set(kids.map(k => k.id));
+    (S.teamCal || []).filter(s => teamIds.has(s.teamId)).forEach(s => {
+      const t = String(s.startTime || "").slice(0, 5);
+      ev.push({kind:"team", id:s.id, day:s.sessionDate, at:new Date(s.sessionDate + "T" + (t || "00:00")).getTime(), timed:!!t, title:s.title, teamId:s.teamId, minutes:s.minutes || 0, location:s.location || "", focus:s.focus || []});
+    });
+    (S.homeSessions || []).filter(h => kidIds.has(h.playerId)).forEach(h =>
+      ev.push({kind:"home", id:h.id, day:calKey(new Date(h.startsAt)), at:h.startsAt, timed:true, playerId:h.playerId, minutes:h.minutes, drills:h.drillIds || [], note:h.note || "", done:!!h.done}));
+    (S.meetings || []).filter(m => m.status === "scheduled" && m.scheduledAt && kidIds.has(m.playerId)).forEach(m =>
+      ev.push({kind:"meet", id:m.id, day:calKey(new Date(m.scheduledAt)), at:m.scheduledAt, timed:true, title:m.topic, playerId:m.playerId, minutes:30}));
+  }
+  return ev.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0) || (a.timed - b.timed) || (a.at - b.at));
+}
+function calTodayCount(){ if(!S.me || isScout()) return 0; const k = calKey(new Date()); return calEvents().filter(e => e.day === k && !(e.kind === "home" && e.done)).length; }
+function calHtml(){
+  if(!S.me || isScout() || (isStaff() && clubWaiting())) return "";
+  const cur = S.view === "calendar" && !S.publicPage, n = calTodayCount();
+  return `<button type="button" class="cal-btn" data-act="go" data-view="calendar" title="Calendar" aria-label="${n ? `Calendar, ${n} today` : "Calendar"}"${cur ? ' aria-current="page"' : ""}>
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      ${n ? `<span class="badge mail-badge cal-badge">${n > 9 ? "9+" : n}</span>` : ""}</button>`;
+}
+const CAL_KIND = {team:"Team session", home:"Home session", meet:"Meeting"};
+function calEventHtml(e, withDate){
+  const fam = !isStaff(), kids = calKids();
+  const when = [withDate ? calShort(e.day) : "", e.timed ? calTime(e.at) : "Time not set", e.minutes ? e.minutes + " min" : ""].filter(Boolean).join(" · ");
+  const who = e.playerId && (isStaff() || kids.length > 1) ? (S.players.find(p => p.id === e.playerId) || {}).name || "" : "";
+  const team = e.teamId && (isStaff() ? myTeams().length > 1 : new Set(kids.map(k => k.teamId)).size > 1) ? teamName(e.teamId) : "";
+  let body = "", acts = "";
+  if(e.kind === "team"){
+    body = `<b class="cal-ev-t">${esc(e.title)}</b>
+      ${e.location ? `<span class="small cal-place"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>${esc(e.location)}</span>` : ""}
+      ${(e.focus || []).length ? `<span class="chips">${e.focus.map(k => `<span class="chip">${esc(SKILL_LABEL[k] || k)}</span>`).join("")}</span>` : ""}
+      ${e.hidden ? `<span class="small muted">Only coaches see this session. Families don't.</span>` : ""}`;
+    if(isStaff()) acts = `<button class="btn ghost sm" data-act="calOpenPlan" data-id="${esc(e.id)}">Open plan</button>`;
+  } else if(e.kind === "home"){
+    const names = (e.drills || []).map(id => (drillById(id) || {}).title).filter(Boolean);
+    body = `<b class="cal-ev-t">${names.length ? esc(names.join(", ")) : "Home training"}</b>${e.note ? `<span class="small muted">${esc(e.note)}</span>` : ""}`;
+    if(fam) acts = `<button class="btn sm${e.done ? " primary" : ""}" data-act="homeDone" data-id="${esc(e.id)}" aria-pressed="${e.done}">${e.done ? "✓ Done" : "Mark done"}</button>
+      <button class="btn ghost sm" data-act="modal" data-m="homeSess" data-id="${esc(e.id)}">Edit</button>
+      <button class="btn ghost sm" data-act="homeDel" data-id="${esc(e.id)}">Delete</button>`;
+  } else {
+    body = `<b class="cal-ev-t">${esc(e.title || "Meeting")}</b>`;
+    acts = `<button class="btn ghost sm" data-act="notifOpen" data-id="${esc(e.id)}">Open meeting room</button>`;
+  }
+  return `<li class="cal-ev k-${e.kind}${e.done ? " is-done" : ""}">
+    <div class="cal-ev-h"><span class="cal-kind">${CAL_KIND[e.kind]}</span><span class="small muted">${esc(when)}</span></div>
+    ${who || team ? `<span class="small muted">${esc([who, team].filter(Boolean).join(" · "))}</span>` : ""}
+    ${body}
+    ${acts ? `<div class="row cal-ev-acts">${acts}</div>` : ""}
+  </li>`;
+}
+function calendarView(){
+  const now = new Date(), today = calKey(now), fam = !isStaff(), kids = calKids();
+  if(!S.calDay) S.calDay = today;
+  if(!S.calMonth) S.calMonth = S.calDay.slice(0, 7);
+  const head = `<div class="row between"><div class="stack" style="gap:4px"><h1>Calendar</h1><p class="muted">${fam ? "Team sessions, meetings and the home sessions you plan." : "Your teams' sessions and scheduled meetings."}</p></div>
+    ${fam ? (kids.length && !S.calMissing ? `<button class="btn primary" data-act="modal" data-m="homeSess" data-day="${S.calDay >= today ? S.calDay : today}">Schedule a home session</button>` : "") : `<button class="btn" data-act="calPlan">Plan a team session</button>`}</div>`;
+  if(fam && !kids.length) return head + `<div class="locked"><h2>Add your player</h2><p>Create your player's profile first. Then you can find your club and ask to join your team.</p><button class="btn primary" data-act="go" data-view="home">Go to My player</button></div>`;
+  const missing = S.calMissing ? `<div class="card stack"><h2>The calendar isn't switched on yet</h2><p class="muted">${isAdmin() ? "Run database update 029 in Supabase. Then sessions show up here." : "Your club admin needs to run the latest database update. Then sessions show up here."}</p></div>` : "";
+  const filt = isStaff()
+    ? (myTeams().length > 1 ? `<label class="f cal-filter" for="cal-team">Team<select id="cal-team" data-change="calTeam"><option value="all">All teams</option>${myTeams().map(t => `<option value="${esc(t.id)}" ${S.calTeam === t.id ? "selected" : ""}>${esc(t.name)}</option>`).join("")}</select></label>` : "")
+    : (kids.length > 1 ? `<label class="f cal-filter" for="cal-kid">Player<select id="cal-kid" data-change="calKid"><option value="all">All players</option>${kids.map(k => `<option value="${esc(k.id)}" ${S.calKid === k.id ? "selected" : ""}>${esc(k.name)}</option>`).join("")}</select></label>` : "");
+  const evs = calEvents(), byDay = {};
+  evs.forEach(e => (byDay[e.day] = byDay[e.day] || []).push(e));
+  /* the month grid, Sunday first */
+  const [y, mo] = S.calMonth.split("-").map(Number), first = new Date(y, mo - 1, 1), start = new Date(y, mo - 1, 1 - first.getDay());
+  const wk = [...Array(7)].map((_, i) => new Date(2026, 10, 1 + i));   /* Nov 1 2026 is a Sunday */
+  let rows = "";
+  for(let w = 0; w < 6; w++){
+    let cells = "";
+    for(let d = 0; d < 7; d++){
+      const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + w * 7 + d), k = calKey(day), es = byDay[k] || [], out = day.getMonth() !== mo - 1;
+      const kinds = [...new Set(es.map(e => e.kind))];
+      cells += `<td><button type="button" class="cal-d${out ? " out" : ""}${k === today ? " today" : ""}" data-act="calDay" data-id="${k}" aria-pressed="${k === S.calDay}" aria-label="${esc(calLong(k))}${es.length ? `, ${es.length} event${es.length > 1 ? "s" : ""}` : ""}">
+        <span class="cal-n">${day.getDate()}</span>
+        <span class="cal-chips" aria-hidden="true">${es.slice(0, 2).map(e => `<span class="cal-chip k-${e.kind}">${e.timed ? esc(calTime(e.at)) : esc(CAL_KIND[e.kind])}</span>`).join("")}${es.length > 2 ? `<span class="cal-more">+${es.length - 2}</span>` : ""}</span>
+        <span class="cal-dots" aria-hidden="true">${kinds.map(k2 => `<i class="k-${k2}"></i>`).join("")}</span></button></td>`;
+    }
+    rows += `<tr>${cells}</tr>`;
+    const next = new Date(start.getFullYear(), start.getMonth(), start.getDate() + (w + 1) * 7);
+    if(next.getMonth() !== mo - 1 && w >= 3) break;
+  }
+  const month = first.toLocaleDateString(LOC, {month:"long", year:"numeric"});
+  const dayList = byDay[S.calDay] || [];
+  const coming = evs.filter(e => e.day >= today && e.day !== S.calDay && !(e.kind === "home" && e.done)).slice(0, 8);
+  const legend = `<p class="cal-legend small">${["team", fam ? "home" : null, "meet"].filter(Boolean).map(k => `<span><i class="k-${k}" aria-hidden="true"></i>${CAL_KIND[k]}</span>`).join("")}</p>`;
+  return `${head}${missing}${filt ? `<div class="row cal-filters">${filt}</div>` : ""}
+  <div class="cal-wrap">
+    <section class="card cal-month" aria-labelledby="cal-m">
+      <div class="cal-nav">
+        <button type="button" class="btn ghost sm" data-act="calMonth" data-d="-1" aria-label="Previous month">‹</button>
+        <h2 id="cal-m" aria-live="polite">${esc(month)}</h2>
+        <button type="button" class="btn ghost sm" data-act="calMonth" data-d="1" aria-label="Next month">›</button>
+        <button type="button" class="btn ghost sm cal-today" data-act="calDay" data-id="${today}">Today</button>
+      </div>
+      <table class="cal-grid"><thead><tr>${wk.map(d => `<th scope="col"><abbr title="${esc(d.toLocaleDateString(LOC, {weekday:"long"}))}">${esc(d.toLocaleDateString(LOC, {weekday:"short"}))}</abbr></th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>
+      ${legend}
+    </section>
+    <section class="card stack cal-agenda" aria-labelledby="cal-dh">
+      <h2 id="cal-dh" tabindex="-1">${S.calDay === today ? "Today" : esc(calLong(S.calDay))}</h2>
+      ${dayList.length ? `<ul class="cal-list">${dayList.map(e => calEventHtml(e, false)).join("")}</ul>`
+        : `<p class="muted">Nothing planned for this day.</p>${fam && S.calDay >= today && !S.calMissing ? `<div><button class="btn sm" data-act="modal" data-m="homeSess" data-day="${S.calDay}">Schedule a home session</button></div>` : ""}`}
+      <h2 class="cal-h2">Coming up</h2>
+      ${coming.length ? `<ul class="cal-list">${coming.map(e => calEventHtml(e, true)).join("")}</ul>` : `<p class="muted small">Nothing else coming up yet.</p>`}
+    </section>
+  </div>`;
+}
+ACTS.calDay = ds => { S.calDay = ds.id; S.calMonth = ds.id.slice(0, 7); render();
+  if(window.matchMedia("(max-width:900px)").matches){ const h = document.getElementById("cal-dh"); if(h){ h.focus({preventScroll:true}); h.scrollIntoView({block:"start", behavior:"smooth"}); } }
+  else { const b = document.querySelector(`[data-act="calDay"][data-id="${ds.id}"].cal-d`); if(b) b.focus(); } };
+ACTS.calMonth = ds => { const [y, m] = S.calMonth.split("-").map(Number), d = new Date(y, m - 1 + Number(ds.d), 1);
+  S.calMonth = d.getFullYear() + "-" + calPad(d.getMonth() + 1); render();
+  const b = document.querySelector(`[data-act="calMonth"][data-d="${ds.d}"]`); if(b) b.focus(); };
+ACTS.calPlan = () => { S.draft = newDraft(S.calTeam && S.calTeam !== "all" ? S.calTeam : sessTeamId()); const t = calKey(new Date()); S.draft.date = S.calDay && S.calDay >= t ? S.calDay : ""; keepDraft(); S.sessTab = "plan"; ACTS.go({view:"sessions"}); };
+ACTS.calOpenPlan = ds => { ACTS.go({view:"sessions"}); ACTS.sessOpen({id:ds.id}); };
+ACTS.homeDone = async ds => { const h = (S.homeSessions || []).find(x => x.id === ds.id); if(!h) return;
+  const ok = await save(() => S.db.collection("homeSessions").doc(h.id).update({done:!h.done, updatedAt:Date.now()}), h.done ? "Marked as not done" : "Nice work. Marked as done.");
+  if(ok){ h.done = !h.done; render(); const b = document.querySelector(`[data-act="homeDone"][data-id="${CSS.escape(ds.id)}"]`); if(b) b.focus(); } };
+ACTS.homeDel = async ds => { const ok = await save(() => S.db.collection("homeSessions").doc(ds.id).delete(), "Home session deleted");
+  if(ok){ S.homeSessions = (S.homeSessions || []).filter(x => x.id !== ds.id); render(); const h = document.getElementById("cal-dh"); if(h) h.focus(); } };
+CONFIRM.homeDel = ["Delete this home session?", "It's removed from your calendar.", "Delete"];
+MODALS.homeSess = ds => {
+  const kids = calKids(), h = ds.id ? (S.homeSessions || []).find(x => x.id === ds.id) : null;
+  const today = calKey(new Date());
+  const pid = ds.pid || (h && h.playerId) || (S.calKid && S.calKid !== "all" ? S.calKid : (kids.find(k => k.id === S.childId) || kids[0] || {}).id);
+  const at = h ? new Date(h.startsAt) : null;
+  const day = ds.date || (at ? calKey(at) : ds.day || today), time = ds.time || (at ? calPad(at.getHours()) + ":" + calPad(at.getMinutes()) : "17:00");
+  const mins = Number(ds.minutes || (h && h.minutes) || 30), picked = new Set(ds.drills ? ds.drills.split(",").filter(Boolean) : (h ? h.drillIds || [] : []));
+  const assigned = assignmentsFor(pid).map(a => drillById(a.drillId)).filter(Boolean);
+  const aIds = new Set(assigned.map(d => d.id));
+  const box = d => `<label class="check-row small"><input type="checkbox" name="drill" value="${esc(d.id)}" ${picked.has(d.id) ? "checked" : ""}> ${esc(d.title)} <span class="muted">· ${d.minutes} min</span></label>`;
+  const lib = BUILTIN_DRILLS.filter(d => !aIds.has(d.id));
+  const levels = ["Beginner", "Intermediate", "Advanced"];
+  return `<h2>${h ? "Edit home session" : "Schedule a home session"}</h2>
+  <form data-form="homeSess" class="stack" data-id="${h ? esc(h.id) : ""}">
+    ${kids.length > 1 ? `<label class="f" for="hs-kid">Player<select id="hs-kid" name="pid" data-change="hsKid">${kids.map(k => `<option value="${esc(k.id)}" ${k.id === pid ? "selected" : ""}>${esc(k.name)}</option>`).join("")}</select></label>` : `<input type="hidden" name="pid" value="${esc(pid || "")}">`}
+    <div class="row wrap-f">
+      <label class="f" for="hs-date">Date<input type="date" id="hs-date" name="date" required value="${esc(day)}" ${h ? "" : `min="${today}"`}></label>
+      <label class="f" for="hs-time">Start time<input type="time" id="hs-time" name="time" required value="${esc(time)}"></label>
+      <label class="f" for="hs-min">Length<select id="hs-min" name="minutes">${[15, 20, 30, 45, 60, 90].map(m => `<option value="${m}" ${m === mins ? "selected" : ""}>${m} minutes</option>`).join("")}</select></label>
+    </div>
+    <fieldset class="hs-drills"><legend>Drills to do <span class="muted small">(up to 10)</span></legend>
+      ${assigned.length ? `<p class="small muted">From your coach</p>${assigned.map(box).join("")}` : `<p class="small muted">No drills assigned by the coach yet. Pick any from the Home Drills library below.</p>`}
+      <details ${assigned.length ? "" : "open"}><summary>More from the Home Drills library</summary>
+        ${levels.map(lv => { const ds2 = lib.filter(d => d.level === lv); return ds2.length ? `<p class="small muted hs-lv">${lv}</p>${ds2.map(box).join("")}` : ""; }).join("")}
+      </details>
+    </fieldset>
+    ${h ? "" : `<label class="f" for="hs-rep">Repeat<select id="hs-rep" name="repeat"><option value="1">Just this once</option><option value="4">Every week for 4 weeks</option><option value="8">Every week for 8 weeks</option></select></label>`}
+    <label class="f" for="hs-note">Note <span class="muted small">(optional)</span><textarea id="hs-note" name="note" rows="2" maxlength="500" placeholder="e.g. In the backyard after homework">${esc(h ? h.note || "" : ds.note || "")}</textarea></label>
+    <div class="row"><button class="btn primary" type="submit">${h ? "Save changes" : "Save home session"}</button><button class="btn" type="button" data-act="close">Cancel</button></div>
+  </form>`;
+};
+FORMS.homeSess = async (fd, form) => {
+  const pid = fd.get("pid"), date = String(fd.get("date") || ""), time = String(fd.get("time") || "");
+  if(!pid) return toast("Add your player first.", true);
+  if(!date || !time) return toast("Pick a date and a start time.", true);
+  const drills = fd.getAll("drill").map(String);
+  if(drills.length > 10) return toast("Pick up to 10 drills for one session.", true);
+  const startsAt = new Date(date + "T" + time).getTime(); if(isNaN(startsAt)) return toast("Pick a date and a start time.", true);
+  const editId = form && form.dataset.id, rep = editId ? 1 : Math.max(1, Math.min(8, Number(fd.get("repeat")) || 1));
+  const base = {playerId:pid, minutes:Number(fd.get("minutes")) || 30, drillIds:drills, note:String(fd.get("note") || "").trim().slice(0, 500), updatedAt:Date.now()};
+  closeModal();
+  const ok = await save(async () => {
+    if(editId) return S.db.collection("homeSessions").doc(editId).update({...base, startsAt});
+    for(let i = 0; i < rep; i++){ const d = new Date(startsAt); d.setDate(d.getDate() + 7 * i);
+      await S.db.collection("homeSessions").doc(crypto.randomUUID()).set({...base, startsAt:d.getTime(), done:false, createdBy:S.uid, createdAt:Date.now()}); }
+  }, editId ? "Home session updated" : rep > 1 ? `${rep} home sessions added to the calendar` : "Home session added to the calendar");
+  if(ok){ await loadKey("homeSessions"); S.calDay = date; S.calMonth = date.slice(0, 7); render(); }
+};

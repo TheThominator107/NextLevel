@@ -615,3 +615,8 @@ Both feet	Los dos pies
 Messages, {0} new	Mensajes, {0} nuevos
 {0} · Team Chat	{0} · Chat del equipo
 {0} · Team Chat ({1})	{0} · Chat del equipo ({1})
+# Calendar (Nov 24)
+{0}, {1} events	{0}, {1} eventos
+{0}, 1 event	{0}, 1 evento
+Time not set · {0} min	Hora sin fijar · {0} min
+{0} · Time not set · {1} min	{0} · Hora sin fijar · {1} min

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-i18nv="20">
+<html lang="en" data-i18nv="21">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1349,7 +1349,7 @@ main > .home-hero.card{display:grid;grid-template-columns:minmax(0,1.12fr) minma
 .home-hero .iv-text,.home-hero .iv-text > summary{text-align:left}
 
 /* the numbers: a navy strip across the page */
-.home-facts{border:0;padding:32px 0;color:#ffffff;margin-top:-32px;background:var(--kit-navy);box-shadow:0 0 0 100vmax var(--kit-navy);clip-path:inset(0 -100vmax)}
+.home-facts{border:0;padding:32px 0;color:#ffffff;margin-top:-32px;background:var(--kit-navy);border-image:linear-gradient(var(--kit-navy) 0 0) fill 0 / / 0 100vmax}
 .home-facts > *{border-left-color:rgba(255,255,255,.14)}
 .home-facts b{color:#ffffff;font-size:3.5rem}
 .home-facts span{color:var(--kit-on-navy)}
@@ -1381,7 +1381,7 @@ main > .home-hero.card{display:grid;grid-template-columns:minmax(0,1.12fr) minma
 /* the page title on a navy band */
 main > .row.between:first-child:has(> .stack > h1),
 main > .stack:first-child:not(.page-hero):has(> h1),
-main > h1:first-child{margin-top:-24px;padding:36px 0;color:#ffffff;border:0;border-radius:0;background:var(--kit-band);box-shadow:0 0 0 100vmax var(--kit-band);clip-path:inset(0 -100vmax)}
+main > h1:first-child{margin-top:-24px;padding:36px 0;color:#ffffff;border:0;border-radius:0;background:var(--kit-band);border-image:linear-gradient(var(--kit-band) 0 0) fill 0 / / 0 100vmax}
 main > .row.between:first-child:has(> .stack > h1) h1,
 main > .stack:first-child:not(.page-hero):has(> h1) h1{color:#ffffff}
 main > .row.between:first-child:has(> .stack > h1) .muted,
@@ -1431,13 +1431,14 @@ tbody td{padding-top:14px;padding-bottom:14px}
 
 /* header icons: Messages (envelope) and the bell, side by side */
 .top-icons{display:flex;align-items:center;gap:2px;margin-left:auto}
+@media (max-width:520px){ .top-in{gap:8px;padding-left:14px;padding-right:14px} .top-icons{gap:0} .top-icons .mail-btn,.top-icons .cal-btn,.top-icons .bell-btn{width:36px;height:36px} .top-in .top-icons + .app-menu-btn{margin-left:4px} }
 .top-icons .notif-wrap{margin-left:0}
 .top-in .top-icons + .app-menu-btn{margin-left:6px}
 @media (min-width:981px){ .top-in .top-icons{order:3;margin-left:4px} }
-.mail-btn{position:relative;display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;background:transparent;border:0;color:inherit;cursor:pointer}
-.mail-btn:hover{background:rgba(255,255,255,.12)}
-.mail-btn[aria-current="page"]{background:rgba(255,255,255,.16);box-shadow:inset 0 -2px 0 #c4471c}
-.top .mail-btn:focus-visible{outline:2px solid #ffffff;outline-offset:2px}
+.mail-btn,.cal-btn{position:relative;display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;background:transparent;border:0;color:inherit;cursor:pointer}
+.mail-btn:hover,.cal-btn:hover{background:rgba(255,255,255,.12)}
+.mail-btn[aria-current="page"],.cal-btn[aria-current="page"]{background:rgba(255,255,255,.16);box-shadow:inset 0 -2px 0 #c4471c}
+.top .mail-btn:focus-visible,.top .cal-btn:focus-visible{outline:2px solid #ffffff;outline-offset:2px}
 
 /* Messages list: team chats pinned on top, then private chats newest first */
 .inbox-side .conv-name{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
@@ -1445,6 +1446,71 @@ tbody td{padding-top:14px;padding-bottom:14px}
 .inbox-side .conv-tag{font-size:.72rem;font-weight:600;color:var(--muted);background:var(--chip);border-radius:4px;padding:1px 6px}
 .inbox-side .conv-team{background:var(--surface)}
 .inbox-side .conv-team + button:not(.conv-team){border-top:1px solid var(--line)}
+
+/* calendar: navy team sessions, turf home sessions, rust meetings */
+.cal-badge{background:#c4471c}
+.cal-wrap{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:900px){ .cal-wrap{grid-template-columns:minmax(0,1fr)} }
+.cal-filters{gap:16px}
+.cal-filter select{min-width:200px}
+.cal-month{padding:18px}
+.cal-nav{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.cal-nav h2{margin:0 auto 0 4px;order:-1;font-size:1.35rem}
+.cal-nav .btn{min-width:40px;font-size:1.1rem}
+.cal-nav .cal-today{font-size:.88rem}
+.cal-grid{width:100%;min-width:0;border-collapse:collapse;table-layout:fixed}
+.cal-grid th{background:none;color:var(--muted);font-size:.78rem;font-weight:600;padding:4px 0 8px;text-align:center;border:0}
+.cal-grid abbr{text-decoration:none}
+:root .cal-grid thead th{background:none;color:var(--muted);border-radius:0}
+:root .cal-grid tbody tr:hover,:root .cal-grid tbody tr:hover td{background:none}
+.cal-grid td{padding:2px;border:0;vertical-align:top}
+.cal-d{box-sizing:border-box;width:100%;min-width:0;min-height:84px;display:flex;flex-direction:column;align-items:stretch;gap:3px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.cal-d:hover{border-color:var(--ink)}
+.cal-d.out{background:transparent;color:var(--muted)}
+.cal-d.out .cal-chips{opacity:.7}
+.cal-d .cal-n{font-weight:600;font-size:.88rem;line-height:1;width:24px;height:24px;display:grid;place-items:center;border-radius:50%}
+.cal-d.today .cal-n{background:#c4471c;color:#ffffff}
+.cal-d[aria-pressed="true"]{border:2px solid var(--kit-navy);padding:5px}
+:root[data-theme="dark"] .cal-d[aria-pressed="true"]{border-color:#ffffff}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .cal-d[aria-pressed="true"]{border-color:#ffffff} }
+.cal-chips{display:flex;flex-direction:column;gap:2px;min-width:0}
+.cal-chip{display:block;font-size:.7rem;font-weight:600;line-height:1.3;padding:1px 5px;border-radius:3px;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-more{font-size:.7rem;color:var(--muted);font-weight:600}
+.cal-dots{display:none;gap:3px;justify-content:center}
+.cal-dots i,.cal-legend i{display:inline-block;width:8px;height:8px;border-radius:50%}
+.k-team.cal-chip,.cal-dots .k-team,.cal-legend .k-team{background:var(--kit-navy)}
+.k-home.cal-chip,.cal-dots .k-home,.cal-legend .k-home{background:#1d6b3f}
+.k-meet.cal-chip,.cal-dots .k-meet,.cal-legend .k-meet{background:var(--kit-rust)}
+:root[data-theme="dark"] .k-team.cal-chip,:root[data-theme="dark"] .cal-dots .k-team,:root[data-theme="dark"] .cal-legend .k-team{background:#3b5998}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .k-team.cal-chip,:root:not([data-theme="light"]) .cal-dots .k-team,:root:not([data-theme="light"]) .cal-legend .k-team{background:#3b5998} }
+.cal-legend{display:flex;gap:16px;flex-wrap:wrap;margin:12px 0 0;color:var(--muted)}
+.cal-legend span{display:inline-flex;align-items:center;gap:6px}
+@media (max-width:640px){
+  .cal-month{padding:12px}
+  .cal-d{min-height:48px;align-items:center;padding:4px 2px}
+  .cal-d[aria-pressed="true"]{padding:3px 1px}
+  .cal-chips{display:none}
+  .cal-dots{display:flex}
+}
+.cal-agenda h2{font-size:1.25rem;margin:0}
+.cal-agenda .cal-h2{margin-top:10px;padding-top:14px;border-top:1px solid var(--line)}
+.cal-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.cal-ev{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:8px;background:var(--paper);border-left:4px solid var(--kit-navy)}
+.cal-ev.k-home{border-left-color:#1d6b3f}
+.cal-ev.k-meet{border-left-color:var(--kit-rust)}
+.cal-ev.is-done .cal-ev-t{text-decoration:line-through;color:var(--muted)}
+.cal-ev-h{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
+.cal-kind{font-size:.78rem;font-weight:700;color:var(--ink)}
+.cal-place{display:inline-flex;align-items:center;gap:4px;color:var(--muted)}
+.cal-ev .chips{display:flex;gap:4px;flex-wrap:wrap}
+.cal-ev-acts{gap:6px;flex-wrap:wrap;margin-top:4px}
+.cal-ev-acts .btn[aria-pressed="true"]{background:#1d6b3f;border-color:#1d6b3f;color:#ffffff}
+.hs-drills{border:1px solid var(--line);border-radius:8px;padding:10px 14px;display:flex;flex-direction:column;gap:4px;max-height:320px;overflow:auto}
+.hs-drills legend{font-weight:600;padding:0 4px}
+.hs-drills summary{font-weight:600;font-size:.9rem;margin-top:6px}
+.hs-lv{margin:8px 0 2px}
+.check-row{display:flex;align-items:flex-start;gap:8px;min-height:32px;padding:4px 0;cursor:pointer}
+.check-row input{margin-top:3px;width:18px;height:18px;flex:none}
 
 /* status labels: one set everywhere: green done, orange needs action, red problem */
 .pill{border-radius:4px;font-weight:700}
