@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-i18nv="22">
+<html lang="en" data-i18nv="23">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1509,6 +1509,32 @@ tbody td{padding-top:14px;padding-bottom:14px}
 .hs-drills legend{font-weight:600;padding:0 4px}
 .hs-drills summary{font-weight:600;font-size:.9rem;margin-top:6px}
 .hs-lv{margin:8px 0 2px}
+/* home screens: two columns of plain cards, one icon chip each, actions at the bottom */
+.home-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:stretch}
+@media (max-width:820px){ .home-grid{grid-template-columns:minmax(0,1fr)} }
+.home-card{padding:22px;gap:12px}
+.hc-h{display:flex;align-items:center;gap:12px;margin:0;font-size:1.3rem}
+.hc-ic{flex:none;width:40px;height:40px;border-radius:8px;display:grid;place-items:center;background:var(--kit-navy);color:#ffffff}
+.hc-turf .hc-ic{background:var(--kit-turf)}
+.hc-rust .hc-ic{background:var(--kit-rust)}
+.hc-acts{margin-top:auto;padding-top:6px;gap:10px;flex-wrap:wrap}
+.home-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.home-list li{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.home-list li:first-child{border-top:0;padding-top:2px}
+.home-ev-t{font-weight:600;flex:1 1 160px;min-width:0}
+.home-ev .cal-kind{flex:0 0 100%;font-size:.72rem;text-transform:none;color:var(--muted)}
+.home-ev{border-left:3px solid var(--kit-navy);padding-left:10px !important}
+.home-ev.k-home{border-left-color:#1d6b3f}
+.home-ev.k-meet{border-left-color:var(--kit-rust)}
+.home-ev + .home-ev{border-top:0;margin-top:8px}
+.home-big{margin:0;font-size:1.05rem}
+.home-big b{font-family:var(--headline);font-size:2.25rem;line-height:1;margin-right:4px}
+.home-clip{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.home-card .overall{margin:0}
+.home-card .chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.home-alert{gap:12px;flex-wrap:wrap;border-left:4px solid #c4471c}
+.home-alert p{margin:0}
+
 /* View session: the team's practice plan, read-only */
 .vs-head .cal-kind{align-self:flex-start}
 .vs-head .chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}

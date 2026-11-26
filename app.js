@@ -622,11 +622,11 @@ function subscribeClub(cid){
 const ALL_KEYS = ["club","teams","players","reviews","assignments","drills","links","members","profiles","comments","messages","pmessages","reactions","opps","meetings","teamCoaches","requests","interest","shortlist","college","pro","owner","scouts","sessions","teamCal","homeSessions"];
 function refreshAll(){ ALL_KEYS.forEach(schedule); }
 function fixView(){
-  const staffViews = ["roster","player","sessions","chat","messages","calendar","drills","recruit","plans","club"], famViews = ["home","chat","messages","calendar","drills","recruit","plans","account"];
+  const staffViews = ["dash","roster","player","sessions","chat","messages","calendar","drills","recruit","plans","club"], famViews = ["dash","home","chat","messages","calendar","drills","recruit","plans","account"];
   if(!S.me) { S.view = null; return; }
-  if(isScout()){ if(!["scout","shortlist","account"].includes(S.view)) S.view = "scout"; return; }
+  if(isScout()){ if(!["dash","scout","shortlist","opps","account"].includes(S.view)) S.view = "dash"; return; }
   const ok = isStaff() ? staffViews : famViews;
-  if(!ok.includes(S.view)) S.view = isStaff() ? "roster" : "home";
+  if(!ok.includes(S.view)) S.view = "dash";
 }
 
 /* ---------- views ---------- */
@@ -637,7 +637,7 @@ const brandSvg = "";
 /* the signed-in menu: plain links and dropdown groups ({g, l, items}) */
 const curSec = () => SECTION_KEYS.includes(S.rsec) ? S.rsec : isStaff() ? "youth" : "college";
 function navItems(){
-  if(isScout()) return [{v:"scout", l:"Find players"}, {v:"shortlist", l:"Shortlist"}].concat(S.me && S.me.role === "college" ? [{v:"opps", l:"Opportunities"}] : []).concat([{v:"account", l:"Account"}]);
+  if(isScout()) return [{v:"dash", l:"Home"}, {v:"scout", l:"Find players"}, {v:"shortlist", l:"Shortlist"}].concat(S.me && S.me.role === "college" ? [{v:"opps", l:"Opportunities"}] : []).concat([{v:"account", l:"Account"}]);
   const recruit = {g:"recruit", l:"Recruiting", n:newInterest().length, items:[["pro","Pro"],["college","College"],["youth","Youth"]].map(([k,l]) => ({v:"recruit", sec:k, l, n:newInterest(k).length})).concat([{v:"opps", l:"Opportunities"}])};
   if(isStaff() && clubWaiting()) return [];
   if(isStaff()){
@@ -649,10 +649,10 @@ function navItems(){
     const ps = pendingScouts().length;
     const club = {g:"club", l:S.club.name, brand:true, n:req + ps, items:[{v:"club", l:"Club", n:ps}, {v:"roster", team:"all", l:"My Teams", n:req}]
       .concat(list.map(t => ({v:"roster", team:t.id, l:t.name, sub:true})))};
-    return [club, {g:"training", l:"Training", items:[{v:"sessions", l:"Team Drills"}, {v:"drills", l:"Home Drills"}]}, recruit, {v:"plans", l:"Pricing"}];
+    return [{v:"dash", l:"Home"}, club, {g:"training", l:"Training", items:[{v:"sessions", l:"Team Drills"}, {v:"drills", l:"Home Drills"}]}, recruit, {v:"plans", l:"Pricing"}];
   }
   /* families: Recruiting is one page, with a "what are you looking for" filter on it */
-  return [{v:"home", l:"My player"}, {v:"drills", l:"Home Drills"}, {v:"recruit", l:"Recruiting", n:newInterest().length}, {v:"account", l:"Account", n:pendingScouts().length}];
+  return [{v:"dash", l:"Home"}, {v:"home", l:"My player"}, {v:"drills", l:"Home Drills"}, {v:"recruit", l:"Recruiting", n:newInterest().length}, {v:"account", l:"Account", n:pendingScouts().length}];
 }
 function navCurrent(it){
   if(S.publicPage) return false;
@@ -745,6 +745,7 @@ function viewBody(){
       case "opps": return oppsView();
       case "chat": case "messages": return inboxView();
       case "calendar": return calendarView();
+      case "dash": return dashView();
       default: return rosterView();
     }
   }
@@ -757,6 +758,7 @@ function viewBody(){
     case "plans": return drillsView();   /* families buy Home Drills access on the Home Drills tab */
     case "chat": case "messages": return inboxView();
     case "calendar": return calendarView();
+    case "dash": return dashView();
     default: return familyHome();
   }
 }
@@ -1533,6 +1535,7 @@ function scoutBody(){
     if(S.view === "account") return collegeAccount();
     return collegePending();
   }
+  if(S.view === "dash") return scoutHome();
   if(S.view === "shortlist") return shortlistHtml();
   if(S.view === "account") return collegeAccount();
   if(S.view === "opps") return oppsView();
@@ -2670,7 +2673,7 @@ async function rpc(name, args){
 const FORMS = {
   createClub: async fd => {
     const ok = await save(() => rpc("create_club", {club_name:fd.get("club").trim(), my_name:fd.get("name").trim()}), "Club created. We'll check it shortly.");
-    if(ok) await loadMe();
+    if(ok){ S.view = "roster"; await loadMe(); }   /* a new club starts on My Teams, where teams are added */
   },
   joinCoach: async fd => {
     let name = "";
@@ -3065,6 +3068,7 @@ document.addEventListener("change", ev => {
     S.childId = ev.target.value; render(); const el = document.getElementById("sel-player"); if(el) el.focus(); return; }
   if(ev.target.dataset && (ev.target.dataset.change === "oppKind" || ev.target.dataset.change === "oppGender")){ S[ev.target.dataset.change] = ev.target.value; render(); const el = document.getElementById(ev.target.id); if(el) el.focus(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "chatTeam"){ S.chatTeam = ev.target.value; render(); return; }
+  if(ev.target.dataset && ev.target.dataset.change === "homeTeam"){ S.homeTeam = ev.target.value; render(); const el = document.getElementById("home-team"); if(el) el.focus(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "calTeam"){ S.calTeam = ev.target.value; render(); const el = document.getElementById("cal-team"); if(el) el.focus(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "calKid"){ S.calKid = ev.target.value; render(); const el = document.getElementById("cal-kid"); if(el) el.focus(); return; }
   if(ev.target.dataset && ev.target.dataset.change === "hsKid"){ const f = ev.target.form, fd = new FormData(f);
@@ -3585,7 +3589,7 @@ FORMS.contact = async (fd, form) => {
   S.contactSent = row.email; render(); window.scrollTo(0,0);
 };
 ACTS.menu = () => { S.menuOpen = !S.menuOpen; render(); };
-ACTS.home = () => { S.publicPage = null; S.menuOpen = false; try { history.replaceState(null, "", location.pathname + location.search); } catch(_){} render(); window.scrollTo(0,0); };
+ACTS.home = () => { S.publicPage = null; S.menuOpen = false; if(S.me){ S.view = "dash"; S.calSession = null; } try { history.replaceState(null, "", location.pathname + location.search); } catch(_){} render(); window.scrollTo(0,0); };
 
 
 /* ---------- private messages: coach / player / parent, plus a meeting room per player ---------- */
@@ -4980,7 +4984,7 @@ function calSessionView(e){
   <ol class="vs-blocks" aria-label="Session plan">${blocks}</ol>
   ${isStaff() ? `<div><button class="btn" data-act="calOpenPlan" data-id="${esc(e.id)}">Open plan</button></div>` : ""}`;
 }
-ACTS.calView = ds => { S.calSession = ds.id; render(); window.scrollTo(0, 0); const h = document.querySelector("main h1"); if(h){ h.tabIndex = -1; h.focus({preventScroll:true}); } };
+ACTS.calView = ds => { S.view = "calendar"; S.calSession = ds.id; render(); window.scrollTo(0, 0); const h = document.querySelector("main h1"); if(h){ h.tabIndex = -1; h.focus({preventScroll:true}); } };
 ACTS.calBack = () => { const id = S.calSession; S.calSession = null; render(); const b = document.querySelector(`[data-act="calView"][data-id="${CSS.escape(id || "")}"]`); if(b) b.focus(); };
 ACTS.calDay = ds => { S.calDay = ds.id; S.calMonth = ds.id.slice(0, 7); render();
   if(window.matchMedia("(max-width:900px)").matches){ const h = document.getElementById("cal-dh"); if(h){ h.focus({preventScroll:true}); h.scrollIntoView({block:"start", behavior:"smooth"}); } }
@@ -5044,3 +5048,143 @@ FORMS.homeSess = async (fd, form) => {
   }, editId ? "Home session updated" : rep > 1 ? `${rep} home sessions added to the calendar` : "Home session added to the calendar");
   if(ok){ await loadKey("homeSessions"); S.calDay = date; S.calMonth = date.slice(0, 7); render(); }
 };
+
+/* ---------- home screens: one simple page per role, the logo brings you back ----------
+   Each card answers one question (what's next, what to work on, how am I doing,
+   who wrote to me) and has one or two plain actions. */
+const HOME_IC = {
+  cal:`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,
+  ball:`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m12 7 4 3-1.5 4.5h-5L8 10z"/><path d="M12 3v4M21 10l-5 0M3 10l5 0M7 19l2.5-4.5M17 19l-2.5-4.5"/></svg>`,
+  chart:`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,
+  chat:`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/></svg>`,
+  star:`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>`,
+  search:`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>`,
+  clip:`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></svg>`,
+  user:`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.5-6 8-6s7 2 8 6"/></svg>`,
+  flag:`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>`
+};
+function homeCard(id, ic, title, body, acts, tone){
+  return `<section class="card stack home-card${tone ? " hc-" + tone : ""}" aria-labelledby="hc-${id}">
+    <h2 id="hc-${id}" class="hc-h"><span class="hc-ic" aria-hidden="true">${HOME_IC[ic]}</span>${title}</h2>
+    ${body}
+    ${acts ? `<div class="row hc-acts">${acts}</div>` : ""}
+  </section>`;
+}
+/* the next few things on the calendar, short */
+function homeComing(n){
+  const now = Date.now(), today = calKey(new Date());
+  const evs = calEvents().filter(e => (e.timed ? e.at >= now - 3600e3 : e.day >= today) && !(e.kind === "home" && e.done)).slice(0, n);
+  if(!evs.length) return `<p class="muted">Nothing on the calendar yet.</p>`;
+  return `<ul class="home-list">${evs.map(e => {
+    const when = [e.day === today ? "Today" : calShort(e.day), e.timed ? calTime(e.at) : ""].filter(Boolean).join(" · ");
+    const what = e.kind === "home" ? ((e.drills || []).map(id => (drillById(id) || {}).title).filter(Boolean).slice(0, 2).join(", ") || "Home training") : e.title || CAL_KIND[e.kind];
+    return `<li class="home-ev k-${e.kind}"><span class="cal-kind">${CAL_KIND[e.kind]}</span><span class="home-ev-t">${esc(what)}</span><span class="small muted">${esc(when)}</span>
+      ${e.kind === "team" && (e.blocks || []).length ? `<button class="btn ghost sm" data-act="calView" data-id="${esc(e.id)}" aria-label="View session: ${esc(e.title)}">View session</button>` : ""}</li>`; }).join("")}</ul>`;
+}
+function homeMessages(){
+  const n = inboxUnread(), t = myTeams()[0], last = t ? teamMsgs(t.id).slice(-1)[0] : null;
+  return `<p class="home-big">${n ? `<b>${n}</b> new` : "No new messages"}</p>
+    ${last ? `<p class="small muted home-clip">${esc(t.name)}: ${esc((last.authorName || "") + ": " + last.text)}</p>` : ""}`;
+}
+function homeHead(line){ return `<div class="stack" style="gap:4px"><h1>Home</h1>${line ? `<p class="muted">${esc(line)}</p>` : ""}</div>`; }
+
+function dashView(){
+  if(isScout()) return scoutHome();
+  return isStaff() ? coachHome() : familyDash();
+}
+
+/* players and parents */
+function familyDash(){
+  const kids = calKids();
+  if(!kids.length) return homeHead(S.me.name || "") + `<div class="home-grid">${homeCard("add", "user", "Add your player",
+    `<p>Create your player's profile first. Then you can find your club and ask to join your team.</p>`,
+    `<button class="btn primary" data-act="modal" data-m="addChild">Add player</button>`)}</div>`;
+  const p = kids.find(k => k.id === S.childId) || kids[0];
+  const line = [p.name, p.clubId ? teamName(p.teamId) : "", clubNameOf(p)].filter(Boolean).join(" · ");
+  /* this week's drills: from the coach first, otherwise picked from the latest review */
+  const as = assignmentsFor(p.id).map(a => ({a, d:drillById(a.drillId)})).filter(x => x.d);
+  const rec = as.length ? null : recommendFor(p.id, 3);
+  const drills = as.length
+    ? `<ul class="home-list">${as.slice(0, 4).map(({a, d}) => { const n = doneThisWeek(a), t = a.perWeek || 3;
+        return `<li class="home-dr"><span class="home-ev-t">${esc(d.title)}</span><span class="small ${n >= t ? "good-t" : "muted"}">${n >= t ? "✓ " : ""}${n} of ${t} this week</span></li>`; }).join("")}</ul>
+       ${as.length > 4 ? `<p class="small muted">and ${as.length - 4} more</p>` : ""}`
+    : rec && rec.picks.length
+      ? `<p class="small muted">Picked from the latest review.</p><ul class="home-list">${rec.picks.map(x => `<li class="home-dr"><span class="home-ev-t">${esc(x.drill.title)}</span><span class="small muted">${esc(x.drill.minutes)} min · ${esc(x.drill.level)}</span></li>`).join("")}</ul>`
+      : `<p class="muted">No drills yet. Your coach can assign some, or pick any from the Home Drills library.</p>`;
+  /* latest review */
+  const rs = reviewsFor(p.id), last = rs[rs.length - 1], o = overall(last);
+  const review = last
+    ? `<div class="overall">${lvlHtml(o, "big")}<span class="muted">overall</span></div>
+       <p class="small muted">${fmtDate(last.date)}${last.coachName ? " · " + esc(last.coachName) : ""}</p>
+       ${(last.strengths || []).length ? `<div class="chips"><span class="small muted">Strengths:</span>${last.strengths.slice(0, 3).map(t => `<span class="chip str">${esc(t)}</span>`).join("")}</div>` : ""}
+       ${(last.improve || []).length ? `<div class="chips"><span class="small muted">Work on:</span>${last.improve.slice(0, 3).map(t => `<span class="chip imp">${esc(t)}</span>`).join("")}</div>` : ""}`
+    : `<p class="muted">No review yet. Once your coach reviews ${esc(p.name.split(" ")[0])}, it shows up here.</p>`;
+  const ni = newInterest().length;
+  return homeHead(line) + `${kids.length > 1 ? `<div class="row">${playerSelect(kids, p, false)}</div>` : ""}
+  ${p.clubId ? "" : teamStatusHtml(p)}
+  <div class="home-grid">
+    ${homeCard("cal", "cal", "Coming up", homeComing(3), `<button class="btn primary" data-act="go" data-view="calendar">Open calendar</button>${S.calMissing ? "" : `<button class="btn" data-act="modal" data-m="homeSess">Schedule a home session</button>`}`)}
+    ${homeCard("drills", "ball", "This week's drills", drills, `<button class="btn primary" data-act="go" data-view="drills">Open Home Drills</button>`, "turf")}
+    ${homeCard("review", "chart", "Latest review", review, last ? `<button class="btn" data-act="homeReview">See full review and progress</button>` : "")}
+    ${homeCard("msg", "chat", "Messages", homeMessages(), `<button class="btn" data-act="openInbox">Open messages</button>`)}
+    ${homeCard("rec", "flag", "Recruiting", `<p class="home-big">${ni ? `<b>${ni}</b> new from coaches and scouts` : "No new interest yet"}</p>`, `<button class="btn" data-act="go" data-view="recruit">Open Recruiting</button>`, "rust")}
+  </div>`;
+}
+
+/* coaches and club admins */
+function coachHome(){
+  const teams = myTeams(), ids = new Set(teams.map(t => t.id));
+  const players = S.players.filter(p => ids.has(p.teamId));
+  const due = players.map(p => ({p, st:reviewStatus(p.id)})).filter(x => x.st.cls !== "good")
+    .sort((a, b) => (a.st.cls === "bad" ? 0 : 1) - (b.st.cls === "bad" ? 0 : 1) || String(a.p.name).localeCompare(String(b.p.name)));
+  const req = pendingRequests().length;
+  const team = teams.find(t => t.id === S.homeTeam) || teams.find(t => myCoachTeamIds().includes(t.id)) || teams[0];
+  let recs = [], F = null;
+  if(team){ F = teamFocus(team.id); const saved = S.draft, age = ageOfTeam(team); S.draft = null; recs = recommendTeamDrills(F, defaultFocus(F), age, 3); S.draft = saved;
+    /* no reviews yet: a warm-up, a main practice and a game that suit the team's age */
+    if(!recs.length) recs = [["Warm-up"], ["Technical", "Possession"], ["Game"]].map(ph => TEAM_DRILLS.filter(d => ph.includes(d.phase) && tdAgeOk(d, age) && d.id !== "t-cooldown")
+      .sort((x, y) => levelFit(y, age) - levelFit(x, age) || x.minutes - y.minutes)[0]).filter(Boolean).map(d => ({d})); }
+  const tile = (n, l, warn) => `<div class="card tile"><div class="big num"${warn && n ? ' style="color:var(--warn)"' : ""}>${n}</div><div class="lbl">${l}</div></div>`;
+  const reviews = due.length
+    ? `<ul class="home-list">${due.slice(0, 5).map(({p, st}) => `<li class="home-pl"><span class="home-ev-t">${esc(p.name)}</span><span class="small muted">${esc(teamName(p.teamId))}</span><span class="pill ${st.cls}">${st.txt}</span>
+        <button class="btn sm" data-act="open" data-id="${esc(p.id)}" aria-label="Review ${esc(p.name)}">Review</button></li>`).join("")}</ul>
+       ${due.length > 5 ? `<p class="small muted">and ${due.length - 5} more</p>` : ""}`
+    : `<p class="muted">${players.length ? "Everyone's reviews are up to date." : "No players on your teams yet. Share your team's invite link from My Teams."}</p>`;
+  const drills = team
+    ? `${teams.length > 1 ? `<label class="f small inline-f" for="home-team">Team<select id="home-team" data-change="homeTeam">${teams.map(t => `<option value="${esc(t.id)}" ${t.id === team.id ? "selected" : ""}>${esc(t.name)}</option>`).join("")}</select></label>` : ""}
+       <p class="small muted">${F && F.reviewed ? "Matched to what the latest reviews show this team needs." : "Suited to the team's age. Review players for sharper picks."}</p>
+       ${recs.length ? `<ul class="home-list">${recs.map(x => `<li class="home-dr"><span class="home-ev-t">${esc(x.d.title)}</span><span class="small muted">${esc(x.d.phase)} · ${esc(x.d.minutes)} min</span>
+         <button class="btn ghost sm" data-act="modal" data-m="tdrill" data-id="${esc(x.d.id)}" aria-label="Details for ${esc(x.d.title)}">Details</button></li>`).join("")}</ul>` : ""}`
+    : `<p class="muted">Add a team to get drill picks.</p>`;
+  return homeHead((S.club || {}).name || "") + `
+  ${setupCard()}
+  <div class="grid3 tiles-row">${tile(teams.length, teams.length === 1 ? "Team" : "Teams")}${tile(players.length, players.length === 1 ? "Player" : "Players")}${tile(due.length, "Need a review", true)}</div>
+  ${req ? `<div class="card home-alert row between"><p><b>${req}</b> ${req === 1 ? "player asked" : "players asked"} to join a team.</p><button class="btn primary" data-act="go" data-view="roster">See requests</button></div>` : ""}
+  <div class="home-grid">
+    ${homeCard("cal", "cal", "Coming up", homeComing(3), `<button class="btn primary" data-act="go" data-view="calendar">Open calendar</button><button class="btn" data-act="calPlan">Plan a team session</button>`)}
+    ${homeCard("rev", "clip", "Reviews to do", reviews, `<button class="btn" data-act="go" data-view="roster">See all players</button>`, due.length ? "rust" : "")}
+    ${homeCard("drills", "ball", "Recommended team drills", drills, `<button class="btn primary" data-act="homeDrills">Open Team Drills</button>`, "turf")}
+    ${homeCard("msg", "chat", "Messages", homeMessages(), `<button class="btn" data-act="openInbox">Open messages</button>`)}
+  </div>`;
+}
+
+/* college coaches and pro scouts */
+function scoutHome(){
+  const sec = mySection(), all = S.shortlist || [], c = S.college || {}, ps = S.pro || {};
+  const who = sec === "college" ? [c.school, c.program, c.division].filter(Boolean).join(" · ") : [ps.org, ps.orgType].filter(Boolean).join(" · ");
+  const counts = SL_STATUS.map(([k, l]) => [l, all.filter(x => x.status === k).length]).filter(([, n]) => n);
+  const recent = all.slice().sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)).slice(0, 3);
+  return homeHead(who) + `<div class="home-grid">
+    ${homeCard("find", "search", "Find players", `<p>${SCOUT_COPY[sec].intro}</p>`, `<button class="btn primary" data-act="go" data-view="scout">Find players</button>`)}
+    ${homeCard("sl", "star", "Shortlist", all.length
+      ? `<p class="home-big"><b>${all.length}</b> ${all.length === 1 ? "player" : "players"}</p>
+         ${counts.length ? `<div class="chips">${counts.map(([l, n]) => `<span class="chip">${esc(l)} ${n}</span>`).join("")}</div>` : ""}
+         <ul class="home-list">${recent.map(x => `<li class="home-dr"><span class="home-ev-t">${esc(x.name)}</span></li>`).join("")}</ul>`
+      : `<p class="muted">Your shortlist is empty. Use ☆ Shortlist on any player in Find players.</p>`,
+      `<button class="btn" data-act="go" data-view="shortlist">Open shortlist</button>`, "turf")}
+    ${sec === "college" ? homeCard("opps", "flag", "Opportunities", `<p>Post camps, ID days and open spots for players to see.</p>`, `<button class="btn" data-act="go" data-view="opps">Open Opportunities</button>`, "rust") : ""}
+    ${homeCard("acct", "user", "Account", `<p>${esc(who || (S.me.name || ""))}</p>`, `<button class="btn" data-act="go" data-view="account">Open Account</button>`)}
+  </div>`;
+}
+ACTS.homeReview = () => { S.ptab = "dev"; ACTS.go({view:"home"}); };
+ACTS.homeDrills = () => { S.sessTab = "plan"; ACTS.go({view:"sessions"}); };
